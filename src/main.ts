@@ -6,6 +6,7 @@ import { createSim } from './sim';
 import { createRenderer } from './render';
 import { createUI } from './ui';
 import { createMeta } from './systems';
+import { createAudio } from './audio';
 
 const VERSION = '0.1.0-j1';
 const FIXED_MS = 1000 / 60;
@@ -50,13 +51,13 @@ function boot(): void {
   const bus = createEventBus();
   const time = createTimeControl();
   const meta: MetaSystem = createMeta(localStorage, config);
-  const audio: AudioSystem | null = null;
 
   const params = new URLSearchParams(location.search);
   const isDaily = params.get('daily') === '1';
   const forcedSeed = params.get('seed');
   const resume = !forcedSeed && !isDaily && meta.data.currentRun ? meta.data.currentRun : undefined;
   const seed = forcedSeed ?? (isDaily ? meta.dailySeed() : `run-${Date.now().toString(36)}`);
+  const audio: AudioSystem = createAudio(bus, meta.data.settings);
   const sim = createSim(config, {
     seed,
     meta: meta.getModifiers(),
@@ -97,6 +98,7 @@ function boot(): void {
   const debug: DebugApi = {
     sim,
     renderer,
+    audio,
     bus,
     meta,
     eventCounts,
@@ -168,6 +170,8 @@ function boot(): void {
       sinceSave = 0;
     }
   };
+  // run reprise depuis la sauvegarde : la sim n'émet pas run:started, on le fait pour render/audio
+  if (resume) bus.emit({ type: 'run:started', seed: sim.state.seed });
   requestAnimationFrame(frame);
 }
 

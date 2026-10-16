@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pegbreaker — audio preview</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #0b0f1a; color: #e6ecff; font: 14px/1.4 system-ui, sans-serif; }
+      #root { max-width: 720px; margin: 0 auto; padding: 16px; }
+    </style>
+  </head>
+  <body>
+    <!-- Page de dev uniquement : `npm run dev` puis /src/audio/preview.html -->
+    <div id="root"></div>
+    <script type="module">
+      import { mountAudioPreview } from './preview.ts';
+      window.__audioPreview = mountAudioPreview(document.getElementById('root'));
+    </script>
+  </body>
+</html>

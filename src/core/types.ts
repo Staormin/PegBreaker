@@ -580,6 +580,7 @@ export interface UI {
 export interface DebugApi {
   sim: Sim;
   renderer: Renderer;
+  audio: AudioSystem | null;
   bus: import('./events').EventBus;
   meta: MetaSystem;
   /** compteur par type d'événement depuis le chargement */
