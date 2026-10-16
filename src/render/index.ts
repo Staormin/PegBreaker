@@ -5,7 +5,7 @@ import type { EventBus, Unsubscribe } from '../core/events';
 import type { GameConfig, Renderer, RunState, TimeControl, Vec2 } from '../core/types';
 import { boardToScreen, computeLayout, createLayout, MAX_DPR, screenToBoard } from './layout';
 import { buildSprites, type Sprites } from './sprites';
-import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK } from './particles';
+import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK, PRIO_HIGH, PRIO_LOW } from './particles';
 import { createDamageNumbers, formatNumber, FONT_BUCKETS } from './damageNumbers';
 import { createVfx } from './vfx';
 import { createFrameDrawer } from './draw';
@@ -23,6 +23,8 @@ export interface PegRenderer extends Renderer {
   dispose(): void;
   /** résolution interne courante (≤ 2, baisse si la machine rame) */
   readonly dpr: number;
+  /** durée de la dernière bascule de qualité adaptative (ms) */
+  readonly qualitySwitchMs: number;
 }
 
 export function createRenderer(
@@ -73,14 +75,52 @@ export function createRenderer(
     vfx.addShake(2 + tier);
   });
 
-  // Qualité adaptative : si la frame moyenne dépasse 18,5 ms pendant ~2 s, on baisse la résolution
-  // interne d'un cran (2 → 1,5 → 1). Jamais de remontée automatique (pas d'oscillation) ;
-  // un resize() explicite garde le cran courant.
+  // Qualité adaptative (J2-02) : si 12 des 20 dernières frames dépassent 18,5 ms, on baisse la
+  // résolution interne d'un cran (2 → 1,5 → 1), y compris PENDANT la volée : c'est un simple
+  // changement de taille du backing store + régénération des sprites entre deux frames.
+  // Jamais de remontée automatique (pas d'oscillation) ; un resize() explicite garde le cran.
+  // Plafond initial : 1,5 sur mobile haute densité (DPR ≥ 2 et canvas ≤ 600 px CSS).
+  const SLOW_FRAME_MS = 18.5;
+  const SLOW_WINDOW = 20;
+  const SLOW_TRIGGER = 12;
+  const MOBILE_MAX_CSS_W = 600;
   let dprCap = MAX_DPR;
-  let frameEma = 16.7;
-  let slowFrames = 0;
+  let dprCapInit = false;
+  const slowRing = new Uint8Array(SLOW_WINDOW);
+  let slowIdx = 0;
+  let slowCount = 0;
+  let qualityCooldown = 0;
+  /** durée (ms) de la dernière régénération pour changement de qualité (QA) */
+  let lastQualitySwitchMs = 0;
+
+  function initDprCap(): void {
+    dprCapInit = true;
+    const parent = canvas.parentElement;
+    const cssW = parent ? parent.clientWidth : canvas.clientWidth;
+    const devDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    dprCap = devDpr >= 2 && cssW > 0 && cssW <= MOBILE_MAX_CSS_W ? 1.5 : MAX_DPR;
+  }
+
+  function trackFrame(dtMs: number, state: Readonly<RunState>): void {
+    if (qualityCooldown > 0) { qualityCooldown--; return; }
+    if (dtMs <= 0 || dtMs >= 100 || frame <= 60) return;
+    const slow = dtMs > SLOW_FRAME_MS ? 1 : 0;
+    slowCount += slow - (slowRing[slowIdx] ?? 0);
+    slowRing[slowIdx] = slow;
+    slowIdx = (slowIdx + 1) % SLOW_WINDOW;
+    if (slowCount >= SLOW_TRIGGER && dprCap > 1 && layout.dpr > 1 && state.phase !== 'gameover') {
+      dprCap = Math.max(1, Math.min(dprCap, layout.dpr) - 0.5);
+      const t0 = performance.now();
+      doResize(); // régénère les sprites à la nouvelle résolution
+      lastQualitySwitchMs = performance.now() - t0;
+      slowRing.fill(0);
+      slowCount = 0;
+      qualityCooldown = 30; // laisse retomber la frame de régénération avant de re-mesurer
+    }
+  }
 
   function doResize(): Sprites {
+    if (!dprCapInit) initDprCap();
     computeLayout(layout, canvas, dprCap);
     const s = buildSprites(layout, colors, config);
     sprites = s;
@@ -107,17 +147,21 @@ export function createRenderer(
   const kindColor = (k: number): string => colors.kind[k] ?? PALETTE.block;
   const elemColor = (e: keyof typeof ELEMENT_INDEX): string => colors.element[ELEMENT_INDEX[e]] ?? PALETTE.stone;
   const subs: Unsubscribe[] = [];
+  /** J2-01 : en mouvements réduits, la sim n'est jamais gelée (le flash/vignette local reste) */
+  const hitStop = (ms: number): void => {
+    if (!reduceMotion) time.requestHitStop(ms);
+  };
 
   subs.push(bus.on('ball:bounce', (e) => {
     const dir = Math.atan2(e.normal.y, e.normal.x);
     const n = 3 + Math.floor(Math.random() * 3);
     if (e.surface === 'wall') {
-      particles.burst(e.pos.x, e.pos.y, n, '#b8c8ff', P_SPARK, 2, 5, dir, 0.9, 0.1, 0.22, 0.03, 0.05, 0);
+      particles.burst(e.pos.x, e.pos.y, n, '#b8c8ff', P_SPARK, 2, 5, dir, 0.9, 0.1, 0.22, 0.03, 0.05, 0, PRIO_LOW);
       // micro-flash du mur à l'impact (0,08 s)
       if (Math.abs(e.normal.x) > 0.5) vfx.flashRect(e.normal.x > 0 ? 0 : board.cols - 0.06, e.pos.y - 0.3, 0.06, 0.6, 80, '#9fb4e0');
       else vfx.flashRect(e.pos.x - 0.3, 0, 0.6, 0.06, 80, '#9fb4e0');
     } else {
-      particles.burst(e.pos.x, e.pos.y, n, PALETTE.text, P_SPARK, 2, 5.5, dir, 1.0, 0.1, 0.22, 0.03, 0.05, 0);
+      particles.burst(e.pos.x, e.pos.y, n, PALETTE.text, P_SPARK, 2, 5.5, dir, 1.0, 0.1, 0.22, 0.03, 0.05, 0, PRIO_LOW);
       if (e.surface === 'peg' && lastState) {
         // squash du peg le plus proche (les pegs ne reçoivent pas forcément block:hit)
         const blocks = lastState.blocks;
@@ -134,7 +178,7 @@ export function createRenderer(
   subs.push(bus.on('block:hit', (e) => {
     numbers.add(e.pos.x, e.pos.y - 0.1, e.damage, e.crit, e.blockId);
     vfx.blockFx(e.blockId).squashT = 0;
-    particles.burst(e.pos.x, e.pos.y, 2, elemColor(e.element), P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0);
+    particles.burst(e.pos.x, e.pos.y, 2, elemColor(e.element), P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
   }));
 
   subs.push(bus.on('block:destroyed', (e) => {
@@ -155,9 +199,9 @@ export function createRenderer(
     vfx.ring(e.pos.x, e.pos.y, 0.15, Math.max(0.5, e.radius), 250, elemColor('fire'), 0.16);
     vfx.ring(e.pos.x, e.pos.y, 0.05, Math.max(0.4, e.radius * 0.75), 200, '#ffffff', 0.06);
     vfx.flashCircle(e.pos.x, e.pos.y, Math.max(0.4, e.radius * 0.6), 120, '#ffe0b0');
-    particles.burst(e.pos.x, e.pos.y, 14, elemColor('fire'), P_SPARK, 4, 9, 0, Math.PI, 0.15, 0.35, 0.05, 0.08, 0);
+    particles.burst(e.pos.x, e.pos.y, 14, elemColor('fire'), P_SPARK, 4, 9, 0, Math.PI, 0.15, 0.35, 0.05, 0.08, 0, PRIO_HIGH);
     vfx.addShake(6);
-    time.requestHitStop(30);
+    hitStop(30);
   }));
 
   subs.push(bus.on('combo:milestone', (e) => {
@@ -166,35 +210,37 @@ export function createRenderer(
     const label = `COMBO ×${e.combo}`;
     // libellé gardé à l'intérieur du plateau (il est large)
     const lx = Math.min(board.cols - 1.3, Math.max(1.3, e.pos.x));
+    // mouvements réduits : pas de flash plein écran ni de gel, mais un éclat local lisible
+    if (reduceMotion && lvl > 1) vfx.flashCircle(lx, e.pos.y, 0.5 + 0.3 * lvl, 220, PALETTE.accent);
     if (lvl === 1) {
       vfx.screenFlash(0.08, '#ffffff');
       vfx.addShake(3);
       vfx.ring(e.pos.x, e.pos.y, 0.1, 0.9, 260, PALETTE.accent, 0.06);
-      particles.burst(e.pos.x, e.pos.y, 8, PALETTE.accent, P_SPARK, 2.5, 6, 0, Math.PI, 0.15, 0.3, 0.04, 0.06, 0);
+      particles.burst(e.pos.x, e.pos.y, 8, PALETTE.accent, P_SPARK, 2.5, 6, 0, Math.PI, 0.15, 0.3, 0.04, 0.06, 0, PRIO_HIGH);
       numbers.addLabel(lx, e.pos.y - 0.35, label, PALETTE.accent, 5, COMBO_SLOT);
     } else if (lvl === 2) {
       vfx.screenFlash(0.18, '#ffffff');
       vfx.addShake(5);
       vfx.ring(e.pos.x, e.pos.y, 0.1, 1.5, 320, PALETTE.accent, 0.1);
       vfx.rays(e.pos.x, e.pos.y, 260, PALETTE.accent, 12, 1.2);
-      particles.burst(e.pos.x, e.pos.y, 18, PALETTE.accent, P_SPARK, 3, 8, 0, Math.PI, 0.2, 0.4, 0.05, 0.08, 0);
+      particles.burst(e.pos.x, e.pos.y, 18, PALETTE.accent, P_SPARK, 3, 8, 0, Math.PI, 0.2, 0.4, 0.05, 0.08, 0, PRIO_HIGH);
       numbers.addLabel(lx, e.pos.y - 0.4, label, PALETTE.accent, 8, COMBO_SLOT);
-      time.requestHitStop(40);
+      hitStop(40);
     } else {
       vfx.screenFlash(0.35, PALETTE.accent);
       vfx.addShake(9);
       vfx.ring(e.pos.x, e.pos.y, 0.2, 3.2, 450, PALETTE.accent, 0.16);
       vfx.ring(e.pos.x, e.pos.y, 0.1, 2.0, 350, '#ffffff', 0.07);
       vfx.rays(e.pos.x, e.pos.y, 420, '#ffffff', 24, 2.6);
-      particles.burst(e.pos.x, e.pos.y, 36, PALETTE.accent, P_SPARK, 4, 11, 0, Math.PI, 0.25, 0.5, 0.06, 0.1, 0);
-      particles.burst(e.pos.x, e.pos.y, 12, '#ffffff', P_SHARD, 3, 7, 0, Math.PI, 0.3, 0.5, 0.05, 0.09, 4);
+      particles.burst(e.pos.x, e.pos.y, 36, PALETTE.accent, P_SPARK, 4, 11, 0, Math.PI, 0.25, 0.5, 0.06, 0.1, 0, PRIO_HIGH);
+      particles.burst(e.pos.x, e.pos.y, 12, '#ffffff', P_SHARD, 3, 7, 0, Math.PI, 0.3, 0.5, 0.05, 0.09, 4, PRIO_HIGH);
       numbers.addLabel(lx, e.pos.y - 0.45, label, PALETTE.accent, FONT_BUCKETS - 1, COMBO_SLOT);
       // onde : tous les blocs « sautent »
       if (lastState) {
         const blocks = lastState.blocks;
         for (let i = 0; i < blocks.length; i++) vfx.blockFx(blocks[i]!.id).squashT = 0;
       }
-      time.requestHitStop(70);
+      hitStop(70);
       if (!reduceMotion) time.requestSlowMo(0.3, 200);
       vfx.vignette(650);
     }
@@ -203,7 +249,7 @@ export function createRenderer(
   subs.push(bus.on('player:damaged', () => {
     vfx.redEdges(500);
     vfx.addShake(8);
-    time.requestHitStop(60);
+    hitStop(60);
   }));
 
   subs.push(bus.on('drop:collected', (e) => {
@@ -240,11 +286,11 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('boss:killed', (e) => {
-    particles.burst(e.pos.x, e.pos.y, 40, kindColor(KIND_INDEX.boss), P_SHARD, 3, 9, 0, Math.PI, 0.4, 0.6, 0.08, 0.16, 6);
+    particles.burst(e.pos.x, e.pos.y, 40, kindColor(KIND_INDEX.boss), P_SHARD, 3, 9, 0, Math.PI, 0.4, 0.6, 0.08, 0.16, 6, PRIO_HIGH);
     vfx.ring(e.pos.x, e.pos.y, 0.2, 2.5, 400, PALETTE.accent, 0.12);
     vfx.screenFlash(0.3, '#ffffff');
     vfx.addShake(9);
-    time.requestHitStop(80);
+    hitStop(80);
   }));
 
   subs.push(bus.on('block:breached', () => {
@@ -261,11 +307,11 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('ball:grounded', (e) => {
-    particles.burst(e.pos.x, e.pos.y, 2, PALETTE.textDim, P_SPARK, 0.5, 1.5, -Math.PI / 2, 0.8, 0.1, 0.2, 0.03, 0.04, 0);
+    particles.burst(e.pos.x, e.pos.y, 2, PALETTE.textDim, P_SPARK, 0.5, 1.5, -Math.PI / 2, 0.8, 0.1, 0.2, 0.03, 0.04, 0, PRIO_LOW);
   }));
 
   subs.push(bus.on('run:started', () => {
-    particles.clear(); numbers.clear(); vfx.clear(); fusions.clear(); drawer.clearTrails();
+    particles.clear(); numbers.clear(); vfx.clear(); fusions.clear(); drawer.clearTrails(); drawer.suppressSpawnPop();
   }));
   // rows:advanced : volontairement rien — l'interpolation easeOutBack dans draw suffit.
 
@@ -279,18 +325,7 @@ export function createRenderer(
       if (state.wave !== backdropWave) rebuildBackdrops(state.wave); // changement de vague : rare
       const dt = (dtMs > 100 ? 100 : dtMs < 0 ? 0 : dtMs) / 1000;
       frame++;
-      if (dtMs > 0 && dtMs < 100 && frame > 60) {
-        frameEma += (dtMs - frameEma) * 0.05;
-        // < 54 fps soutenu ; une frame rapide isolée ne remet pas le compteur à zéro
-        slowFrames = frameEma > 18.5 ? slowFrames + 1 : slowFrames > 2 ? slowFrames - 2 : 0;
-        // appliqué seulement pendant la visée : le petit à-coup de régénération passe inaperçu
-        if (slowFrames > 120 && dprCap > 1 && layout.dpr > 1 && state.phase === 'aiming') {
-          dprCap = Math.max(1, Math.min(dprCap, layout.dpr) - 0.5);
-          slowFrames = 0;
-          frameEma = 16.7;
-          doResize(); // rare : régénère les sprites à la nouvelle résolution
-        }
-      }
+      trackFrame(dtMs, state);
       vfx.update(dt);
       particles.update(dt);
       fusions.update(dt);
@@ -311,7 +346,8 @@ export function createRenderer(
     setReduceMotion(v: boolean) {
       reduceMotion = v;
       vfx.reduceMotion = v;
-      particles.density = v ? 0.5 : 1;
+      // « au moins divisé par deux » : 0,45 garde une marge face à l'aléa des tirages
+      particles.density = v ? 0.45 : 1;
     },
     setShake(v: boolean) {
       vfx.shakeEnabled = v;
@@ -319,6 +355,10 @@ export function createRenderer(
     /** résolution interne courante (qualité adaptative), pour QA */
     get dpr() {
       return layout.dpr;
+    },
+    /** durée de la dernière bascule de qualité (ms), pour QA */
+    get qualitySwitchMs() {
+      return lastQualitySwitchMs;
     },
     get particleCount() {
       return particles.count;

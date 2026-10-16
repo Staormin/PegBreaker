@@ -27,6 +27,8 @@ export interface BlockFx {
   squashT: number;
   /** temps écoulé depuis le dernier changement de PV (s) : « pop » du libellé */
   popT: number;
+  /** temps depuis l'apparition « pop » (s) ; ≥ SPAWN_DUR = pas d'animation */
+  spawnT: number;
   /** cache de la chaîne de PV */
   hp: number;
   label: string;
@@ -97,7 +99,7 @@ export function createVfx(): Vfx {
   const fxMap = new Map<number, BlockFx>();
   let lastFrame = 0;
   function newFx(): BlockFx {
-    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0 };
+    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, spawnT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0 };
   }
   for (let i = 0; i < 128; i++) fxPool.push(newFx());
 
@@ -133,7 +135,7 @@ export function createVfx(): Vfx {
       if (alpha > flashA) { flashA = alpha; flashColor = color; }
     },
     vignette(ms) {
-      if (api.reduceMotion) return;
+      // gardée en mouvements réduits : assombrissement lent, pas un flash (lisibilité du palier)
       vignetteDur = ms / 1000; vignetteT = vignetteDur;
     },
     redEdges(ms) {
@@ -179,7 +181,7 @@ export function createVfx(): Vfx {
       if (fx) return fx;
       for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (!f.inUse) { fx = f; break; } }
       if (!fx) { fx = newFx(); fxPool.push(fx); } // rare : plus de 128 blocs vivants
-      fx.inUse = true; fx.id = id; fx.squashT = SQUASH_DUR; fx.popT = 1; fx.hp = Number.NaN; fx.label = ''; fx.labelDirty = true; fx.seenFrame = lastFrame;
+      fx.inUse = true; fx.id = id; fx.squashT = SQUASH_DUR; fx.popT = 1; fx.spawnT = 1; fx.hp = Number.NaN; fx.label = ''; fx.labelDirty = true; fx.seenFrame = lastFrame;
       fxMap.set(id, fx);
       return fx;
     },
@@ -227,7 +229,7 @@ export function createVfx(): Vfx {
       for (let i = 0; i < MAX_RINGS; i++) { const r = rings[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
       for (let i = 0; i < MAX_BOLTS; i++) { const b = bolts[i]!; if (b.active && (b.t += dt) >= b.dur) b.active = false; }
       for (let i = 0; i < MAX_FLASHES; i++) { const f = flashes[i]!; if (f.active && (f.t += dt) >= f.dur) f.active = false; }
-      for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse) { if (f.squashT < SQUASH_DUR) f.squashT += dt; if (f.popT < 1) f.popT += dt; } }
+      for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse) { if (f.squashT < SQUASH_DUR) f.squashT += dt; if (f.popT < 1) f.popT += dt; if (f.spawnT < 1) f.spawnT += dt; } }
       for (let i = 0; i < MAX_RAYS; i++) { const r = rays[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
     },
 

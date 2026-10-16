@@ -7,7 +7,7 @@ import type { Layout } from './layout';
 import type { Sprites } from './sprites';
 import { BALL_EXTENT, ballVisualRadius, damageLevel, DMG_LEVELS, DROP_EXTENT, HALO_EXTENT, PEG_RADIUS } from './sprites';
 import type { Particles } from './particles';
-import { P_CRYSTAL, P_SPARK } from './particles';
+import { P_CRYSTAL, P_SPARK, PRIO_LOW } from './particles';
 import type { DamageNumbers } from './damageNumbers';
 import { formatNumber } from './damageNumbers';
 import type { BlockFx, Vfx } from './vfx';
@@ -23,6 +23,8 @@ const AIM_REFLECT_LEN = 1.5;
 const DASH: number[] = [0.14, 0.11];
 const DASH_FINE: number[] = [0.07, 0.09];
 const NO_DASH: number[] = [];
+/** durée du « pop » d'apparition d'un bloc (s) */
+const SPAWN_DUR = 0.15;
 /** au-delà, les traînées sont raccourcies (budget perf) */
 const MANY_BALLS = 20;
 /** longueur de traînée de base par élément (stone, fire, lightning, ice, ghost, lead, split) */
@@ -53,6 +55,8 @@ export interface FrameDrawer {
   /** à appeler après resize (fonts recalculées) */
   rebuildFonts(): void;
   clearTrails(): void;
+  /** pas de « pop » d'apparition à la prochaine frame (début de run, reprise) */
+  suppressSpawnPop(): void;
 }
 
 export interface DrawDeps {
@@ -100,6 +104,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   let power = 0;
   let powerLevel = -1;
   let speedFx = 0;
+  /** vrai jusqu'à la fin de la première frame de run : les blocs initiaux n'ont pas de « pop » */
+  let suppressPop = true;
   /** transform plateau → pixels physiques de la frame courante (shake inclus) */
   let K = 1, OX = 0, OY = 0;
 
@@ -241,7 +247,10 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
 
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]!;
-      const fx = vfx.blockFx(b.id);
+      // bloc jamais vu (ex. engendré par le boss « Ruche », sans événement) : « pop » d'apparition
+      const known = vfx.peekBlockFx(b.id);
+      const fx = known ?? vfx.blockFx(b.id);
+      if (!known && !suppressPop && !advancing) fx.spawnT = 0;
       fx.seenFrame = frame;
       if (fx.hp !== b.hp) {
         if (!Number.isNaN(fx.hp)) fx.popT = 0;
@@ -264,17 +273,16 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const ratio = !isPeg && b.maxHp > 0 ? (b.hp > b.maxHp ? 1 : b.hp / b.maxHp) : 1;
       const lv = isPeg ? 0 : damageLevel(ratio);
       const low = lv === DMG_LEVELS - 1;
-      const s = vfx.squashScale(fx);
+      const sp0 = fx.spawnT < SPAWN_DUR ? easeOutBack(fx.spawnT / SPAWN_DUR) : 1;
+      const s = vfx.squashScale(fx) * (sp0 < 0.05 ? 0.05 : sp0);
       const x0 = b.col + b.width * (1 - s) * 0.5, y0 = y + (1 - s) * 0.5;
       // sprite pré-composé (assombri / fissuré) : un seul blit
-      const dm = lv > 0 ? sp.damaged[kind] : undefined;
-      blit((dm ? dm[b.width * DMG_LEVELS + lv] : undefined) ?? img, x0, y0, s);
+      blit((lv > 0 ? sp.damagedAt(kind, b.width, lv) : undefined) ?? img, x0, y0, s);
       // PV bas : le bloc « respire » (pulsation lumineuse)
       const breath = low && !calm ? 0.16 * (0.5 + 0.5 * Math.sin(time * 9 + b.id * 1.3)) : 0;
       const flash = fx.squashT < 0.08 ? 0.7 * (1 - fx.squashT / 0.08) : 0;
       if (flash > 0 || breath > 0.01) {
-        const wh = sp.white[kind];
-        const wimg = wh ? (wh[b.width] ?? wh[1]) : undefined;
+        const wimg = sp.whiteAt(kind, b.width);
         if (wimg) {
           ctx.globalAlpha = flash > breath ? flash : breath;
           blit(wimg, x0, y0, s);
@@ -282,7 +290,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         }
       }
       if (b.frozen) {
-        const fz = sp.frozen[b.width] ?? sp.frozen[1];
+        const fz = sp.frozenAt(b.width);
         if (fz) {
           ctx.globalAlpha = 0.9;
           blit(fz, x0, y0, s);
@@ -357,7 +365,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const c = fx ? fx.labelCanvas : null;
       if (!fx || !c) continue;
       const boss = b.kind === 'boss';
-      const pop = fx.popT < 0.16 ? 1 + 0.38 * (1 - fx.popT / 0.16) : 1;
+      let pop = fx.popT < 0.16 ? 1 + 0.38 * (1 - fx.popT / 0.16) : 1;
+      if (fx.spawnT < SPAWN_DUR) { const g = easeOutBack(fx.spawnT / SPAWN_DUR); pop *= g < 0.05 ? 0.05 : g; }
       const w = c.width * pop, h = c.height * pop;
       const cx = ox + (fx.x + fx.w * 0.5) * k, cy = oy + (fx.y + (boss ? 0.66 : 0.53)) * k;
       if (pop === 1) ctx.drawImage(c, Math.round(cx - w * 0.5), Math.round(cy - h * 0.5));
@@ -376,7 +385,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       ctx.drawImage(sp.halo, x - HALO_EXTENT * 0.7, y - HALO_EXTENT * 0.7, HALO_EXTENT * 1.4, HALO_EXTENT * 1.4);
       ctx.globalAlpha = 1;
       if (dr.kind === 'ball') {
-        const img = sp.ball[ELEMENT_INDEX[dr.element ?? 'stone'] * 3];
+        const img = sp.ballAt(ELEMENT_INDEX[dr.element ?? 'stone'] * 3);
         if (img) {
           const e = (sp.ballExt[ELEMENT_INDEX[dr.element ?? 'stone'] * 3] ?? R) * 1.35;
           ctx.drawImage(img, x - e, y - e, e * 2, e * 2);
@@ -428,7 +437,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     const many = alive > MANY_BALLS;
     const rs = state.recallSpeed > 1 ? state.recallSpeed : 1;
     const boost = rs > 1 ? Math.round((rs - 1) * 2.5) : 0;
-    const ambient = particles.count < 380;
+    const ambient = particles.count < 600;
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -467,13 +476,13 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (tr.emitT <= 0 && ambient) {
         const slow = many ? 2 : 1;
         if (e === EL_FIRE) {
-          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? color : PALETTE.accent, P_SPARK, 0.3, 1.0, -Math.PI / 2, 0.7, 0.18, 0.32, vr * 0.35, vr * 0.6, -2.5);
+          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? color : PALETTE.accent, P_SPARK, 0.3, 1.0, -Math.PI / 2, 0.7, 0.18, 0.32, vr * 0.35, vr * 0.6, -2.5, PRIO_LOW);
           tr.emitT = 0.035 * slow;
         } else if (e === EL_LIGHTNING) {
-          particles.burst(b.pos.x, b.pos.y, 1, '#ffffff', P_SPARK, 2.5, 4.5, 0, Math.PI, 0.05, 0.1, vr * 0.25, vr * 0.4, 0);
+          particles.burst(b.pos.x, b.pos.y, 1, '#ffffff', P_SPARK, 2.5, 4.5, 0, Math.PI, 0.05, 0.1, vr * 0.25, vr * 0.4, 0, PRIO_LOW);
           tr.emitT = 0.07 * slow;
         } else if (e === EL_ICE) {
-          particles.burst(b.pos.x, b.pos.y, 1, color, P_CRYSTAL, 0.1, 0.4, 0, Math.PI, 0.25, 0.4, vr * 0.35, vr * 0.5, 0.5);
+          particles.burst(b.pos.x, b.pos.y, 1, color, P_CRYSTAL, 0.1, 0.4, 0, Math.PI, 0.25, 0.4, vr * 0.35, vr * 0.5, 0.5, PRIO_LOW);
           tr.emitT = 0.11 * slow;
         } else {
           tr.emitT = 1;
@@ -509,7 +518,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const b = balls[i]!;
       if (!b.alive) continue;
       const e = ELEMENT_INDEX[b.element];
-      const img = sp.ball[e * 3 + (b.tier - 1)];
+      const img = sp.ballAt(e * 3 + (b.tier - 1));
       if (!img) continue;
       const ext = (sp.ballExt[e * 3 + (b.tier - 1)] ?? R * BALL_EXTENT) * (b.radius / R);
       if (e === EL_GHOST) ctx.globalAlpha = 0.6;
@@ -563,7 +572,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const v = state.volley[0];
       const e = ELEMENT_INDEX[v ? v.element : 'stone'];
       const tier = v ? v.tier : 1;
-      const img = sp.ball[e * 3 + (tier - 1)];
+      const img = sp.ballAt(e * 3 + (tier - 1));
       if (img) {
         const ext = sp.ballExt[e * 3 + (tier - 1)] ?? R * BALL_EXTENT;
         ctx.globalAlpha = 1;
@@ -674,6 +683,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     ctx.globalAlpha = 1;
 
     drawBlocks(state, frame);
+    suppressPop = false;
     drawDrops(state);
     drawAim(state);
     drawBalls(state, frame, dt);
@@ -716,5 +726,6 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     draw: drawFrame,
     rebuildFonts,
     clearTrails() { for (let i = 0; i < MAX_TRAILS; i++) trails[i]!.active = false; },
+    suppressSpawnPop() { suppressPop = true; },
   };
 }

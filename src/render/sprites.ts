@@ -35,18 +35,19 @@ export interface Sprites {
   /** blocs : [kindIndex][largeur] */
   block: (HTMLCanvasElement | undefined)[][];
   /**
-   * blocs endommagés pré-composés (teinte assombrie, fissures au dernier niveau) :
-   * [kindIndex][largeur * DMG_LEVELS + niveau]. Un seul blit par bloc au lieu de 3.
+   * Accesseurs paresseux (créés au premier usage, puis en cache jusqu'au prochain resize) :
+   * une bascule de qualité en pleine volée ne régénère que le strict nécessaire.
    */
-  damaged: (HTMLCanvasElement | undefined)[][];
-  /** silhouettes blanches (flash d'impact) : [kindIndex][largeur] */
-  white: (HTMLCanvasElement | undefined)[][];
-  /** demi-étendue de chaque sprite de balle (unités plateau), même index que ball */
+  /** bloc endommagé pré-composé (teinte assombrie, fissures au dernier niveau) : un seul blit */
+  damagedAt(kind: number, width: number, level: number): HTMLCanvasElement | undefined;
+  /** silhouette blanche (flash d'impact, respiration) */
+  whiteAt(kind: number, width: number): HTMLCanvasElement | undefined;
+  /** surcouche gelée */
+  frozenAt(width: number): HTMLCanvasElement | undefined;
+  /** balle : elementIndex * 3 + (tier − 1) */
+  ballAt(index: number): HTMLCanvasElement | undefined;
+  /** demi-étendue de chaque sprite de balle (unités plateau), même index que ballAt */
   ballExt: number[];
-  /** surcouche gelée : [largeur] */
-  frozen: (HTMLCanvasElement | undefined)[];
-  /** balles : elementIndex * 3 + (tier − 1) */
-  ball: HTMLCanvasElement[];
   coin: HTMLCanvasElement;
   fragment: HTMLCanvasElement;
   heart: HTMLCanvasElement;
@@ -466,7 +467,7 @@ function makeHalo(cell: number): HTMLCanvasElement {
 
 export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Sprites {
   const cell = l.cellPx;
-  const W = Math.round(l.cssW * l.dpr), H = Math.round(l.cssH * l.dpr);
+  const Wfull = Math.round(l.cssW * l.dpr), Hfull = Math.round(l.cssH * l.dpr);
 
   // largeurs nécessaires : 1 + largeurs des boss de la config
   const widths: number[] = [1];
@@ -478,44 +479,64 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
     for (const w of widths) row[w] = makeBlock(k, w, cell, colors);
     block.push(row);
   }
-  const damaged: (HTMLCanvasElement | undefined)[][] = [];
-  const white: (HTMLCanvasElement | undefined)[][] = [];
-  for (let k = 0; k < KINDS.length; k++) {
-    const dm: (HTMLCanvasElement | undefined)[] = [];
-    const wh: (HTMLCanvasElement | undefined)[] = [];
-    for (const w of widths) {
-      wh[w] = makeMask(k, w, cell, '#ffffff');
-      if (k === KIND_INDEX.peg) continue;
-      const base = block[k]?.[w];
-      if (!base) continue;
-      const dark = makeMask(k, w, cell, '#000000');
-      const cracks = makeCracks(k, w, cell);
-      for (let lv = 0; lv < DMG_LEVELS; lv++) {
-        const [c, g] = makeCanvas(base.width, base.height);
-        g.drawImage(base, 0, 0);
-        g.globalAlpha = DMG_DARK[lv] ?? 0;
-        g.drawImage(dark, 0, 0);
-        g.globalAlpha = 1;
-        if (lv === DMG_LEVELS - 1) g.drawImage(cracks, 0, 0);
-        dm[w * DMG_LEVELS + lv] = c;
-      }
-    }
-    damaged.push(dm); white.push(wh);
-  }
+  const damaged: (HTMLCanvasElement | undefined)[] = [];
+  const white: (HTMLCanvasElement | undefined)[] = [];
+  const darkMasks: (HTMLCanvasElement | undefined)[] = [];
+  const crackMasks: (HTMLCanvasElement | undefined)[] = [];
   const frozen: (HTMLCanvasElement | undefined)[] = [];
-  for (const w of widths) frozen[w] = makeFrozen(w, cell);
+  const maxW = widths.reduce((a, b) => (b > a ? b : a), 1) + 1;
+  const keyKW = (k: number, w: number): number => k * maxW + w;
+
+  function damagedAt(kind: number, width: number, lv: number): HTMLCanvasElement | undefined {
+    if (kind === KIND_INDEX.peg || width >= maxW) return undefined;
+    const key = keyKW(kind, width) * DMG_LEVELS + lv;
+    const hit = damaged[key];
+    if (hit) return hit;
+    const base = block[kind]?.[width];
+    if (!base) return undefined;
+    const dk = keyKW(kind, width);
+    const dark = darkMasks[dk] ?? (darkMasks[dk] = makeMask(kind, width, cell, '#000000'));
+    const [c, g] = makeCanvas(base.width, base.height);
+    g.drawImage(base, 0, 0);
+    g.globalAlpha = DMG_DARK[lv] ?? 0;
+    g.drawImage(dark, 0, 0);
+    g.globalAlpha = 1;
+    if (lv === DMG_LEVELS - 1) {
+      const cr = crackMasks[dk] ?? (crackMasks[dk] = makeCracks(kind, width, cell));
+      g.drawImage(cr, 0, 0);
+    }
+    damaged[key] = c;
+    return c;
+  }
+  function whiteAt(kind: number, width: number): HTMLCanvasElement | undefined {
+    if (width >= maxW) return undefined;
+    const key = keyKW(kind, width);
+    return white[key] ?? (white[key] = makeMask(kind, width, cell, '#ffffff'));
+  }
+  function frozenAt(width: number): HTMLCanvasElement | undefined {
+    if (width >= maxW) return undefined;
+    return frozen[width] ?? (frozen[width] = makeFrozen(width, cell));
+  }
 
   const radius = config.blocks.board.ballRadius;
-  const ball: HTMLCanvasElement[] = [];
+  const balls: (HTMLCanvasElement | undefined)[] = [];
   const ballExt: number[] = [];
   for (let e = 0; e < ELEMENTS.length; e++) {
-    for (let t = 1; t <= 3; t++) {
-      ball.push(makeBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell));
-      ballExt.push(ballVisualRadius(radius, e, t) * ballExtent(e, t));
-    }
+    for (let t = 1; t <= 3; t++) ballExt.push(ballVisualRadius(radius, e, t) * ballExtent(e, t));
+  }
+  function ballAt(i: number): HTMLCanvasElement | undefined {
+    const hit = balls[i];
+    if (hit) return hit;
+    if (i < 0 || i >= ELEMENTS.length * 3) return undefined;
+    const e = Math.floor(i / 3), t = (i % 3) + 1;
+    const c = makeBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell);
+    balls[i] = c;
+    return c;
   }
 
-  // vignette (combo niv. 3) et bords rouges (dégâts joueur)
+  // vignette (combo niv. 3) et bords rouges (dégâts joueur) : dégradés lisses → générés au
+  // quart de résolution et étirés à l'affichage (4 Mpx de moins à remplir à chaque resize)
+  const W = Math.max(8, Math.ceil(Wfull / 4)), H = Math.max(8, Math.ceil(Hfull / 4));
   const [vignette, gv] = makeCanvas(W, H);
   const vr = Math.hypot(W, H) / 2;
   const vg = gv.createRadialGradient(W / 2, H / 2, vr * 0.45, W / 2, H / 2, vr);
@@ -539,7 +560,7 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   }
 
   return {
-    block, damaged, white, frozen, ball, ballExt,
+    block, damagedAt, whiteAt, frozenAt, ballAt, ballExt,
     coin: makeDrop('coin', cell), fragment: makeDrop('fragment', cell), heart: makeDrop('heart', cell),
     halo: makeHalo(cell), vignette, redEdge,
   };

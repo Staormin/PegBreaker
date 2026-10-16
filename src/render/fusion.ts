@@ -40,7 +40,7 @@ export function createFusions(onMerge: (x: number, y: number, element: number, t
         const u = f.t / DUR;
         const e = 1 - (1 - u) * (1 - u) * (1 - u);
         const src = f.tier > 1 ? f.tier - 1 : 1;
-        const img = sp.ball[f.element * 3 + (src - 1)];
+        const img = sp.ballAt(f.element * 3 + (src - 1));
         if (!img) continue;
         const ext = (sp.ballExt[f.element * 3 + (src - 1)] ?? radius * 2) * 1.2;
         const off = GAP * (1 - e);
