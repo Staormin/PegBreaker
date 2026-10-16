@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Block } from '../core/types';
-import { block, config, createRng, mut, newSim, ofType, randomDir, settle, setup, shoot } from './test-helpers';
+import { block, config, createRng, lowestBlockDir, mut, newSim, ofType, randomDir, settle, setup, shoot } from './test-helpers';
 
 const UP = { x: 0, y: -1 };
 const hpOf = (blocks: readonly Block[], id: number): number | undefined => blocks.find((b) => b.id === id)?.hp;
@@ -551,7 +551,7 @@ describe('T2c', () => {
       for (let ms = 0; ms < 8000 && sim.state.phase === 'firing'; ms += 250) {
         sim.step(250);
         if (manual && ms === 1000) sim.recall();
-        speeds.push(sim.state.recallSpeed);
+        if (sim.state.phase === 'firing') speeds.push(sim.state.recallSpeed); // remis à 1 en fin de volée
       }
       return speeds;
     };
@@ -561,10 +561,95 @@ describe('T2c', () => {
     expect(auto[idx(4000)]).toBe(1);
     expect(auto[idx(5250)]).toBeGreaterThan(1);
     expect(auto[idx(5250)]).toBeLessThan(board.recallSpeed);
-    expect(auto[idx(7000)]).toBe(board.recallSpeed);
+    // rampe complète à autoSpeedupAfterMs + 1,5 s (6 s), avant le rappel auto (maxVolleyMs)
+    const full = board.autoSpeedupAfterMs + 1500;
+    expect(full).toBeLessThan(board.maxVolleyMs);
+    expect(auto[idx(full + 250)]).toBe(board.recallSpeed);
     // recall manuel : valeur pleine immédiate, pas de rampe
     const manual = run(true);
     expect(manual.slice(idx(1250)).every((v) => v === board.recallSpeed)).toBe(true);
+  });
+});
+
+describe('T2d : anti-softlock, perfectWaves', () => {
+  const ALL = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'] as const;
+
+  it('glace : un bloc dégelé est immunisé au gel pendant le tour suivant', () => {
+    const sim = newSim('ice-immune');
+    const a = block(sim, 'normal', 3, 4, 1000);
+    const aId = a.id;
+    setup(sim, [a], [{ element: 'ice', tier: 1 }], { rowsLeft: 5 });
+    expect(ofType(shoot(sim, UP), 'block:frozen')).toHaveLength(1); // gelé, reste en rangée 4 puis dégèle
+    const row1 = sim.state.blocks.find((b) => b.id === aId)!.row;
+    expect(row1).toBe(4);
+    expect(ofType(shoot(sim, UP), 'block:frozen')).toHaveLength(0); // immunisé : il descend
+    expect(sim.state.blocks.find((b) => b.id === aId)!.row).toBe(5);
+    expect(ofType(shoot(sim, UP), 'block:frozen')).toHaveLength(1); // de nouveau gelable
+  });
+
+  it('un blindé qui atteint la dernière rangée avant la ligne perd son armure', () => {
+    const sim = newSim('armor-last');
+    const a = block(sim, 'armored', 0, 7, 207);
+    a.hp = 37;
+    const aId = a.id;
+    setup(sim, [a], [{ element: 'stone', tier: 1 }], { rowsLeft: 3 });
+    shoot(sim, { x: 1, y: -1 }); // n'importe quel tir : avancée en rangée 8
+    const b = sim.state.blocks.find((x) => x.id === aId)!;
+    expect(b.row).toBe(8);
+    expect(b.kind).toBe('normal');
+    expect(b.armorSide).toBe('none');
+  });
+
+  it('non-régression eco-0-10 : blindé en rangée 8 col 0 + volée de glace → la vague se termine', () => {
+    const sim = newSim('eco-0-10', config(), { unlockedElements: [...ALL] });
+    mut(sim).wave = 4;
+    const a = block(sim, 'armored', 0, 8, 207);
+    a.hp = 37;
+    setup(sim, [a], [{ element: 'ice', tier: 1 }, { element: 'ice', tier: 1 }, { element: 'stone', tier: 1 }], { rowsLeft: 0, launchX: 4.2 });
+    expect(sim.state.blocks[0]!.kind).toBe('armored'); // posé directement en rangée 8 : armure retirée au prochain avancement
+    let shots = 0;
+    while (sim.state.phase !== 'reward' && sim.state.phase !== 'gameover' && shots < 40) {
+      shoot(sim, lowestBlockDir(sim));
+      shots++;
+    }
+    expect(['reward', 'gameover']).toContain(sim.state.phase);
+    expect(shots).toBeLessThanOrEqual(3);
+  });
+
+  it('robustesse : aucune vague ne dure plus de 40 tirs (20 seeds, tous les éléments)', () => {
+    let worst = 0;
+    for (let i = 0; i < 20; i++) {
+      const sim = newSim(`waves-${i}`, config(), { unlockedElements: [...ALL] });
+      let wave = sim.state.wave;
+      let inWave = 0;
+      for (let shots = 0; shots < 300 && sim.state.phase !== 'gameover'; shots++) {
+        settle(sim);
+        if (sim.state.wave !== wave) {
+          wave = sim.state.wave;
+          inWave = 0;
+        }
+        shoot(sim, lowestBlockDir(sim));
+        inWave++;
+        worst = Math.max(worst, inWave);
+        if (inWave > 40) throw new Error(`seed waves-${i} : vague ${wave} > 40 tirs`);
+      }
+    }
+    expect(worst).toBeLessThanOrEqual(40);
+  }, 60_000);
+
+  it('perfectWaves : +1 si aucune perte de PV pendant la vague', () => {
+    const sim = newSim('perfect');
+    setup(sim, [block(sim, 'normal', 3, 4, 1)], [{ element: 'stone', tier: 1 }]);
+    shoot(sim, UP);
+    expect(sim.state.stats.perfectWaves).toBe(1);
+    sim.chooseReward(0);
+    // vague 2 : une brèche, puis nettoyage
+    const s = mut(sim);
+    s.blocks = [block(sim, 'normal', 0, 8, 1000), block(sim, 'normal', 3, 4, 1)];
+    s.rowsLeftInWave = 0;
+    shoot(sim, UP);
+    expect(sim.state.phase).toBe('reward');
+    expect(sim.state.stats.perfectWaves).toBe(1);
   });
 });
 

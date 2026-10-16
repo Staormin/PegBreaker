@@ -171,7 +171,8 @@ export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, 
       amount = 0; // blindé : seul le dessous est vulnérable → rebond simple
     }
     if (amount > 0) damageBlock(ctx, bi, amount, b.element, b.combo, crit);
-    if (b.element === 'ice' && isBreakable(blk) && !blk.frozen) {
+    const thawed = s.internal.thawedIds;
+    if (b.element === 'ice' && isBreakable(blk) && !blk.frozen && !(thawed && thawed.includes(blk.id))) {
       blk.frozen = true;
       emit(ctx, { type: 'block:frozen', blockId: blk.id, pos: { x: centerX(blk), y: centerY(blk) } });
     }

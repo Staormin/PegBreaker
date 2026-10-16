@@ -112,6 +112,8 @@ export function generateRow(ctx: Ctx, row: number): void {
 export function startWave(ctx: Ctx): void {
   const s = ctx.s;
   s.shotInWave = 0;
+  s.internal.damagedThisWave = false;
+  if (s.internal.thawedIds) s.internal.thawedIds.length = 0;
   s.rowsLeftInWave = rowsForWave(ctx, s.wave);
   if (isBossWave(ctx, s.wave)) {
     spawnBoss(ctx);
@@ -129,10 +131,14 @@ function shiftOnce(ctx: Ctx): void {
   const cols = board.cols;
   const occ = ctx.occ;
   occ.fill(0);
+  const thawed = s.internal.thawedIds;
   s.blocks.sort(ctx.cmpBlocksRowDesc);
   for (const b of s.blocks) {
     let target = b.row;
-    if (b.frozen) b.frozen = false;
+    if (b.frozen) {
+      b.frozen = false;
+      thawed.push(b.id); // immunisé au gel pendant le tour suivant
+    }
     else {
       const t = b.row + 1;
       let free = true;
@@ -143,6 +149,13 @@ function shiftOnce(ctx: Ctx): void {
     if (target <= board.rows) for (let c = b.col; c < b.col + b.width; c++) occ[target * cols + c] = 1;
   }
   shiftDrops(ctx, 1);
+  // dernière rangée avant la ligne : un blindé perd son armure (toujours cassable)
+  for (const b of s.blocks) {
+    if (b.kind === 'armored' && b.row >= board.rows - 2) {
+      b.kind = 'normal';
+      b.armorSide = 'none';
+    }
+  }
   // franchissement de la ligne du joueur
   for (let i = s.blocks.length - 1; i >= 0; i--) {
     const b = s.blocks[i] as Block;
@@ -152,6 +165,7 @@ function shiftOnce(ctx: Ctx): void {
       const dmg = b.kind === 'boss' ? ctx.cfg.blocks.bossBreachDamage : Math.min(Math.ceil(b.hp), ctx.cfg.blocks.breachDamageCap);
       emit(ctx, { type: 'block:breached', blockId: b.id, kind: b.kind, damage: dmg });
       s.hp = Math.max(0, s.hp - dmg);
+      s.internal.damagedThisWave = true;
       emit(ctx, { type: 'player:damaged', amount: dmg, hpLeft: s.hp });
     }
     releaseBlock(ctx, i);
@@ -163,6 +177,8 @@ function shiftOnce(ctx: Ctx): void {
 export function advanceRows(ctx: Ctx): void {
   const s = ctx.s;
   const shifts = ctx.meta.runMods.includes('rush') ? 2 : 1;
+  if (!s.internal.thawedIds) s.internal.thawedIds = []; // snapshot antérieur à T2d
+  s.internal.thawedIds.length = 0;
   for (let k = 0; k < shifts; k++) shiftOnce(ctx);
   let newRow = false;
   if (s.rowsLeftInWave > 0) {

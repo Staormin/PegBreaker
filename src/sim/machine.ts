@@ -168,6 +168,7 @@ function clearWave(ctx: Ctx): void {
   clearBoard(ctx); // chevilles restantes effacées
   collectAllDrops(ctx);
   s.internal.wavesCleared++;
+  if (!s.internal.damagedThisWave) s.stats.perfectWaves = (s.stats.perfectWaves ?? 0) + 1;
   emit(ctx, { type: 'wave:cleared', wave: s.wave });
   const offer = makeOptions(ctx, ctx.cfg.economy.reward.optionCount, true, 'chance');
   s.rewardOffer = offer;
