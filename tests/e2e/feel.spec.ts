@@ -328,10 +328,7 @@ test('reduceMotion : particules divisées par 2 au moins, pas de slow-mo', async
   expect(errors).toEqual([]);
 });
 
-test('reduceMotion : la sim n’est jamais gelée (hit-stop) — BUG J2-01 connu', async ({ page }) => {
-  // échec attendu tant que render/ appelle time.requestHitStop() en reduceMotion (paliers, explosions, dégâts).
-  // Quand le bug sera corrigé, ce test passera au rouge (« expected to fail ») : retirer test.fail.
-  test.fail(true, 'J2-01 : hit-stop non désactivé par reduceMotion');
+test('reduceMotion : la sim n’est jamais gelée (hit-stop) — non-régression J2-01', async ({ page }) => {
   test.setTimeout(90_000);
   const errors = await setupFeel(page, 'feel-3', RICH);
   await page.evaluate(() => {

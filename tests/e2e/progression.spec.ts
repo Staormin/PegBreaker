@@ -15,6 +15,7 @@ test('progression méta : 5 runs greedy, achat du nœud le moins cher', async ({
   test.setTimeout(300_000);
   const errors = watchErrors(page);
   const rows: Record<string, unknown>[] = [];
+  let prevAch: string[] = [];
   for (let run = 1; run <= 5; run++) {
     await page.goto('/?fresh=1');
     await waitReady(page);
@@ -77,7 +78,9 @@ test('progression méta : 5 runs greedy, achat du nœud le moins cher', async ({
       deadMoments: r.deadMoments.length,
       softlocks: r.softlocks,
       ...after,
+      newAchievements: after.achievements.filter((a) => !prevAch.includes(a)),
     });
+    prevAch = after.achievements;
     // run non terminée dans le plafond : on l'abandonne (la méta n'est pas créditée) et on continue
     if (r.stopReason !== 'gameover') rows[rows.length - 1]!['note'] = `run interrompue après ${MAX_REAL_MS / 1000} s réelles à vitesse ${SPEED}`;
   }
@@ -93,7 +96,7 @@ test('progression méta : 5 runs greedy, achat du nœud le moins cher', async ({
       finalVolley: { values: series('finalVolley'), nonDecreasing: monotonic(series('finalVolley')) },
     },
   };
-  writeFileSync('docs/qa/j3-progression.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync('docs/qa/final-progression.json', JSON.stringify(out, null, 2) + '\n');
   test.info().annotations.push({ type: 'progression', description: JSON.stringify(out.trend) });
   for (const x of rows) {
     expect(x['softlocks'], `softlock run ${String(x['run'])}`).toEqual([]);

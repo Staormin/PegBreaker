@@ -717,4 +717,7 @@ export function mean(xs: number[]): number {
 }
 
 /** dossier des captures du jalon courant */
-export const SHOTS_DIR = 'docs/qa/j2-j3-shots';
+export const SHOTS_DIR = 'docs/qa/final-shots/suite';
+
+/** captures finales (J4/J5, Definition of Done) */
+export const FINAL_SHOTS = 'docs/qa/final-shots';

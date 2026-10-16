@@ -12,6 +12,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   SHOTS_DIR,
+  FINAL_SHOTS,
   configureBot,
   installBot,
   mean,
@@ -26,7 +27,7 @@ import {
   type QaWindow,
 } from './bots';
 
-const OUT = 'docs/qa/j2-j3-metrics.json';
+const OUT = 'docs/qa/final-metrics.json';
 const SHOTS = SHOTS_DIR;
 const SEEDS = ['qa-1', 'qa-2', 'qa-3', 'qa-4', 'qa-5'];
 const AIM_MS = 1500;
@@ -172,6 +173,26 @@ function averages(rows: RunRow[]) {
     comboShareGe10: avg((r) => r.comboShare.ge10),
     fps8Min: avg((r) => r.fps.speed8.min),
     consoleErrors: rows.reduce((a, r) => a + r.consoleErrors.length + r.pageErrors.length, 0),
+    waveOfDeathStdDev: (() => {
+      const xs = rows.map((r) => r.waveOfDeath);
+      const m = mean(xs);
+      return Math.round(Math.sqrt(mean(xs.map((x) => (x - m) ** 2))) * 100) / 100;
+    })(),
+    waveOfDeathMinMax: [Math.min(...rows.map((r) => r.waveOfDeath)), Math.max(...rows.map((r) => r.waveOfDeath))],
+    /** dégâts max par tir, moyenne sur les runs ayant atteint la vague */
+    damageByWave: (() => {
+      const acc: Record<number, number[]> = {};
+      for (const r of rows) for (const [w, d] of Object.entries(r.damageByWave)) (acc[Number(w)] ??= []).push(d);
+      const out: Record<number, { runs: number; meanMaxShotDamage: number }> = {};
+      for (const [w, xs] of Object.entries(acc)) out[Number(w)] = { runs: xs.length, meanMaxShotDamage: Math.round(mean(xs)) };
+      return out;
+    })(),
+    survivalByWave: (() => {
+      const out: Record<number, number> = {};
+      const maxW = Math.max(...rows.map((r) => r.waveOfDeath));
+      for (let w = 1; w <= maxW; w++) out[w] = rows.filter((r) => r.waveOfDeath >= w).length;
+      return out;
+    })(),
   };
 }
 
@@ -273,13 +294,23 @@ test('métriques : 5 runs naïf + 5 runs greedy', async ({ context }) => {
 
 const ELEMENTS = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'] as const;
 
-for (const dpr of [1, 2]) {
-  test(`perf : volée de 30 balles (7 éléments) sous CPU 4×, DPR ${dpr}`, async ({ browser }, testInfo) => {
+// 720 px de large : au-dessus du seuil « mobile » (600 px CSS) qui plafonne le DPR à 1,5 ;
+// plus un cas téléphone réel (375×812, DPR 2, plafonné à 1,5 par le renderer)
+const PERF_CASES = [
+  { dpr: 1, w: 720, h: 1280, key: 'dpr1' },
+  { dpr: 1.5, w: 720, h: 1280, key: 'dpr1_5' },
+  { dpr: 2, w: 720, h: 1280, key: 'dpr2' },
+  { dpr: 2, w: 375, h: 812, key: 'mobile375_dpr2' },
+];
+for (const pc of PERF_CASES) {
+  const dpr = pc.dpr;
+  test(`perf : volée de 30 balles (7 éléments) sous CPU 4×, ${pc.w}×${pc.h} DPR ${dpr}`, async ({ browser }, testInfo) => {
     test.setTimeout(90_000);
     const ctx = await browser.newContext({
       baseURL: testInfo.project.use.baseURL,
-      viewport: { width: 540, height: 960 },
+      viewport: { width: pc.w, height: pc.h },
       deviceScaleFactor: dpr,
+      ...(pc.w < 600 ? { isMobile: true, hasTouch: true } : {}),
     });
     const page = await ctx.newPage();
     const { consoleErrors } = await openGame(page, 'qa-perf');
@@ -301,14 +332,17 @@ for (const dpr of [1, 2]) {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     const shot = play(page, { shots: 1, maxRealMs: 30_000, fpsBucket: 'cpu4-30', fpsOnlyFiring: true });
     await page.waitForTimeout(700);
-    if (dpr === 2) await page.screenshot({ path: `${SHOTS}/09-volee-30-balles-7-elements.png` });
+    if (pc.key === 'dpr2') await page.screenshot({ path: `${FINAL_SHOTS}/06-volee-30-balles-7-elements-dpr2.png` });
     const r = await shot;
     const dprAfter = await page.evaluate(() => ((window as unknown as QaWindow).__pegbreaker.renderer as unknown as { dpr?: number }).dpr ?? null);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     await fill();
     const r2 = await play(page, { shots: 1, maxRealMs: 30_000, fpsBucket: 'cpu1-30', fpsOnlyFiring: true });
+    const qualitySwitchMs = await page.evaluate(() => ((window as unknown as QaWindow).__pegbreaker.renderer as unknown as { qualitySwitchMs?: number }).qualitySwitchMs ?? null);
     const perf = {
       deviceScaleFactor: dpr,
+      viewport: `${pc.w}×${pc.h}`,
+      qualitySwitchMs,
       rendererDprBefore: dprBefore,
       rendererDprAfter: dprAfter,
       idleFpsBefore: idle,
@@ -318,10 +352,10 @@ for (const dpr of [1, 2]) {
     };
     try {
       const cur = JSON.parse(readFileSync(OUT, 'utf8')) as Record<string, unknown>;
-      cur[`perf30_dpr${dpr}`] = perf;
+      cur[`perf30_${pc.key}`] = perf;
       writeFileSync(OUT, JSON.stringify(cur, null, 2) + '\n');
     } catch {
-      writeFileSync(OUT.replace('.json', `-perf-dpr${dpr}.json`), JSON.stringify(perf, null, 2) + '\n');
+      writeFileSync(OUT.replace('.json', `-perf-${pc.key}.json`), JSON.stringify(perf, null, 2) + '\n');
     }
     test.info().annotations.push({ type: `perf30-dpr${dpr}`, description: JSON.stringify(perf) });
     expect(r.pageErrors).toEqual([]);
