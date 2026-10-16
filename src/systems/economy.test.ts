@@ -1,6 +1,10 @@
 // Sanity d'économie méta : bot « vise le bloc le plus bas » (sim réelle), achats gloutons
 // du nœud le moins cher après chaque run. Cibles (brief T10) : 1er achat après 1-2 runs,
 // arbre complet en 25-35 runs (T10c : 16 nœuds, total 1 910).
+// Rééquilibrage sim 3d1593f (dorée progressive, contrats, hpByWave) : ~70 ◆/run, arbre en
+// 21-24 runs → fin d'arbre relevée (total 1 910 → 2 300 : hp/coins niv. 2-3 70/140, balls 130,
+// reroll 120, el_ice 280, el_ghost 240, el_lead 220, mitose/radar 115, berserk 165, glass 90,
+// rush 155) → arbre en 25-36 runs, moyenne ~29.
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, RunSummary } from '../core/types';
