@@ -72,7 +72,10 @@ function parseDaily(raw: unknown): Record<string, DailyResult> {
   if (!isObj(raw)) return out;
   for (const [k, v] of Object.entries(raw)) {
     if (!isObj(v) || !isNum(v['depth']) || !isNum(v['score'])) continue;
-    out[k] = { depth: v['depth'], score: v['score'], completedAt: typeof v['completedAt'] === 'string' ? v['completedAt'] : '' };
+    const r: DailyResult = { depth: v['depth'], score: v['score'], completedAt: typeof v['completedAt'] === 'string' ? v['completedAt'] : '' };
+    if (isStrArr(v['mods'])) r.mods = [...v['mods']];
+    if (isNum(v['streak'])) r.streak = Math.max(0, Math.floor(v['streak']));
+    out[k] = r;
   }
   return out;
 }
@@ -135,7 +138,10 @@ export function freezeSave(d: SaveData): Readonly<SaveData> {
   Object.freeze(d.meta);
   Object.freeze(d.stats);
   Object.freeze(d.achievements);
-  for (const v of Object.values(d.daily)) Object.freeze(v);
+  for (const v of Object.values(d.daily)) {
+    if (v.mods) Object.freeze(v.mods);
+    Object.freeze(v);
+  }
   Object.freeze(d.daily);
   Object.freeze(d.settings);
   return Object.freeze(d);

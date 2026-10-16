@@ -7,9 +7,9 @@
 // `data` n'est donc jamais modifiée sous les pieds de l'appelant, et l'UI peut détecter un
 // changement par comparaison de références (`meta.data !== prev`). Pas de copie par lecture.
 // Exception : `currentRun` (snapshot de la sim) n'est pas gelé.
-import type { GameConfig, MetaModifiers, MetaSystem, RunSnapshot, RunSummary, SaveData, Settings } from '../core/types';
+import type { DailyResult, GameConfig, MetaModifiers, MetaSystem, RunSnapshot, RunSummary, SaveData, Settings } from '../core/types';
 import { checkAchievements } from './achievements';
-import { dailySeedFor, dateKey, recordDaily } from './daily';
+import { dailySeedFor, dateKey, pickDailyMods, recordDaily, streakAt, streakMultiplier } from './daily';
 import { availableRunMods, canBuy, computeModifiers, findNode, nextCost, nodeLevel, normalizeMeta } from './meta';
 import { BACKUP_KEY, SAVE_KEY, clamp01, defaultSave, freezeSave, parseSave } from './save';
 import { applyRunStats } from './stats';
@@ -97,17 +97,24 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
   // l'UI n'appelle onRunEnd) qu'une fois, après giveUp ou la mort définitive ; 'run:lost'
   // et 'run:revived' ne touchent pas aux stats. summary.revivesUsed sert aux succès.
   function onRunEnd(summary: RunSummary): string[] {
-    const earned = Math.max(0, Math.round(summary.stats.fragmentsEarned));
+    let earned = Math.max(0, Math.round(summary.stats.fragmentsEarned));
+    let daily: Record<string, DailyResult> = d.daily;
+    if (summary.isDaily) {
+      // Série calculée APRÈS enregistrement du jour ; bonus de série sur les ◆ de la run seulement
+      // (pas sur les récompenses de succès).
+      const date = summary.dailyDate ?? todayKey();
+      daily = recordDaily(daily, date, { depth: summary.depth, score: summary.score, completedAt: now().toISOString(), mods: dailyMods(date) });
+      // Série comptée sur l'historique élagué (30 dates) : cohérente avec dailyStreak().
+      const streak = streakAt(daily, date);
+      const rec = daily[date];
+      if (rec) daily[date] = { ...rec, streak };
+      earned = Math.round(earned * streakMultiplier(streak));
+    }
     const stats = applyRunStats(d.stats, summary);
     const unlocked = checkAchievements(config.meta.achievements, d.achievements, { summary, stats });
     let bonus = 0;
     for (const id of unlocked) bonus += config.meta.achievements.find((a) => a.id === id)?.rewardFragments ?? 0;
     stats.totalFragments += earned + bonus;
-    let daily = d.daily;
-    if (summary.isDaily) {
-      const date = summary.dailyDate ?? todayKey();
-      daily = recordDaily(daily, date, { depth: summary.depth, score: summary.score, completedAt: now().toISOString() });
-    }
     commit({
       ...d,
       meta: { ...d.meta, fragments: d.meta.fragments + earned + bonus },
@@ -143,6 +150,14 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     return dailySeedFor(date);
   }
 
+  function dailyMods(date: string = todayKey()): string[] {
+    return pickDailyMods(config.meta.runMods, date);
+  }
+
+  function dailyStreak(date: string = todayKey()): number {
+    return streakAt(d.daily, date);
+  }
+
   function reset(): void {
     safeRemove(storage, SAVE_KEY);
     load();
@@ -166,6 +181,9 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     updateSettings,
     setOnboarded,
     dailySeed,
+    dailyMods,
+    dailyStreak,
+    dailyStreakMultiplier: streakMultiplier,
     todayKey,
     reset,
   };

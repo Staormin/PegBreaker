@@ -15,6 +15,7 @@ import type {
 import { createRng, type Rng } from '../core/rng';
 import type { SimState } from './state';
 import { DEFAULT_SPLIT_ANGLE_DEG, DEFAULT_START_ROWS } from './constants';
+import { resolveMods, type ModEffects } from './mods';
 
 export interface RelicFlags {
   /** combo de départ ajouté à chaque balle (0 = inactif) */
@@ -96,6 +97,10 @@ export interface Ctx {
   readonly splitCos: number;
   readonly splitSin: number;
   readonly startRows: number;
+  /** effets cumulés des mutateurs de run (meta.runMods) */
+  readonly mods: ModEffects;
+  /** vitesse des balles (board.ballSpeed × mods) */
+  readonly ballSpeed: number;
   readonly cmpVolley: (a: VolleyBall, b: VolleyBall) => number;
   readonly cmpBlocksRowDesc: (a: Block, b: Block) => number;
 }
@@ -125,6 +130,7 @@ export function createCtx(cfg: GameConfig, meta: MetaModifiers, rng: Rng, isDail
   const splitA = (splitDeg * Math.PI) / 180;
   const startRows = (cfg.waves as unknown as WavesExtra).startRows;
   const cells = board.cols * board.rows;
+  const mods = resolveMods(cfg, meta);
   return {
     cfg,
     meta,
@@ -178,6 +184,8 @@ export function createCtx(cfg: GameConfig, meta: MetaModifiers, rng: Rng, isDail
     splitCos: Math.cos(splitA),
     splitSin: Math.sin(splitA),
     startRows: typeof startRows === 'number' ? startRows : DEFAULT_START_ROWS,
+    mods,
+    ballSpeed: board.ballSpeed * mods.ballSpeedMult,
     cmpVolley: (a, b) =>
       (elementOrder[a.element] ?? 99) - (elementOrder[b.element] ?? 99) || a.tier - b.tier,
     cmpBlocksRowDesc: (a, b) => b.row - a.row || a.col - b.col,

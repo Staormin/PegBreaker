@@ -204,6 +204,8 @@ export interface RunState {
   /** combo max du tir en cours */
   currentShotCombo: number;
   rewardOffer: RewardOption[] | null;
+  /** origine de l'offre courante (coffre de boss à la reprise) */
+  rewardSource?: 'wave' | 'boss';
   shop: ShopState | null;
   /** nombre de balles encore à lancer dans la rafale en cours */
   pendingLaunches: number;
@@ -436,7 +438,21 @@ export interface BossDef {
   param: number;
 }
 
+/** effet d'un mutateur de run (waves.json → runModEffects[id]) ; implémenté dans sim/mods.ts */
+export interface RunModEffect {
+  maxHp?: number;
+  advanceRows?: number;
+  stoneBecomes?: BallElement;
+  ballSpeedMult?: number;
+  coinMult?: number;
+  blockHpMult?: number;
+  dropChanceMult?: number;
+  weights?: Partial<Record<BlockKind, { mult?: number; floor?: number }>>;
+}
+
 export interface WavesConfig {
+  /** effets des mutateurs par id (absent = valeurs par défaut de sim/mods.ts) */
+  runModEffects?: Record<string, RunModEffect>;
   /** PV de base rangée = baseHp × growthPerWave^(wave-1) × (1 + growthPerShot × shotInWave) */
   baseHp: number;
   /** si présent, remplace baseHp/growthPerWave : PV de base interpolés linéairement entre les points (extrapolés géométriquement au-delà du dernier) */

@@ -21,7 +21,7 @@ export function spawnBoss(ctx: Ctx): void {
   const cols = ctx.cfg.blocks.board.cols;
   const width = Math.min(def.width, cols);
   const col = Math.floor((cols - width) / 2);
-  const hp = Math.max(1, Math.round(rowBaseHp(ctx, s.wave, 0) * def.hpMultiplier));
+  const hp = Math.max(1, Math.round(rowBaseHp(ctx, s.wave, 0) * def.hpMultiplier * ctx.mods.blockHpMult));
   const b = acquireBlock(ctx, 'boss', col, 0, width, hp);
   b.bossId = def.id;
   emit(ctx, { type: 'boss:spawned', bossId: def.id, blockId: b.id });

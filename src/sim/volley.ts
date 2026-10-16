@@ -4,6 +4,7 @@ import type { Ctx } from './ctx';
 import { emit } from './ctx';
 import { acquireBall } from './pools';
 import { contractMax } from './contracts';
+import { modElement } from './mods';
 
 const MAX_TIER = 3;
 
@@ -75,7 +76,7 @@ export function fusePair(ctx: Ctx, element: BallElement, tier: BallTier): boolea
 export function addVolleyBall(ctx: Ctx, element: BallElement, tier: BallTier): boolean {
   if (ctx.s.volley.length >= ctx.cfg.balls.maxVolley) fuseVolley(ctx);
   if (ctx.s.volley.length >= ctx.cfg.balls.maxVolley) return false;
-  ctx.s.volley.push({ element, tier });
+  ctx.s.volley.push({ element: modElement(ctx.mods, element), tier });
   fuseVolley(ctx);
   return true;
 }
@@ -100,8 +101,8 @@ export function launchNext(ctx: Ctx): void {
   b.tier = q.tier;
   b.pos.x = it.originX;
   b.pos.y = board.rows - b.radius;
-  b.vel.x = dx * board.ballSpeed;
-  b.vel.y = dy * board.ballSpeed;
+  b.vel.x = dx * ctx.ballSpeed;
+  b.vel.y = dy * ctx.ballSpeed;
   b.golden = s.pendingLaunches === 0;
   if (b.element !== 'lead') {
     b.combo = ctx.relic.bouncy;

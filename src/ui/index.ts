@@ -13,6 +13,11 @@
 // - Lot 1 : `run:lost` → écran « Revanche ? » (id interne 'revive', émis 'gameover' sur le bus,
 //   `#ui[data-screen=revive]`) → `sim.revive()` / `sim.giveUp()` ; `run:over` → fin de run.
 //   Mode défi lu dans `location.search` (`?seed=X&goal=N`).
+// - Lot 2 : F8 quotidien muté (`?daily=1`) : mutateurs `meta.dailyMods()` dans le badge HUD,
+//   écran 'daily' (mutateurs, multiplicateur, série + calendrier 7 j), « Série : N jours, ×M
+//   fragments » en fin de quotidien. F9 : `reward:offered.source === 'boss'` → coffre
+//   (screens/reward.ts). Une reprise de sauvegarde en phase 'reward' rouvre en mode normal
+//   (RunState ne mémorise pas la source de l'offre).
 // =====================================================================
 import './styles.css';
 import type { EventBus } from '../core/events';
@@ -24,7 +29,8 @@ import { createOnboarding } from './onboarding';
 import { registerServiceWorker } from './pwa';
 import { createGameoverScreen } from './screens/gameover';
 import { createDailyScreen } from './screens/daily';
-import { createRewardScreen } from './screens/reward';
+import { createRewardScreen, type RewardSource } from './screens/reward';
+import { dailyModViews, streakMult, streakOf } from './dailyInfo';
 import { createReviveScreen } from './screens/revive';
 import type { ScreenEl, UiLocalScreen } from './screens/screen';
 import { readChallenge } from './share';
@@ -101,6 +107,7 @@ export function createUI(deps: UiDeps): UI {
     onWell: meta ? () => openSub('meta') : null,
     onSettings: meta ? () => openSub('settings') : null,
     isDaily,
+    dailyMods: isDaily && meta ? dailyModViews(config, meta) : [],
     challengeGoal,
     bestWave: () => bestWaveBefore,
     onNewRecord: (wave) => toasts.notice('Nouveau record', 'RECORD !', `V${wave}`, 'record'),
@@ -139,6 +146,15 @@ export function createUI(deps: UiDeps): UI {
     config,
     challengeGoal,
     onReplayChallenge: () => location.reload(),
+    dailyStreak: meta
+      ? (sum) => {
+          // main.ts enregistre le résultat sur run:over ; s'il ne l'est pas encore, la partie compte
+          const date = sum.dailyDate ?? meta.todayKey();
+          const rec = meta.data.daily[date];
+          const streak = Math.max(1, rec ? (rec.streak ?? streakOf(meta, date)) : streakOf(meta, date) + 1);
+          return { streak, multiplier: streakMult(meta, streak) };
+        }
+      : null,
   });
   const revive = createReviveScreen({
     bus,
@@ -162,7 +178,7 @@ export function createUI(deps: UiDeps): UI {
   const well = meta
     ? createWellScreen({ meta, bus, config, onBack: back, onDaily: () => openSub('daily'), onRestartNow: freshRunReload })
     : null;
-  const dailyScreen = meta ? createDailyScreen(meta, bus, back) : null;
+  const dailyScreen = meta ? createDailyScreen(meta, bus, back, config) : null;
   const settingsScreen = meta
     ? createSettingsScreen(meta, bus, audio, back, () => {
         // abandon : nouvelle run (mêmes modificateurs méta que la sim courante)
@@ -234,10 +250,11 @@ export function createUI(deps: UiDeps): UI {
     }
   }
 
-  function openReward(options: RunState['rewardOffer']): void {
+  function openReward(options: RunState['rewardOffer'], source: RewardSource = 'wave'): void {
     if (!options) return;
-    reward.open(options);
-    cardHints(reward.root, options, 'data-reward-index');
+    reward.open(options, source);
+    // coffre de boss : pas d'indice (il trahirait le contenu d'une carte face cachée)
+    if (source !== 'boss') cardHints(reward.root, options, 'data-reward-index');
     show('reward');
   }
   function openShop(): void {
@@ -296,7 +313,7 @@ export function createUI(deps: UiDeps): UI {
   }
 
   // --- événements ------------------------------------------------------------
-  bus.on('reward:offered', (e) => openReward(e.options));
+  bus.on('reward:offered', (e) => openReward(e.options, e.source));
   bus.on('reward:chosen', () => {
     if (screen === 'reward') show('game');
   });

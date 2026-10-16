@@ -72,7 +72,7 @@ function boot(): void {
     persistEnabled = false;
   });
   const persistRun = (): void => {
-    if (forcedSeed || !persistEnabled) return; // runs QA/debug : jamais sauvegardées
+    if (forcedSeed || isDaily || !persistEnabled) return; // runs QA/debug et quotidiennes : jamais sauvegardées (mods hors état)
     // en 'gameover' (run:lost) on garde le snapshot : la seconde chance peut reprendre ; run:over efface
     meta.setCurrentRun(sim.snapshot());
   };

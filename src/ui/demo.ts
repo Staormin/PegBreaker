@@ -270,7 +270,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
 
   // méta en mémoire (rien n'est écrit dans localStorage) ; ?title : premier lancement
   const params = new URLSearchParams(location.search);
-  const meta: MetaSystem = createMeta(createMemoryStorage(), config);
+  const meta: MetaSystem = withDailyFallbacks(createMeta(createMemoryStorage(), config));
   if (!params.has('title')) meta.setOnboarded();
 
   sizeCanvas();
@@ -500,10 +500,77 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     const st = freshState({ x: 0, y: 0 }).stats;
     meta.onRunEnd({ seed: 'daily', depth: 7, wave: 3, stats: st, relics: [], volley: [], isDaily: true, dailyDate: meta.todayKey(), score: 1234, revivesUsed: 0, contractsCompleted: 0 });
   });
+  add('offre boss', () => {
+    const options = [randomOption(3), randomOption(4), randomOption(5)];
+    state.phase = 'reward';
+    state.rewardOffer = options;
+    bus.emit({ type: 'reward:offered', options, source: 'boss' });
+  });
+  add('quotidien avec série', () => {
+    // 4 jours consécutifs jusqu'à hier + un trou 6 jours avant : série 4, aujourd'hui à jouer
+    const st = freshState({ x: 0, y: 0 }).stats;
+    const today = meta.todayKey();
+    for (const back of [6, 4, 3, 2, 1]) {
+      const d = dayBefore(today, back);
+      meta.onRunEnd({ seed: `daily-${d}`, depth: 3 + back, wave: 2, stats: st, relics: [], volley: [], isDaily: true, dailyDate: d, score: 400 * back, revivesUsed: 0, contractsCompleted: 0 });
+    }
+    ui.show('daily');
+  });
+  add('fin quotidien', () => {
+    state.phase = 'gameover';
+    state.stats.fragmentsEarned += 37;
+    const summary: RunSummary = { ...summaryOf(), isDaily: true, dailyDate: meta.todayKey() };
+    bus.emit({ type: 'run:over', summary });
+    for (const id of meta.onRunEnd(summary)) bus.emit({ type: 'achievement:unlocked', achievementId: id });
+  });
   add('Puits', () => ui.show('meta'));
   add('Réglages', () => ui.show('settings'));
   add('Quotidien', () => ui.show('daily'));
   document.body.append(panel);
 
   (window as unknown as { __uiDemo: unknown }).__uiDemo = { sim, bus, ui, get state() { return state; } };
+}
+
+function dayBefore(key: string, n: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - n, 12) : new Date();
+  const p = (x: number): string => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Démo : simule dailyMods / dailyStreak / dailyStreakMultiplier si la méta ne les fournit pas encore. */
+function withDailyFallbacks(base: MetaSystem): MetaSystem {
+  const cfg = loadConfig();
+  const eligible = cfg.meta.runMods.filter((m) => m.dailyEligible).map((m) => m.id);
+  const fallbacks: Partial<MetaSystem> = {
+    dailyMods(date?: string): string[] {
+      const key = date ?? base.todayKey();
+      let h = 0;
+      for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+      if (eligible.length < 2) return eligible.slice();
+      const a = h % eligible.length;
+      const b = (a + 1 + ((h >>> 8) % (eligible.length - 1))) % eligible.length;
+      return [eligible[a] ?? '', eligible[b] ?? ''];
+    },
+    dailyStreak(date?: string): number {
+      const key = date ?? base.todayKey();
+      const daily = base.data.daily;
+      // compte aujourd'hui s'il est joué, sinon la série qui s'arrête hier
+      const start = daily[key] ? 0 : 1;
+      let n = 0;
+      while (daily[dayBefore(key, start + n)]) n++;
+      return n;
+    },
+    dailyStreakMultiplier(streak: number): number {
+      return Math.min(2, 1 + 0.1 * (Math.max(1, streak) - 1));
+    },
+  };
+  return new Proxy(base, {
+    get(t, p) {
+      const v: unknown = Reflect.get(t, p, t);
+      if (typeof v === 'function') return v.bind(t);
+      if (v === undefined && typeof p === 'string' && p in fallbacks) return fallbacks[p as keyof MetaSystem];
+      return v;
+    },
+  });
 }

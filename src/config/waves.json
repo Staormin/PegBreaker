@@ -33,5 +33,15 @@
     { "id": "spawner", "name": "La Ruche", "width": 3, "hpMultiplier": 2.6, "behavior": "spawner", "param": 2 },
     { "id": "absorb", "name": "Le Miroir", "width": 3, "hpMultiplier": 2.6, "behavior": "absorb", "param": 0.5 }
   ],
-  "start": { "hp": 5, "balls": 5, "elements": ["stone", "stone", "stone", "stone", "stone"] }
+  "start": { "hp": 5, "balls": 5, "elements": ["stone", "stone", "stone", "stone", "stone"] },
+  "runModEffects": {
+    "glass": { "maxHp": 1 },
+    "rush": { "advanceRows": 2 },
+    "inferno": { "stoneBecomes": "fire" },
+    "armored": { "weights": { "armored": { "mult": 3, "floor": 8 } } },
+    "swift": { "ballSpeedMult": 1.3 },
+    "rich": { "coinMult": 2, "maxHp": 3 },
+    "pegfest": { "weights": { "peg": { "mult": 2.5 } } },
+    "heavy": { "blockHpMult": 1.5, "dropChanceMult": 2 }
+  }
 }

@@ -7,6 +7,7 @@
 import type { EventBus } from '../core/events';
 import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, VolleyBall } from '../core/types';
 import { createContractBanner } from './contract';
+import { modChip, type ModView } from './dailyInfo';
 import { coinIcon, el, fmt } from './dom';
 import { ballColor, ballName } from './options';
 
@@ -28,6 +29,8 @@ export interface HudDeps {
   onSettings?: (() => void) | null;
   /** run du défi quotidien : badge « Quotidien » */
   isDaily?: boolean;
+  /** F8 : mutateurs du quotidien, affichés en pastilles dans le badge (titre au survol / aria-label) */
+  dailyMods?: readonly ModView[];
   /** mode défi (?goal=N) : badge « Défi : battre P<N> » ; null = absent */
   challengeGoal?: number | null;
   /** meilleure vague AVANT la run (null ou 0 = pas de record affiché) */
@@ -127,7 +130,14 @@ export function createHud(deps: HudDeps): Hud {
   // --- bande sous la barre du haut : badges + contrat --------------------
   const band = el('div', 'hud-band');
   if (deps.isDaily) {
-    const badge = el('div', 'hud-badge hud-daily', '📅 Quotidien');
+    const badge = el('div', 'hud-badge hud-daily');
+    badge.append(el('span', 'hd-label', '📅 Quotidien'));
+    const mods = deps.dailyMods ?? [];
+    for (const m of mods) badge.append(modChip(m, 'mod-chip hud-mod'));
+    if (mods.length) {
+      const names = mods.map((m) => m.name).join(', ');
+      badge.setAttribute('aria-label', `Quotidien, mutateurs : ${names}`);
+    }
     band.append(badge);
   }
   const goal = deps.challengeGoal ?? null;

@@ -38,7 +38,8 @@ export function validateConfig(c: GameConfig): GameConfig {
   req(c.contracts, ['defs'], 'contracts');
   req(c.economy, ['revive', 'cost'], 'economy');
   if (!c.balls.defs.some((d) => d.id === 'stone')) throw new Error('config/balls.json : "stone" obligatoire');
-  if (c.blocks.board.ballSpeed / 240 > c.blocks.board.ballRadius) {
+  const maxSpeedMult = Math.max(1, ...Object.values(c.waves.runModEffects ?? {}).map((e) => e.ballSpeedMult ?? 1));
+  if ((c.blocks.board.ballSpeed * maxSpeedMult) / 240 > c.blocks.board.ballRadius) {
     throw new Error('config/blocks.json : ballSpeed trop élevée pour le sous-pas de 240 Hz (tunneling)');
   }
   return c;

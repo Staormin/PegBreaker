@@ -2,6 +2,7 @@
 // Lot 1 : record de vague (F5), résultat du défi + « Rejouer le défi » (F6), « Partager » (F6).
 import type { EventBus } from '../../core/events';
 import type { GameConfig, RunSummary } from '../../core/types';
+import { fmtDays, fmtMult } from '../dailyInfo';
 import { button, el, fmt } from '../dom';
 import { canvasToBlob, challengeLink, renderShareCard, shareRun } from '../share';
 import { createScreen, type ScreenEl } from './screen';
@@ -22,6 +23,8 @@ export interface GameoverDeps {
   challengeGoal: number | null;
   /** « Rejouer le défi » : recharge la même URL */
   onReplayChallenge: () => void;
+  /** F8 : série du quotidien après cette run (null = pas de méta) */
+  dailyStreak?: ((summary: RunSummary) => { streak: number; multiplier: number }) | null;
 }
 
 export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
@@ -50,6 +53,8 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
   record.hidden = true;
   const recordGap = el('p', 'muted record-gap');
   recordGap.hidden = true;
+  const dailyLine = el('p', 'daily-streak-end');
+  dailyLine.hidden = true;
   const challenge = el('div', 'challenge-result');
   challenge.setAttribute('role', 'status');
   challenge.hidden = true;
@@ -88,7 +93,7 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     row1.append(share, restart);
     actions.append(replay, row1, shareMsg, row2);
   } else actions.append(restart, share, shareMsg, row2);
-  s.panel.append(challenge, record, recordGap, grid, fragRow, actions);
+  s.panel.append(challenge, dailyLine, record, recordGap, grid, fragRow, actions);
 
   let current: RunSummary | null = null;
   let cardBlob: Promise<Blob | null> | null = null;
@@ -137,6 +142,13 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
       const won = summary.depth > goal;
       challenge.dataset.result = won ? 'won' : 'lost';
       challenge.textContent = won ? '✓ Défi réussi !' : `✗ Défi raté : P${fmt(summary.depth)} / P${fmt(goal)}`;
+    }
+    // F8 : fin d'un quotidien → « Série : N jours, ×M fragments »
+    const ds = summary.isDaily && d.dailyStreak ? d.dailyStreak(summary) : null;
+    dailyLine.hidden = !ds;
+    if (ds) {
+      dailyLine.textContent = `🔥 Série : ${fmtDays(ds.streak)}, ${fmtMult(ds.multiplier)} fragments`;
+      dailyLine.dataset.streak = String(ds.streak);
     }
     // record de vague (prioritaire), sinon record de profondeur
     const bw = bestWaveBefore;

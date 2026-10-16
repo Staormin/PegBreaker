@@ -4,13 +4,18 @@ import type { Ctx } from './ctx';
 import { emit } from './ctx';
 import { addRelic, relicDef, relicRequiredElement } from './relics';
 import { addVolleyBall, bestFusablePair, fusePair } from './volley';
+import { modElement } from './mods';
 
 function elementAllowed(ctx: Ctx, el: BallElement): boolean {
   return el === 'stone' || ctx.meta.unlockedElements.includes(el);
 }
 
-/** Élément tiré parmi les débloqués (+ stone), pondéré par weight (> 0). */
+/** Élément tiré parmi les débloqués (+ stone), pondéré par weight (> 0) ; mod inferno : pierre → feu. */
 export function pickBallElement(ctx: Ctx): BallElement {
+  return modElement(ctx.mods, pickRawElement(ctx));
+}
+
+function pickRawElement(ctx: Ctx): BallElement {
   let total = 0;
   for (const d of ctx.cfg.balls.defs) if (d.weight > 0 && elementAllowed(ctx, d.id)) total += d.weight;
   if (total <= 0) return 'stone';

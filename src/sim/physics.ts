@@ -34,7 +34,7 @@ function boxAt(ctx: Ctx, col: number, row: number): boolean {
 
 /** Renormalise à ballSpeed et impose l'angle minimal par rapport à l'horizontale. */
 function fixVelocity(ctx: Ctx, b: Ball): void {
-  const sp = ctx.cfg.blocks.board.ballSpeed;
+  const sp = ctx.ballSpeed;
   let vx = b.vel.x;
   let vy = b.vel.y;
   const l = Math.hypot(vx, vy);

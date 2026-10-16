@@ -233,7 +233,7 @@
       "id": "inferno",
       "name": "Brasier",
       "description": "Toutes les balles de pierre deviennent du feu.",
-      "fragmentMultiplier": 1.2,
+      "fragmentMultiplier": 1,
       "dailyEligible": true
     },
     {
@@ -247,7 +247,7 @@
       "id": "swift",
       "name": "Vélocité",
       "description": "Balles 30 % plus rapides.",
-      "fragmentMultiplier": 1.1,
+      "fragmentMultiplier": 1,
       "dailyEligible": true
     },
     {

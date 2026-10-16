@@ -47,11 +47,11 @@ export function rowBaseHp(ctx: Ctx, wave: number, shot: number): number {
   return waveBaseHp(ctx, wave) * (1 + ctx.cfg.waves.growthPerShot * shot);
 }
 
-/** PV d'un bloc : base × variance × hpRatio, arrondi, ≥ 1. */
+/** PV d'un bloc : base × variance × hpRatio × mods.blockHpMult (heavy), arrondi, ≥ 1. */
 export function rollBlockHp(ctx: Ctx, kind: BlockKind, shot: number): number {
   const v = ctx.cfg.waves.hpVariance;
   const ratio = ctx.blockDefs[kind]?.hpRatio ?? 1;
-  return Math.max(1, Math.round(rowBaseHp(ctx, ctx.s.wave, shot) * ctx.rng.range(v.min, v.max) * ratio));
+  return Math.max(1, Math.round(rowBaseHp(ctx, ctx.s.wave, shot) * ctx.rng.range(v.min, v.max) * ratio * ctx.mods.blockHpMult));
 }
 
 function interpWeight(pts: readonly { wave: number; weight: number }[], wave: number): number {
@@ -81,14 +81,20 @@ export function densityAt(ctx: Ctx, wave: number): number {
   return prev ? prev.blocks : 1;
 }
 
+/** Poids de tirage d'un type de bloc à la vague : max(poids, plancher du mod) × multiplicateur du mod (armored, pegfest). */
+export function kindWeight(ctx: Ctx, kind: BlockKind, pts: readonly { wave: number; weight: number }[], wave: number): number {
+  const w = Math.max(interpWeight(pts, wave), ctx.mods.weightFloor[kind] ?? 0);
+  return Math.max(0, w * (ctx.mods.weightMult[kind] ?? 1));
+}
+
 function pickKind(ctx: Ctx, wave: number): BlockKind {
   let total = 0;
-  for (const d of ctx.cfg.blocks.defs) if (d.kind !== 'boss') total += Math.max(0, interpWeight(d.weightByWave, wave));
+  for (const d of ctx.cfg.blocks.defs) if (d.kind !== 'boss') total += kindWeight(ctx, d.kind, d.weightByWave, wave);
   if (total <= 0) return 'normal';
   let r = ctx.rng.next() * total;
   for (const d of ctx.cfg.blocks.defs) {
     if (d.kind === 'boss') continue;
-    r -= Math.max(0, interpWeight(d.weightByWave, wave));
+    r -= kindWeight(ctx, d.kind, d.weightByWave, wave);
     if (r < 0) return d.kind;
   }
   return 'normal';
@@ -209,10 +215,10 @@ function shiftOnce(ctx: Ctx): void {
   ctx.gridDirty = true;
 }
 
-/** Fin de l'animation 'advancing' : descente (×2 avec le mod 'rush'), nouvelle rangée, drops au sol. */
+/** Fin de l'animation 'advancing' : descente (mods.advanceRows, 2 avec 'rush'), nouvelle rangée, drops au sol. */
 export function advanceRows(ctx: Ctx): void {
   const s = ctx.s;
-  const shifts = ctx.meta.runMods.includes('rush') ? 2 : 1;
+  const shifts = Math.max(1, ctx.mods.advanceRows);
   if (!s.internal.thawedIds) s.internal.thawedIds = []; // snapshot antérieur à T2d
   s.internal.thawedIds.length = 0;
   const perShot = (ctx.cfg.blocks as unknown as { breachDamageCapPerShot?: number }).breachDamageCapPerShot;

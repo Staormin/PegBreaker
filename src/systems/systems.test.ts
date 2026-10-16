@@ -399,7 +399,7 @@ describe('onRunEnd', () => {
     expect(m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-16', score: 2000, depth: 20 }, { fragmentsEarned: 10 }))).toEqual(['daily1']);
     expect(m.data.meta.fragments).toBe(10 + daily1);
     m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-16', score: 1000, depth: 30 }, { fragmentsEarned: 10 }));
-    expect(m.data.daily['2026-10-16']).toEqual({ depth: 20, score: 2000, completedAt: fixedNow().toISOString() });
+    expect(m.data.daily['2026-10-16']).toEqual({ depth: 20, score: 2000, completedAt: fixedNow().toISOString(), mods: m.dailyMods('2026-10-16'), streak: 1 });
     m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-16', score: 3000, depth: 25 }, { fragmentsEarned: 10 }));
     expect(m.data.daily['2026-10-16']?.score).toBe(3000);
     m.onRunEnd(summary({ isDaily: false, score: 99999 }));
@@ -556,5 +556,136 @@ describe('succès lot 1 : contrats et seconde chance', () => {
     expect(m.data.stats.runs).toBe(1);
     expect(m.data.stats.bestWave).toBe(8);
     expect(m.data.currentRun).toBeNull();
+  });
+});
+
+describe('F8 : quotidien muté et série', () => {
+  const dayKey = (i: number): string => {
+    const t = new Date(Date.UTC(2026, 0, 1 + i));
+    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
+  };
+
+  it('dailyMods : 2 mods éligibles distincts, déterministes, variables selon la date', () => {
+    const c = cfg();
+    const eligible = c.meta.runMods.filter((r) => r.dailyEligible).map((r) => r.id);
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    const other = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    const pairs = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const date = dayKey(i);
+      const p = m.dailyMods(date);
+      expect(p).toHaveLength(2);
+      expect(p[0]).not.toBe(p[1]);
+      for (const id of p) expect(eligible).toContain(id);
+      expect(m.dailyMods(date)).toEqual(p);
+      expect(other.dailyMods(date)).toEqual(p);
+      pairs.add(p.join('+'));
+    }
+    expect(pairs.size).toBeGreaterThan(1);
+    expect(m.dailyMods()).toEqual(m.dailyMods('2026-10-16')); // défaut : todayKey()
+  });
+
+  it('dailyMods : jamais glass + rich (sur 2 000 dates), mods non éligibles exclus', () => {
+    const c = cfg();
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    let glass = 0;
+    let rich = 0;
+    for (let i = 0; i < 2000; i++) {
+      const p = m.dailyMods(dayKey(i));
+      expect(p.includes('glass') && p.includes('rich')).toBe(false);
+      if (p.includes('glass')) glass++;
+      if (p.includes('rich')) rich++;
+    }
+    expect(glass).toBeGreaterThan(0);
+    expect(rich).toBeGreaterThan(0);
+    // seuls glass et rich éligibles → un seul mod (pas de paire contradictoire)
+    const c2 = cfg();
+    for (const r of c2.meta.runMods) r.dailyEligible = r.id === 'glass' || r.id === 'rich';
+    const m2 = createMeta(createMemoryStorage(), c2, fixedNow);
+    for (let i = 0; i < 20; i++) expect(m2.dailyMods(dayKey(i))).toHaveLength(1);
+    const c3 = cfg();
+    for (const r of c3.meta.runMods) r.dailyEligible = r.id !== 'glass';
+    const m3 = createMeta(createMemoryStorage(), c3, fixedNow);
+    for (let i = 0; i < 200; i++) expect(m3.dailyMods(dayKey(i))).not.toContain('glass');
+  });
+
+  it('dailyStreak : 0, 1, 3 jours consécutifs, depuis la veille si aujourd hui non joué, trou', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    expect(m.dailyStreak()).toBe(0);
+    const play = (date: string): void => void m.onRunEnd(summary({ isDaily: true, dailyDate: date }));
+    play('2026-10-14');
+    expect(m.dailyStreak('2026-10-14')).toBe(1);
+    expect(m.dailyStreak('2026-10-15')).toBe(1); // veille jouée, jour non joué : série en cours
+    expect(m.dailyStreak('2026-10-16')).toBe(0); // ni le jour ni la veille
+    play('2026-10-15');
+    play('2026-10-16');
+    expect(m.dailyStreak()).toBe(3);
+    expect(m.data.daily['2026-10-16']?.streak).toBe(3);
+    play('2026-10-18'); // trou le 17
+    expect(m.dailyStreak('2026-10-18')).toBe(1);
+    expect(m.dailyStreak('2026-10-17')).toBe(3);
+    // passage de mois / d'année
+    const q = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    for (const date of ['2025-12-30', '2025-12-31', '2026-01-01', '2026-02-28', '2026-03-01'])
+      q.onRunEnd(summary({ isDaily: true, dailyDate: date }));
+    expect(q.dailyStreak('2026-01-01')).toBe(3);
+    expect(q.dailyStreak('2026-03-01')).toBe(2);
+  });
+
+  it('dailyStreakMultiplier : 1 + 0,1 × (série − 1), plafonné à 2', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    expect(m.dailyStreakMultiplier(0)).toBe(1);
+    expect(m.dailyStreakMultiplier(1)).toBe(1);
+    expect(m.dailyStreakMultiplier(2)).toBe(1.1);
+    expect(m.dailyStreakMultiplier(3)).toBe(1.2);
+    expect(m.dailyStreakMultiplier(11)).toBe(2);
+    expect(m.dailyStreakMultiplier(30)).toBe(2);
+    expect(m.dailyStreakMultiplier(Number.NaN)).toBe(1);
+  });
+
+  it('onRunEnd quotidien : ◆ de run × multiplicateur de série (arrondi), succès non multipliés, run normale inchangée', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    const gain = (s: RunSummary): number => {
+      const before = m.data.meta.fragments;
+      m.onRunEnd(s);
+      return m.data.meta.fragments - before;
+    };
+    m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-13' }, { fragmentsEarned: 0 })); // daily1 consommé
+    expect(gain(summary({ isDaily: true, dailyDate: '2026-10-14' }, { fragmentsEarned: 45 }))).toBe(Math.round(45 * 1.1));
+    expect(gain(summary({ isDaily: true, dailyDate: '2026-10-15' }, { fragmentsEarned: 45 }))).toBe(Math.round(45 * 1.2));
+    expect(gain(summary({ isDaily: false }, { fragmentsEarned: 45 }))).toBe(45);
+    // rejouer le même jour : série inchangée (3), toujours ×1,2
+    expect(gain(summary({ isDaily: true, dailyDate: '2026-10-15', score: 1 }, { fragmentsEarned: 45 }))).toBe(54);
+    expect(m.data.stats.totalFragments).toBe(m.data.meta.fragments + 0); // aucun achat : cumul = solde
+  });
+
+  it('meilleur score conservé mais mods et streak mis à jour', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-16', score: 5000, depth: 50 }));
+    const first = m.data.daily['2026-10-16'];
+    expect(first?.streak).toBe(1);
+    m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-15', score: 10 }));
+    m.onRunEnd(summary({ isDaily: true, dailyDate: '2026-10-16', score: 100, depth: 5 }));
+    const r = m.data.daily['2026-10-16'];
+    expect(r?.score).toBe(5000);
+    expect(r?.depth).toBe(50);
+    expect(r?.completedAt).toBe(first?.completedAt);
+    expect(r?.streak).toBe(2);
+    expect(r?.mods).toEqual(m.dailyMods('2026-10-16'));
+  });
+
+  it('historique 30 jours conservé (série plafonnée par l historique), mods/streak relus de la sauvegarde', () => {
+    const st = createMemoryStorage();
+    const m = createMeta(st, cfg(), fixedNow);
+    for (let i = 0; i < 40; i++) m.onRunEnd(summary({ isDaily: true, dailyDate: dayKey(i) }));
+    const keys = Object.keys(m.data.daily).sort();
+    expect(keys).toHaveLength(30);
+    expect(keys[0]).toBe(dayKey(10));
+    expect(m.dailyStreak(dayKey(39))).toBe(30);
+    expect(m.data.daily[dayKey(39)]?.streak).toBe(30);
+    const back = createMeta(st, cfg(), fixedNow);
+    expect(back.data.daily).toEqual(m.data.daily);
+    expect(back.data.daily[dayKey(39)]?.mods).toEqual(m.dailyMods(dayKey(39)));
+    expect(Object.isFrozen(back.data.daily[dayKey(39)]?.mods)).toBe(true);
   });
 });

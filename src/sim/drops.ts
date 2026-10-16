@@ -14,7 +14,7 @@ export function maybeDrop(ctx: Ctx, x: number, y: number): void {
   const n = ctx.s.stats.blocksDestroyed;
   let kind: Drop['kind'];
   if (t.guaranteedBallEvery > 0 && n % t.guaranteedBallEvery === 0) kind = 'ball';
-  else if (ctx.rng.chance(t.dropChance)) kind = pickDropKind(ctx);
+  else if (ctx.rng.chance(Math.min(1, t.dropChance * ctx.mods.dropChanceMult))) kind = pickDropKind(ctx);
   else return;
   let value = 1;
   let element: Drop['element'] = null;
@@ -33,7 +33,7 @@ export function collectDrop(ctx: Ctx, i: number): void {
   let value = d.value;
   switch (d.kind) {
     case 'coin': {
-      value = Math.round(d.value * ctx.meta.coinMultiplier * ctx.relic.coinMult);
+      value = Math.round(d.value * ctx.meta.coinMultiplier * ctx.relic.coinMult * ctx.mods.coinMult);
       s.coins += value;
       s.stats.coinsEarned += value;
       contractAdd(ctx, 'collectCoins', value);

@@ -18,6 +18,7 @@ import { contractOnFire, contractOnWaveEnd, contractSeed } from './contracts';
 import { burnEmbers } from './combat';
 import { hashString } from '../core/rng';
 import { AUTO_SPEEDUP_RAMP_MS } from './constants';
+import { modElement } from './mods';
 
 /** Construit l'état initial d'une run et génère la vague 1. */
 export function startRun(ctx: Ctx, seed: string, restarts: number): void {
@@ -26,13 +27,13 @@ export function startRun(ctx: Ctx, seed: string, restarts: number): void {
   const meta = ctx.meta;
   ctx.rng.setState(hashString(seed) || 0x9e3779b9); // même amorçage que createRng(seed)
   let maxHp = cfg.waves.start.hp + meta.bonusHp;
-  if (meta.runMods.includes('glass')) maxHp = 1;
+  maxHp = Math.min(maxHp, ctx.mods.maxHp); // glass, rich (le plus petit plafond l'emporte)
   maxHp = Math.max(1, maxHp);
   const volley: { element: BallElement; tier: 1 }[] = [];
   const nStart = Math.max(1, cfg.waves.start.balls + meta.bonusStartBalls);
   for (let i = 0; i < nStart; i++) {
     const el = cfg.waves.start.elements[i] ?? 'stone';
-    volley.push({ element: el, tier: 1 });
+    volley.push({ element: modElement(ctx.mods, el), tier: 1 });
   }
   const s: SimState = {
     seed,
