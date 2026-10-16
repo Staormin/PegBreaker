@@ -17,9 +17,9 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 
 | ID | Agent | Statut | Dépend de | Critère d'acceptation |
 |---|---|---|---|---|
-| T7 | feel-artist | doing | T6 | Screen shake, hit-stop sur palier de combo, flash, squash des blocs, trails des balles, animation de fusion, sprites procéduraux par élément, fond animé. Réglage reduceMotion respecté. |
-| T8 | audio-dev | doing | T6 | SFX synthétisés pour chaque événement (rebond avec pitch lié au combo, casse, drop, fusion, dégâts, choix), musique générative discrète, mixage, déverrouillage mobile. |
-| T9 | qa-tester | todo | T7,T8 | Rapport j2 : aucun moment mort > 5 s, 60 fps maintenu, zéro erreur console. |
+| T7 | feel-artist | done | T6 | Screen shake, hit-stop sur palier de combo, flash, squash des blocs, trails des balles, animation de fusion, sprites procéduraux par élément, fond animé. Réglage reduceMotion respecté. |
+| T8 | audio-dev | done | T6 | SFX synthétisés pour chaque événement (rebond avec pitch lié au combo, casse, drop, fusion, dégâts, choix), musique générative discrète, mixage, déverrouillage mobile. |
+| T9 | qa-tester | doing | T7,T8 | Rapport j2 : aucun moment mort > 5 s, 60 fps maintenu, zéro erreur console. |
 
 ## Jalon 3 — Méta-progression, sauvegarde, économie
 
@@ -27,13 +27,13 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 |---|---|---|---|---|
 | T10 | systems-dev | done | T6 | Sauvegarde localStorage versionnée, reprise de run, le Puits (3 branches), succès, défi quotidien, `MetaModifiers` consommés par la sim. Tests Vitest sur migration et modificateurs. |
 | T11 | ui-dev | done | T10 | Écrans Puits, succès, quotidien, réglages ; boutique in-run. |
-| T12 | qa-tester | todo | T10,T11 | Rapport j3 : persistance après reload, aucune régression. |
+| T12 | qa-tester | doing | T10,T11 | Rapport j3 : persistance après reload, aucune régression. |
 
 ## Jalon 4 — Contenu, équilibrage, onboarding, polish
 
 | ID | Agent | Statut | Dépend de | Critère d'acceptation |
 |---|---|---|---|---|
-| T13 | gameplay-dev | todo | T12 | 7 éléments, 20 reliques, blocs blindés, 3 boss, équilibrage via waves.json selon rapport QA. |
+| T13 | gameplay-dev | doing | T12 | 7 éléments, 20 reliques, blocs blindés, 3 boss, équilibrage via waves.json selon rapport QA. |
 | T14 | ui-dev | todo | T12 | Onboarding sans texte (flèche animée, premier tir guidé), écran titre, polish des transitions. |
 | T15 | qa-tester | todo | T13,T14 | Rapport j4 : première récompense < 10 s, courbe de difficulté mesurée sur 10 runs. |
 

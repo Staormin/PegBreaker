@@ -368,6 +368,8 @@ export interface BossDef {
 export interface WavesConfig {
   /** PV de base rangée = baseHp × growthPerWave^(wave-1) × (1 + growthPerShot × shotInWave) */
   baseHp: number;
+  /** si présent, remplace baseHp/growthPerWave : PV de base interpolés linéairement entre les points (extrapolés géométriquement au-delà du dernier) */
+  hpByWave?: { wave: number; baseHp: number }[];
   growthPerWave: number;
   growthPerShot: number;
   hpVariance: { min: number; max: number };
