@@ -36,3 +36,22 @@ Le QA mesure avant/après : décisions par tir (cible ≥ 2), % de tirs à combo
 
 ## Hors scope
 Classement en ligne, comptes, pubs, achats. Pas de secousses ni de ralenti (décision produit).
+
+## Résultats (docs/qa/fun-final.md, passe finale)
+
+| Métrique | Avant | Après (bot naïf / bon usage du sélecteur) |
+|---|---|---|
+| Décisions par tir | 1 | 2 (direction + ouverture, 0 % involontaire) |
+| Tirs à combo ≥ 5 | 10 % | 27 % / 58 % |
+| Contrats réussis par run | — | 42 % / 62 % (6,6 réussis par run) |
+| Durée de la run 1 | 2,6 min | 4,6 min / 9,2 min |
+| Vague atteinte (run 1, avec revanche) | 5,2 | 8 / 12 |
+| Seconde chance | — | prise 5/5, +1,4 à +4,8 vagues |
+| Première récompense | 2,2 s | 2,2 s |
+| Moments morts | 0 | 0 |
+
+Verdict par mécanisme : F1 éventail (sélecteur explicite 3 positions, pénalité de dégâts 0,20) **multiplie le fun** ; F2 contrats **multiplie** ; F3 dorée (progressive, 23-25 % des dégâts) **neutre+** ; F4 seconde chance **multiplie** ; F5 record, F6 partage et défi, F8 quotidien muté avec série, F9 coffre : **fonctionnent et sont testés**, effet non mesurable par bot.
+
+Décisions prises en route : l'ouverture par longueur du geste a été abandonnée (61-93 % d'ouvertures involontaires) au profit d'un sélecteur ; Brasier et Vélocité rapportent ×1 fragment car ils facilitent la run.
+
+Pistes suivantes : garantir une épique au coffre même pour un débutant (F9-02) ; adoucir le mur de la vague 6 ; contrat dorée à 14 % de réussite ; progression méta encore en paliers ; F10 défis de déblocage ; mesurer le taux de partage avec de vrais joueurs.
