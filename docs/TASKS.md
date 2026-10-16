@@ -35,21 +35,21 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 |---|---|---|---|---|
 | T13 | gameplay-dev | done | T12 | 7 éléments, 20 reliques, blocs blindés, 3 boss, équilibrage via waves.json selon rapport QA. |
 | T14 | ui-dev | done | T12 | Onboarding sans texte (flèche animée, premier tir guidé), écran titre, polish des transitions. |
-| T15 | qa-tester | todo | T13,T14 | Rapport j4 : première récompense < 10 s, courbe de difficulté mesurée sur 10 runs. |
+| T15 | qa-tester | doing | T13,T14 | Rapport j4 : première récompense < 10 s, courbe de difficulté mesurée sur 10 runs. |
 
 ## Jalon 5 — Build de prod, perf, mobile
 
 | ID | Agent | Statut | Dépend de | Critère d'acceptation |
 |---|---|---|---|---|
-| T16 | feel-artist | doing | T15 | Profilage, aucune allocation dans la boucle, 60 fps sur CPU 4× ralenti (Playwright). |
-| T17 | ui-dev | doing | T15 | Viewport mobile 375×812 et 1440×900, manifest PWA, hors ligne, README. |
-| T18 | qa-tester | todo | T16,T17 | Rapport final : tous les tests passent, zéro erreur console, perf. |
+| T16 | feel-artist | done | T15 | Profilage, aucune allocation dans la boucle, 60 fps sur CPU 4× ralenti (Playwright). |
+| T17 | ui-dev | done | T15 | Viewport mobile 375×812 et 1440×900, manifest PWA, hors ligne, README. |
+| T18 | qa-tester | doing | T16,T17 | Rapport final : tous les tests passent, zéro erreur console, perf. |
 
 ## Tâches de correction issues des rapports QA
 
 | ID | Agent | Statut | Dépend de | Critère d'acceptation |
 |---|---|---|---|---|
-| T13b | gameplay-dev | doing | T12 | Plafond doux du combo, glace limitée (premier impact, 3 blocs/tir), 3 scénarios d'équilibrage avec écart-type ≤ 1,5, aucune run > vague 25. |
-| T10c | systems-dev | doing | T12 | Seuils de succès relevés (2-4 succès sur une première run), coûts el_ice/ghost/lead. |
+| T13b | gameplay-dev | done | T12 | Plafond doux du combo, glace limitée (premier impact, 3 blocs/tir), 3 scénarios d'équilibrage avec écart-type ≤ 1,5, aucune run > vague 25. |
+| T10c | systems-dev | done | T12 | Seuils de succès relevés (2-4 succès sur une première run), coûts el_ice/ghost/lead. |
 | T4c | ui-dev | done | T7 | Compteur de dégâts dans la bande HUD. |
 | T10b | systems-dev | done | T13 | 4 reliques épiques verrouillées dans le Puits, succès déclaratifs. |
