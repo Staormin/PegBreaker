@@ -248,10 +248,10 @@ export type GameEvent =
   | { type: 'block:hit'; blockId: number; ballId: number; pos: Vec2; damage: number; combo: number; element: BallElement; hpLeft: number; crit: boolean }
   | { type: 'block:destroyed'; blockId: number; kind: BlockKind; pos: Vec2; width: number; element: BallElement }
   | { type: 'block:frozen'; blockId: number; pos: Vec2 }
-  | { type: 'block:explode'; pos: Vec2; radius: number; damage: number }
+  | { type: 'block:explode'; pos: Vec2; radius: number; damage: number; element?: BallElement | 'explosive' }
   | { type: 'block:breached'; blockId: number; kind: BlockKind; damage: number }
-  | { type: 'lightning:chain'; from: Vec2; to: Vec2; damage: number }
-  | { type: 'ball:split'; pos: Vec2 }
+  | { type: 'lightning:chain'; from: Vec2; to: Vec2; damage: number; element?: BallElement }
+  | { type: 'ball:split'; pos: Vec2; element?: BallElement }
   | { type: 'combo:milestone'; combo: number; pos: Vec2; level: 1 | 2 | 3 }
   | { type: 'volley:end'; shotDamage: number; bestCombo: number }
   | { type: 'volley:fusion'; element: BallElement; tier: BallTier; index: number; pos: Vec2 }
@@ -269,7 +269,7 @@ export type GameEvent =
   | { type: 'shop:rerolled'; cost: number }
   | { type: 'shop:left' }
   | { type: 'player:damaged'; amount: number; hpLeft: number }
-  | { type: 'player:healed'; amount: number; hpLeft: number }
+  | { type: 'player:healed'; amount: number; hpLeft: number; source?: 'heart' | 'drop' | 'relic' | 'contract' | 'vampire' | 'shop' | 'revive' }
   | { type: 'meta:unlocked'; nodeId: string }
   | { type: 'achievement:unlocked'; achievementId: string }
   | { type: 'ui:click' }
