@@ -164,7 +164,7 @@ test('(e) réglages : volumes SFX et musique coupés via le DOM, persistants, au
   await page.reload();
   await waitReady(page);
   const s2 = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.meta.data.settings);
-  expect(s2).toEqual({ sfx: 0, music: 0 });
+  expect(s2).toMatchObject({ sfx: 0, music: 0 });
   await page.locator('.hud-gear').click();
   await screenIs(page, 'settings');
   await expect(page.locator('input[data-setting="sfx"]')).toHaveValue('0');

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T21:44:05.574Z",
+  "generatedAt": "2026-10-16T21:47:43.591Z",
   "build": "0.4.0-j4",
   "method": {
     "speed": "naïf qa-1 : vitesse 1 et 1,5 s de visée jusqu'à firstRewardAt, puis vitesse 8 ; autres : vitesse 8, 10 pages en parallèle au plus",
@@ -177,7 +177,7 @@
         "bestShotDamageRun": 4972,
         "fullFanShare": 0,
         "meanSpread": 0,
-        "decisionsPerMinHuman": 20.1,
+        "decisionsPerMinHuman": 20.7,
         "comboGe5": 0.13,
         "comboGe8": 0.03,
         "comboGe5UnderComboContract": 0.25,
@@ -214,9 +214,9 @@
             }
           }
         },
-        "durationHumanMs": 211983,
-        "durationHumanMin": 3.53,
-        "durationSimMs": 136450,
+        "durationHumanMs": 205450,
+        "durationHumanMin": 3.42,
+        "durationSimMs": 144567,
         "firstLossWave": 6,
         "firstLossDepth": 51,
         "waveOfDeath": 7,
@@ -229,20 +229,20 @@
             "wave": 6,
             "depth": 51,
             "canRevive": true,
-            "simMs": 119333,
+            "simMs": 124650,
             "action": "revive"
           },
           {
             "wave": 7,
             "depth": 61,
             "canRevive": false,
-            "simMs": 136450,
+            "simMs": 144567,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
-        "timeToFirstRewardMs": 2231,
-        "timeToFirstChoiceHumanMs": 23416,
+        "timeToFirstRewardMs": 2371,
+        "timeToFirstChoiceHumanMs": 23817,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 5,
@@ -279,7 +279,7 @@
         "bestShotDamageRun": 3967,
         "fullFanShare": 0,
         "meanSpread": 0,
-        "decisionsPerMinHuman": 18.4,
+        "decisionsPerMinHuman": 18.2,
         "comboGe5": 0.19,
         "comboGe8": 0.1,
         "comboGe5UnderComboContract": 0.2,
@@ -316,9 +316,9 @@
             }
           }
         },
-        "durationHumanMs": 264604,
-        "durationHumanMin": 4.41,
-        "durationSimMs": 175087,
+        "durationHumanMs": 266704,
+        "durationHumanMin": 4.45,
+        "durationSimMs": 174121,
         "firstLossWave": 6,
         "firstLossDepth": 52,
         "waveOfDeath": 8,
@@ -331,20 +331,20 @@
             "wave": 6,
             "depth": 52,
             "canRevive": true,
-            "simMs": 122113,
+            "simMs": 121813,
             "action": "revive"
           },
           {
             "wave": 8,
             "depth": 70,
             "canRevive": false,
-            "simMs": 175087,
+            "simMs": 174121,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 20083,
+        "timeToFirstChoiceHumanMs": 20167,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 6,
@@ -363,7 +363,7 @@
         "bestShotDamage": 3967,
         "contractsCompletedStat": 3,
         "deadMoments": [],
-        "maxFeedbackGapMs": 650,
+        "maxFeedbackGapMs": 617,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -381,7 +381,7 @@
         "bestShotDamageRun": 7534,
         "fullFanShare": 0,
         "meanSpread": 0,
-        "decisionsPerMinHuman": 16.7,
+        "decisionsPerMinHuman": 16.8,
         "comboGe5": 0.36,
         "comboGe8": 0.24,
         "comboGe5UnderComboContract": 0.62,
@@ -423,9 +423,9 @@
             }
           }
         },
-        "durationHumanMs": 408425,
-        "durationHumanMin": 6.81,
-        "durationSimMs": 278592,
+        "durationHumanMs": 407092,
+        "durationHumanMin": 6.78,
+        "durationSimMs": 274625,
         "firstLossWave": 10,
         "firstLossDepth": 86,
         "waveOfDeath": 11,
@@ -438,20 +438,20 @@
             "wave": 10,
             "depth": 86,
             "canRevive": true,
-            "simMs": 241687,
+            "simMs": 237721,
             "action": "revive"
           },
           {
             "wave": 11,
             "depth": 99,
             "canRevive": false,
-            "simMs": 278592,
+            "simMs": 274625,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 14150,
+        "timeToFirstChoiceHumanMs": 14300,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 8,
@@ -464,13 +464,13 @@
           "hits": 425,
           "perShot": 1,
           "damageShare": 0.16,
-          "shotsWithGoldenKill": 0.16
+          "shotsWithGoldenKill": 0.17
         },
         "bestCombo": 53,
         "bestShotDamage": 7534,
         "contractsCompletedStat": 5,
         "deadMoments": [],
-        "maxFeedbackGapMs": 883,
+        "maxFeedbackGapMs": 633,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -488,7 +488,7 @@
         "bestShotDamageRun": 4879,
         "fullFanShare": 0,
         "meanSpread": 0,
-        "decisionsPerMinHuman": 16.8,
+        "decisionsPerMinHuman": 17.1,
         "comboGe5": 0.37,
         "comboGe8": 0.24,
         "comboGe5UnderComboContract": 0.14,
@@ -525,9 +525,9 @@
             }
           }
         },
-        "durationHumanMs": 278629,
-        "durationHumanMin": 4.64,
-        "durationSimMs": 191846,
+        "durationHumanMs": 274396,
+        "durationHumanMin": 4.57,
+        "durationSimMs": 186646,
         "firstLossWave": 6,
         "firstLossDepth": 47,
         "waveOfDeath": 8,
@@ -540,20 +540,20 @@
             "wave": 6,
             "depth": 47,
             "canRevive": true,
-            "simMs": 133971,
+            "simMs": 129188,
             "action": "revive"
           },
           {
             "wave": 8,
             "depth": 67,
             "canRevive": false,
-            "simMs": 191846,
+            "simMs": 186646,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 15583,
+        "timeToFirstChoiceHumanMs": 15284,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 6,
@@ -572,7 +572,7 @@
         "bestShotDamage": 4879,
         "contractsCompletedStat": 5,
         "deadMoments": [],
-        "maxFeedbackGapMs": 1000,
+        "maxFeedbackGapMs": 700,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -590,18 +590,18 @@
         "bestShotDamageRun": 1127,
         "fullFanShare": 0,
         "meanSpread": 0,
-        "decisionsPerMinHuman": 20.6,
+        "decisionsPerMinHuman": 20.7,
         "comboGe5": 0.32,
         "comboGe8": 0.14,
         "comboGe5UnderComboContract": 0.09,
         "contractShots": 52,
         "contracts": {
-          "offered": 7,
+          "offered": 8,
           "completed": 1,
           "failed": 6,
           "byKind": {
             "reachCombo": {
-              "offered": 2,
+              "offered": 3,
               "completed": 1,
               "failed": 1
             },
@@ -632,9 +632,9 @@
             }
           }
         },
-        "durationHumanMs": 215429,
-        "durationHumanMin": 3.59,
-        "durationSimMs": 131946,
+        "durationHumanMs": 214096,
+        "durationHumanMin": 3.57,
+        "durationSimMs": 129229,
         "firstLossWave": 6,
         "firstLossDepth": 52,
         "waveOfDeath": 7,
@@ -647,20 +647,20 @@
             "wave": 6,
             "depth": 52,
             "canRevive": true,
-            "simMs": 105879,
+            "simMs": 103296,
             "action": "revive"
           },
           {
             "wave": 7,
             "depth": 65,
             "canRevive": false,
-            "simMs": 131946,
+            "simMs": 129229,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 26533,
+        "timeToFirstChoiceHumanMs": 26133,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 5,
@@ -673,13 +673,13 @@
           "hits": 140,
           "perShot": 1,
           "damageShare": 0.26,
-          "shotsWithGoldenKill": 0.2
+          "shotsWithGoldenKill": 0.22
         },
         "bestCombo": 19,
         "bestShotDamage": 1127,
         "contractsCompletedStat": 1,
         "deadMoments": [],
-        "maxFeedbackGapMs": 717,
+        "maxFeedbackGapMs": 783,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -694,14 +694,14 @@
       "meanTargetPx": 403.8,
       "bestShotDamage": 4495.8,
       "shots": 72.4,
-      "decisionsPerMinHuman": 18.52,
+      "decisionsPerMinHuman": 18.7,
       "comboGe5": 0.27,
       "comboGe8": 0.15,
       "comboGe5UnderComboContract": 0.26,
-      "contractsOfferedPerRun": 7.6,
+      "contractsOfferedPerRun": 7.8,
       "contractsCompletedPerRun": 3.2,
       "contractsFailedPerRun": 4.2,
-      "contractSuccessRate": 0.42,
+      "contractSuccessRate": 0.41,
       "contractsByKind": {
         "destroyInOneShot": {
           "offered": 6,
@@ -729,7 +729,7 @@
           "failed": 5
         },
         "reachCombo": {
-          "offered": 7,
+          "offered": 8,
           "completed": 4,
           "failed": 3
         },
@@ -744,14 +744,14 @@
           "failed": 2
         }
       },
-      "durationHumanMin": 4.6,
+      "durationHumanMin": 4.56,
       "firstLossWave": 6.8,
       "waveOfDeath": 8.2,
       "depth": 72.4,
       "reviveShare": 1,
       "wavesGainedByRevive": 1.4,
       "depthGainedByRevive": 14.8,
-      "timeToFirstChoiceHumanMs": 19953,
+      "timeToFirstChoiceHumanMs": 19940.2,
       "goldenPerShot": 1,
       "goldenDamageShare": 0.24,
       "shotsWithGoldenKill": 0.22,
@@ -775,7 +775,7 @@
         "bestShotDamageRun": 3012,
         "fullFanShare": 0.57,
         "meanSpread": 0.57,
-        "decisionsPerMinHuman": 24.6,
+        "decisionsPerMinHuman": 25,
         "comboGe5": 0.6,
         "comboGe8": 0.4,
         "comboGe5UnderComboContract": 0.86,
@@ -807,9 +807,9 @@
             }
           }
         },
-        "durationHumanMs": 314384,
-        "durationHumanMin": 5.24,
-        "durationSimMs": 220567,
+        "durationHumanMs": 309833,
+        "durationHumanMin": 5.16,
+        "durationSimMs": 229000,
         "firstLossWave": 7,
         "firstLossDepth": 59,
         "waveOfDeath": 8,
@@ -822,20 +822,20 @@
             "wave": 7,
             "depth": 59,
             "canRevive": true,
-            "simMs": 168733,
+            "simMs": 176633,
             "action": "revive"
           },
           {
             "wave": 8,
             "depth": 75,
             "canRevive": false,
-            "simMs": 220567,
+            "simMs": 229000,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 22600,
+        "timeToFirstChoiceHumanMs": 22334,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 6,
@@ -848,13 +848,13 @@
           "hits": 280,
           "perShot": 1,
           "damageShare": 0.3,
-          "shotsWithGoldenKill": 0.25
+          "shotsWithGoldenKill": 0.24
         },
         "bestCombo": 82,
         "bestShotDamage": 3012,
         "contractsCompletedStat": 5,
         "deadMoments": [],
-        "maxFeedbackGapMs": 767,
+        "maxFeedbackGapMs": 900,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -872,7 +872,7 @@
         "bestShotDamageRun": 178332,
         "fullFanShare": 0.74,
         "meanSpread": 0.74,
-        "decisionsPerMinHuman": 22.1,
+        "decisionsPerMinHuman": 22.2,
         "comboGe5": 0.8,
         "comboGe8": 0.6,
         "comboGe5UnderComboContract": 0.95,
@@ -919,9 +919,9 @@
             }
           }
         },
-        "durationHumanMs": 1139492,
-        "durationHumanMin": 18.99,
-        "durationSimMs": 840525,
+        "durationHumanMs": 1136142,
+        "durationHumanMin": 18.94,
+        "durationSimMs": 852325,
         "firstLossWave": 6,
         "firstLossDepth": 45,
         "waveOfDeath": 21,
@@ -934,20 +934,20 @@
             "wave": 6,
             "depth": 45,
             "canRevive": true,
-            "simMs": 122533,
+            "simMs": 128333,
             "action": "revive"
           },
           {
             "wave": 21,
             "depth": 225,
             "canRevive": false,
-            "simMs": 840525,
+            "simMs": 852325,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 20250,
+        "timeToFirstChoiceHumanMs": 19150,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 18,
@@ -966,7 +966,7 @@
         "bestShotDamage": 178332,
         "contractsCompletedStat": 13,
         "deadMoments": [],
-        "maxFeedbackGapMs": 650,
+        "maxFeedbackGapMs": 1233,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -984,7 +984,7 @@
         "bestShotDamageRun": 6882,
         "fullFanShare": 0.63,
         "meanSpread": 0.63,
-        "decisionsPerMinHuman": 21,
+        "decisionsPerMinHuman": 21.1,
         "comboGe5": 0.55,
         "comboGe8": 0.4,
         "comboGe5UnderComboContract": 1,
@@ -1026,9 +1026,9 @@
             }
           }
         },
-        "durationHumanMs": 553371,
-        "durationHumanMin": 9.22,
-        "durationSimMs": 412954,
+        "durationHumanMs": 551771,
+        "durationHumanMin": 9.2,
+        "durationSimMs": 423721,
         "firstLossWave": 11,
         "firstLossDepth": 94,
         "waveOfDeath": 12,
@@ -1041,20 +1041,20 @@
             "wave": 11,
             "depth": 94,
             "canRevive": true,
-            "simMs": 344488,
+            "simMs": 355121,
             "action": "revive"
           },
           {
             "wave": 12,
             "depth": 109,
             "canRevive": false,
-            "simMs": 412954,
+            "simMs": 423721,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 14467,
+        "timeToFirstChoiceHumanMs": 13517,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 9,
@@ -1073,7 +1073,7 @@
         "bestShotDamage": 6882,
         "contractsCompletedStat": 7,
         "deadMoments": [],
-        "maxFeedbackGapMs": 1083,
+        "maxFeedbackGapMs": 933,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1091,7 +1091,7 @@
         "bestShotDamageRun": 8641,
         "fullFanShare": 0.7,
         "meanSpread": 0.7,
-        "decisionsPerMinHuman": 24.4,
+        "decisionsPerMinHuman": 24.7,
         "comboGe5": 0.62,
         "comboGe8": 0.47,
         "comboGe5UnderComboContract": 0.5,
@@ -1128,9 +1128,9 @@
             }
           }
         },
-        "durationHumanMs": 512413,
-        "durationHumanMin": 8.54,
-        "durationSimMs": 365046,
+        "durationHumanMs": 506196,
+        "durationHumanMin": 8.44,
+        "durationSimMs": 375813,
         "firstLossWave": 6,
         "firstLossDepth": 48,
         "waveOfDeath": 12,
@@ -1143,14 +1143,14 @@
             "wave": 6,
             "depth": 48,
             "canRevive": true,
-            "simMs": 128333,
+            "simMs": 135383,
             "action": "revive"
           },
           {
             "wave": 12,
             "depth": 113,
             "canRevive": false,
-            "simMs": 365046,
+            "simMs": 375813,
             "action": "giveUp"
           }
         ],
@@ -1175,7 +1175,7 @@
         "bestShotDamage": 8641,
         "contractsCompletedStat": 5,
         "deadMoments": [],
-        "maxFeedbackGapMs": 717,
+        "maxFeedbackGapMs": 967,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1189,15 +1189,15 @@
         "decisionsPerShot": 1.59,
         "spreadShare": 0.59,
         "involuntaryShareB": 0.89,
-        "meanTargetPx": 377,
+        "meanTargetPx": 379,
         "bestShotDamageRun": 2459,
         "fullFanShare": 0.59,
-        "meanSpread": 0.59,
-        "decisionsPerMinHuman": 27.5,
+        "meanSpread": 0.6,
+        "decisionsPerMinHuman": 28,
         "comboGe5": 0.35,
         "comboGe8": 0.27,
-        "comboGe5UnderComboContract": 0.24,
-        "contractShots": 50,
+        "comboGe5UnderComboContract": 0.25,
+        "contractShots": 49,
         "contracts": {
           "offered": 7,
           "completed": 3,
@@ -1235,9 +1235,9 @@
             }
           }
         },
-        "durationHumanMs": 239891,
-        "durationHumanMin": 4,
-        "durationSimMs": 161758,
+        "durationHumanMs": 235792,
+        "durationHumanMin": 3.93,
+        "durationSimMs": 171542,
         "firstLossWave": 6,
         "firstLossDepth": 52,
         "waveOfDeath": 7,
@@ -1250,20 +1250,20 @@
             "wave": 6,
             "depth": 52,
             "canRevive": true,
-            "simMs": 131813,
+            "simMs": 140796,
             "action": "revive"
           },
           {
             "wave": 7,
             "depth": 63,
             "canRevive": false,
-            "simMs": 161758,
+            "simMs": 171542,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 27367,
+        "timeToFirstChoiceHumanMs": 25333,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 5,
@@ -1282,7 +1282,7 @@
         "bestShotDamage": 2459,
         "contractsCompletedStat": 3,
         "deadMoments": [],
-        "maxFeedbackGapMs": 683,
+        "maxFeedbackGapMs": 1050,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1294,10 +1294,10 @@
       "decisionsPerShot": 1.65,
       "spreadShare": 0.65,
       "involuntaryShareB": 0.93,
-      "meanTargetPx": 394.4,
+      "meanTargetPx": 394.8,
       "bestShotDamage": 39865.2,
       "shots": 117,
-      "decisionsPerMinHuman": 23.92,
+      "decisionsPerMinHuman": 24.2,
       "comboGe5": 0.58,
       "comboGe8": 0.43,
       "comboGe5UnderComboContract": 0.71,
@@ -1347,19 +1347,19 @@
           "failed": 2
         }
       },
-      "durationHumanMin": 9.2,
+      "durationHumanMin": 9.13,
       "firstLossWave": 7.2,
       "waveOfDeath": 12,
       "depth": 117,
       "reviveShare": 1,
       "wavesGainedByRevive": 4.8,
       "depthGainedByRevive": 57.4,
-      "timeToFirstChoiceHumanMs": 20026.8,
+      "timeToFirstChoiceHumanMs": 19156.8,
       "goldenPerShot": 1,
       "goldenDamageShare": 0.2,
       "shotsWithGoldenKill": 0.18,
       "deadMoments": 0,
-      "maxFeedbackGapMs": 1083,
+      "maxFeedbackGapMs": 1233,
       "errors": 0
     }
   },
@@ -1378,7 +1378,7 @@
         "bestShotDamageRun": 1410,
         "fullFanShare": 1,
         "meanSpread": 1,
-        "decisionsPerMinHuman": 29,
+        "decisionsPerMinHuman": 29.4,
         "comboGe5": 0.4,
         "comboGe8": 0.25,
         "comboGe5UnderComboContract": 0.4,
@@ -1415,9 +1415,9 @@
             }
           }
         },
-        "durationHumanMs": 269183,
-        "durationHumanMin": 4.49,
-        "durationSimMs": 194150,
+        "durationHumanMs": 265000,
+        "durationHumanMin": 4.42,
+        "durationSimMs": 201533,
         "firstLossWave": 6,
         "firstLossDepth": 51,
         "waveOfDeath": 7,
@@ -1430,20 +1430,20 @@
             "wave": 6,
             "depth": 51,
             "canRevive": true,
-            "simMs": 172946,
+            "simMs": 180196,
             "action": "revive"
           },
           {
             "wave": 7,
             "depth": 60,
             "canRevive": false,
-            "simMs": 194150,
+            "simMs": 201533,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 17384,
+        "timeToFirstChoiceHumanMs": 16534,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 6
@@ -1455,13 +1455,13 @@
           "hits": 183,
           "perShot": 1,
           "damageShare": 0.18,
-          "shotsWithGoldenKill": 0.32
+          "shotsWithGoldenKill": 0.3
         },
         "bestCombo": 31,
         "bestShotDamage": 1410,
         "contractsCompletedStat": 4,
         "deadMoments": [],
-        "maxFeedbackGapMs": 983,
+        "maxFeedbackGapMs": 1033,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1479,7 +1479,7 @@
         "bestShotDamageRun": 2131,
         "fullFanShare": 1,
         "meanSpread": 1,
-        "decisionsPerMinHuman": 27.1,
+        "decisionsPerMinHuman": 27.6,
         "comboGe5": 0.52,
         "comboGe8": 0.33,
         "comboGe5UnderComboContract": 1,
@@ -1511,9 +1511,9 @@
             }
           }
         },
-        "durationHumanMs": 247521,
-        "durationHumanMin": 4.13,
-        "durationSimMs": 182404,
+        "durationHumanMs": 243704,
+        "durationHumanMin": 4.06,
+        "durationSimMs": 189737,
         "firstLossWave": 4,
         "firstLossDepth": 32,
         "waveOfDeath": 6,
@@ -1526,20 +1526,20 @@
             "wave": 4,
             "depth": 32,
             "canRevive": true,
-            "simMs": 122667,
+            "simMs": 129067,
             "action": "revive"
           },
           {
             "wave": 6,
             "depth": 52,
             "canRevive": false,
-            "simMs": 182404,
+            "simMs": 189737,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 14284,
+        "timeToFirstChoiceHumanMs": 13584,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 4,
@@ -1552,13 +1552,13 @@
           "hits": 107,
           "perShot": 1,
           "damageShare": 0.18,
-          "shotsWithGoldenKill": 0.17
+          "shotsWithGoldenKill": 0.15
         },
         "bestCombo": 60,
         "bestShotDamage": 2131,
         "contractsCompletedStat": 3,
         "deadMoments": [],
-        "maxFeedbackGapMs": 767,
+        "maxFeedbackGapMs": 1083,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1569,18 +1569,18 @@
         "seed": "qa-3",
         "stopReason": "gameover",
         "shots": 38,
-        "decisionsPerShot": 2,
-        "spreadShare": 1,
-        "involuntaryShareB": 0.89,
-        "meanTargetPx": 431,
+        "decisionsPerShot": 1.97,
+        "spreadShare": 0.97,
+        "involuntaryShareB": 0.92,
+        "meanTargetPx": 440,
         "bestShotDamageRun": 1011,
-        "fullFanShare": 1,
+        "fullFanShare": 0.97,
         "meanSpread": 1,
-        "decisionsPerMinHuman": 31.3,
+        "decisionsPerMinHuman": 31.6,
         "comboGe5": 0.34,
         "comboGe8": 0.24,
-        "comboGe5UnderComboContract": 0.75,
-        "contractShots": 32,
+        "comboGe5UnderComboContract": 0.67,
+        "contractShots": 30,
         "contracts": {
           "offered": 5,
           "completed": 2,
@@ -1613,9 +1613,9 @@
             }
           }
         },
-        "durationHumanMs": 159121,
-        "durationHumanMin": 2.65,
-        "durationSimMs": 112188,
+        "durationHumanMs": 155538,
+        "durationHumanMin": 2.59,
+        "durationSimMs": 119871,
         "firstLossWave": 4,
         "firstLossDepth": 29,
         "waveOfDeath": 5,
@@ -1628,20 +1628,20 @@
             "wave": 4,
             "depth": 29,
             "canRevive": true,
-            "simMs": 90750,
+            "simMs": 97100,
             "action": "revive"
           },
           {
             "wave": 5,
             "depth": 38,
             "canRevive": false,
-            "simMs": 112188,
+            "simMs": 119871,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 18000,
+        "timeToFirstChoiceHumanMs": 18283,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 4
@@ -1653,13 +1653,13 @@
           "hits": 121,
           "perShot": 1,
           "damageShare": 0.33,
-          "shotsWithGoldenKill": 0.24
+          "shotsWithGoldenKill": 0.21
         },
         "bestCombo": 30,
         "bestShotDamage": 1011,
         "contractsCompletedStat": 2,
         "deadMoments": [],
-        "maxFeedbackGapMs": 767,
+        "maxFeedbackGapMs": 1350,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1677,7 +1677,7 @@
         "bestShotDamageRun": 1734,
         "fullFanShare": 1,
         "meanSpread": 1,
-        "decisionsPerMinHuman": 32.3,
+        "decisionsPerMinHuman": 33.4,
         "comboGe5": 0.31,
         "comboGe8": 0.15,
         "comboGe5UnderComboContract": 0.25,
@@ -1714,9 +1714,9 @@
             }
           }
         },
-        "durationHumanMs": 208246,
-        "durationHumanMin": 3.47,
-        "durationSimMs": 143746,
+        "durationHumanMs": 200913,
+        "durationHumanMin": 3.35,
+        "durationSimMs": 148513,
         "firstLossWave": 5,
         "firstLossDepth": 43,
         "waveOfDeath": 6,
@@ -1729,20 +1729,20 @@
             "wave": 5,
             "depth": 43,
             "canRevive": true,
-            "simMs": 125575,
+            "simMs": 128875,
             "action": "revive"
           },
           {
             "wave": 6,
             "depth": 52,
             "canRevive": false,
-            "simMs": 143746,
+            "simMs": 148513,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 21800,
+        "timeToFirstChoiceHumanMs": 20200,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 5
@@ -1760,7 +1760,7 @@
         "bestShotDamage": 1734,
         "contractsCompletedStat": 3,
         "deadMoments": [],
-        "maxFeedbackGapMs": 750,
+        "maxFeedbackGapMs": 917,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1778,7 +1778,7 @@
         "bestShotDamageRun": 2568,
         "fullFanShare": 1,
         "meanSpread": 1,
-        "decisionsPerMinHuman": 27.8,
+        "decisionsPerMinHuman": 27.6,
         "comboGe5": 0.37,
         "comboGe8": 0.25,
         "comboGe5UnderComboContract": 0.29,
@@ -1815,9 +1815,9 @@
             }
           }
         },
-        "durationHumanMs": 241692,
-        "durationHumanMin": 4.03,
-        "durationSimMs": 176292,
+        "durationHumanMs": 243192,
+        "durationHumanMin": 4.05,
+        "durationSimMs": 174142,
         "firstLossWave": 5,
         "firstLossDepth": 41,
         "waveOfDeath": 6,
@@ -1830,20 +1830,20 @@
             "wave": 5,
             "depth": 41,
             "canRevive": true,
-            "simMs": 130000,
+            "simMs": 128250,
             "action": "revive"
           },
           {
             "wave": 6,
             "depth": 52,
             "canRevive": false,
-            "simMs": 176292,
+            "simMs": 174142,
             "action": "giveUp"
           }
         ],
         "runOverCount": 1,
         "timeToFirstRewardMs": null,
-        "timeToFirstChoiceHumanMs": 20516,
+        "timeToFirstChoiceHumanMs": 20416,
         "firstOfferSource": "wave",
         "rewardSources": {
           "wave": 5
@@ -1861,7 +1861,7 @@
         "bestShotDamage": 2568,
         "contractsCompletedStat": 2,
         "deadMoments": [],
-        "maxFeedbackGapMs": 733,
+        "maxFeedbackGapMs": 683,
         "softlocks": [],
         "violations": [],
         "consoleErrors": [],
@@ -1870,16 +1870,16 @@
     ],
     "average": {
       "runs": 5,
-      "decisionsPerShot": 2,
-      "spreadShare": 1,
+      "decisionsPerShot": 1.99,
+      "spreadShare": 0.99,
       "involuntaryShareB": 0.89,
-      "meanTargetPx": 403.2,
+      "meanTargetPx": 405,
       "bestShotDamage": 1770.8,
       "shots": 50.8,
-      "decisionsPerMinHuman": 29.5,
+      "decisionsPerMinHuman": 29.92,
       "comboGe5": 0.39,
       "comboGe8": 0.24,
-      "comboGe5UnderComboContract": 0.54,
+      "comboGe5UnderComboContract": 0.52,
       "contractsOfferedPerRun": 5.8,
       "contractsCompletedPerRun": 2.8,
       "contractsFailedPerRun": 2.8,
@@ -1926,19 +1926,19 @@
           "failed": 1
         }
       },
-      "durationHumanMin": 3.75,
+      "durationHumanMin": 3.69,
       "firstLossWave": 4.8,
       "waveOfDeath": 6,
       "depth": 50.8,
       "reviveShare": 1,
       "wavesGainedByRevive": 1.2,
       "depthGainedByRevive": 11.6,
-      "timeToFirstChoiceHumanMs": 18396.8,
+      "timeToFirstChoiceHumanMs": 17803.4,
       "goldenPerShot": 1,
       "goldenDamageShare": 0.23,
-      "shotsWithGoldenKill": 0.23,
+      "shotsWithGoldenKill": 0.21,
       "deadMoments": 0,
-      "maxFeedbackGapMs": 983,
+      "maxFeedbackGapMs": 1350,
       "errors": 0
     }
   }

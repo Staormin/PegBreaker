@@ -119,7 +119,7 @@ test('temps réel sous charge : aucune note en retard ; intro, fondu croisé, lo
   await page.getByRole('button', { name: 'boss on/off' }).click();
 
   // fondu croisé vers chaque piste ; pic de la musique seule mesuré après compresseur + limiteur
-  // (même point que les SFX du jeu, ~0,86 en crête) : il doit rester ≥ 14 dB dessous
+  // (même point que les SFX du jeu, ~0,86 en crête) : il doit rester ≥ 8 dB dessous (cible ~0,3)
   const peaks: Record<string, number> = {};
   for (const id of ['arcade', 'deep', 'neon'] as const) {
     await page.getByLabel('Piste musicale').selectOption(id);
@@ -139,7 +139,7 @@ test('temps réel sous charge : aucune note en retard ; intro, fondu croisé, lo
     });
   }
   console.log('MUSIC-REALTIME-PEAK', JSON.stringify(peaks));
-  for (const v of Object.values(peaks)) expect(v).toBeLessThanOrEqual(SFX_PEAK * Math.pow(10, -14 / 20));
+  for (const v of Object.values(peaks)) expect(v).toBeLessThanOrEqual(SFX_PEAK * Math.pow(10, -8 / 20));
 
   // lost → accord tenu ; revived → reprise ; over → résolution puis silence
   await page.getByRole('button', { name: 'lost', exact: true }).click();
@@ -173,5 +173,33 @@ test('export WAV 30 s depuis la preview', async ({ page }) => {
   const { statSync } = await import('node:fs');
   // 30 s × 44 100 Hz × 2 canaux × 2 octets + en-tête
   expect(statSync(path).size).toBe(44 + 30 * 44100 * 2 * 2);
+  expect(errors).toEqual([]);
+});
+
+test('rafale 30 balles + musique intensité max (arcade, boss) : pic master < 0,9', async ({ page }) => {
+  const errors = await openPreview(page);
+  await page.getByRole('button', { name: 'Démarrer (run:started)' }).click();
+  await page.getByLabel('Piste musicale').selectOption('arcade');
+  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'intensité +' }).click();
+  await page.getByRole('button', { name: 'boss on/off' }).click();
+  await page.waitForTimeout(5000);
+  const sample = (ms: number) =>
+    page.evaluate(async (dur) => {
+      const x = (window as unknown as W).__audioPreview!;
+      x.debug.resetPeak();
+      const end = performance.now() + dur;
+      while (performance.now() < end) {
+        x.debug.samplePeak();
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      return { peak: x.debug.engine.peak, mode: x.debug.musicMode };
+    }, ms);
+  const musicOnly = await sample(3000);
+  await page.getByRole('button', { name: 'Rafale 30 balles (3 s)' }).click();
+  const both = await sample(3500);
+  console.log('MUSIC+BURST', JSON.stringify({ musicOnly, both }));
+  expect(musicOnly.mode).toBe('play');
+  expect(musicOnly.peak).toBeGreaterThan(0.2);
+  expect(both.peak).toBeLessThan(0.9);
   expect(errors).toEqual([]);
 });

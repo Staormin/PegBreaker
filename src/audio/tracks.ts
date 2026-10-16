@@ -95,7 +95,7 @@ const NEON: TrackDef = {
     bassCutoff: 320,
     reverbSend: { chord: 0.28, melody: 0.3, counter: 0.25, bass: 0.04 },
     delay: { beats: 0.75, feedback: 0.22, wet: 0.2 },
-    level: 0.5,
+    level: 1,
   },
   resolution: { ...chord('D: D2 / F#3 A3 D4'), melody: 74 },
 };
@@ -169,7 +169,7 @@ const ARCADE: TrackDef = {
     bassCutoff: 400,
     reverbSend: { chord: 0.2, melody: 0.2, counter: 0.15, bass: 0.03 },
     delay: { beats: 0.75, feedback: 0.2, wet: 0.15 },
-    level: 0.45,
+    level: 0.9,
   },
   resolution: { ...chord('A: A2 / A3 C#4 E4'), melody: 69 },
 };
@@ -224,7 +224,7 @@ const DEEP: TrackDef = {
     bassCutoff: 200,
     reverbSend: { chord: 0.3, melody: 0.3, counter: 0.28, bass: 0.04 },
     delay: { beats: 0.75, feedback: 0.25, wet: 0.2 },
-    level: 0.54,
+    level: 1.08,
   },
   resolution: { ...chord('E: E2 / E3 B3 G#4'), melody: 76 },
 };
