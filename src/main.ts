@@ -72,11 +72,13 @@ function boot(): void {
   });
   const persistRun = (): void => {
     if (forcedSeed || !persistEnabled) return; // runs QA/debug : jamais sauvegardées
-    meta.setCurrentRun(sim.state.phase === 'gameover' ? null : sim.snapshot());
+    // en 'gameover' (run:lost) on garde le snapshot : la seconde chance peut reprendre ; run:over efface
+    meta.setCurrentRun(sim.snapshot());
   };
   bus.on('run:over', (e) => {
     if (forcedSeed) return;
     const unlocked = meta.onRunEnd(e.summary);
+    meta.setCurrentRun(null);
     for (const id of unlocked) bus.emit({ type: 'achievement:unlocked', achievementId: id });
   });
   bus.on('run:started', () => {

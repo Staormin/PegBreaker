@@ -36,6 +36,8 @@ export interface Ball {
   alive: boolean;
   /** pour 'split' : déjà divisée ? pour 'fire' : déjà explosé ? */
   triggered: boolean;
+  /** dernière balle de la volée : dégâts × lastBallMultiplier */
+  golden: boolean;
 }
 
 // ----------------------------------------------------------------------
@@ -72,6 +74,45 @@ export interface Drop {
   value: number;
   /** pour 'ball' : élément donné */
   element: BallElement | null;
+}
+
+// ----------------------------------------------------------------------
+// Contrats de vague (objectifs courts)
+// ----------------------------------------------------------------------
+
+export type ContractKind =
+  | 'destroyInOneShot' // casser `target` blocs en un seul tir
+  | 'reachCombo' // atteindre un combo de `target` sur une balle
+  | 'noDamage' // finir la vague sans perdre de PV (target = 1)
+  | 'collectCoins' // ramasser `target` pièces pendant la vague
+  | 'killWithElement' // casser `target` blocs avec l'élément `element`
+  | 'clearUnderShots' // nettoyer la vague en au plus `target` tirs
+  | 'collectBalls' // ramasser `target` drops de balle
+  | 'goldenKill'; // casser `target` blocs avec la balle dorée
+
+export interface ContractDef {
+  id: string;
+  kind: ContractKind;
+  target: number;
+  element?: BallElement;
+  /** texte court (≤ 40 caractères), {n} remplacé par target */
+  text: string;
+  reward: RewardOption;
+  minWave: number;
+  weight: number;
+}
+
+export interface ContractState {
+  id: string;
+  progress: number;
+  target: number;
+  status: 'active' | 'done' | 'failed';
+}
+
+export interface ContractsConfig {
+  /** probabilité qu'une vague propose un contrat */
+  chance: number;
+  defs: ContractDef[];
 }
 
 // ----------------------------------------------------------------------
@@ -124,6 +165,7 @@ export interface RunStats {
   bossesKilled: number;
   /** vagues nettoyées sans perdre de PV */
   perfectWaves: number;
+  contractsCompleted: number;
   /** ms simulés */
   durationMs: number;
 }
@@ -151,6 +193,12 @@ export interface RunState {
   launchPos: Vec2;
   /** direction de visée normalisée (y < 0 = vers le haut), null si aucune */
   aimDir: Vec2 | null;
+  /** ouverture de la volée 0 (rafale serrée) .. 1 (éventail de ±maxSpreadDeg) */
+  aimSpread: number;
+  /** contrat de la vague courante */
+  contract: ContractState | null;
+  /** secondes chances utilisées dans la run */
+  revivesUsed: number;
   /** dégâts cumulés du tir en cours (pour l'affichage) */
   currentShotDamage: number;
   /** combo max du tir en cours */
@@ -177,9 +225,15 @@ export type RunSnapshot = RunState & { internal?: unknown };
 
 export type GameEvent =
   | { type: 'run:started'; seed: string }
+  | { type: 'run:lost'; canRevive: boolean; wave: number; depth: number }
+  | { type: 'run:revived'; hpLeft: number; revivesUsed: number }
   | { type: 'run:over'; summary: RunSummary }
-  | { type: 'volley:start'; count: number; from: Vec2; dir: Vec2 }
-  | { type: 'ball:launched'; ballId: number; element: BallElement; tier: BallTier; pos: Vec2 }
+  | { type: 'contract:offered'; contract: ContractState; def: ContractDef }
+  | { type: 'contract:progress'; progress: number; target: number }
+  | { type: 'contract:completed'; def: ContractDef; reward: RewardOption }
+  | { type: 'contract:failed'; def: ContractDef }
+  | { type: 'volley:start'; count: number; from: Vec2; dir: Vec2; spread: number }
+  | { type: 'ball:launched'; ballId: number; element: BallElement; tier: BallTier; pos: Vec2; golden: boolean }
   | { type: 'ball:bounce'; ballId: number; pos: Vec2; normal: Vec2; surface: 'wall' | 'block' | 'peg'; combo: number }
   | { type: 'ball:grounded'; ballId: number; pos: Vec2 }
   | { type: 'block:hit'; blockId: number; pos: Vec2; damage: number; combo: number; element: BallElement; hpLeft: number; crit: boolean }
@@ -198,7 +252,7 @@ export type GameEvent =
   | { type: 'wave:cleared'; wave: number }
   | { type: 'boss:spawned'; bossId: string; blockId: number }
   | { type: 'boss:killed'; bossId: string; pos: Vec2 }
-  | { type: 'reward:offered'; options: RewardOption[] }
+  | { type: 'reward:offered'; options: RewardOption[]; source: 'wave' | 'boss' }
   | { type: 'reward:chosen'; option: RewardOption }
   | { type: 'reward:skipped' }
   | { type: 'shop:opened'; shop: ShopState }
@@ -225,6 +279,8 @@ export interface RunSummary {
   dailyDate: string | null;
   /** score = somme pondérée (voir economy.json → score) */
   score: number;
+  revivesUsed: number;
+  contractsCompleted: number;
 }
 
 // ----------------------------------------------------------------------
@@ -259,8 +315,8 @@ export interface Sim {
   readonly config: GameConfig;
   /** Avance de dtMs (déjà multiplié par le timeScale). Renvoie les événements émis. Le tableau renvoyé est réutilisé : le copier si besoin. */
   step(dtMs: number): readonly GameEvent[];
-  /** Direction de visée (normalisée en interne ; y doit être < 0, sinon clampée à un angle min). */
-  aim(dir: Vec2): void;
+  /** Direction de visée (normalisée en interne ; y doit être < 0, sinon clampée à un angle min) et ouverture 0..1 (défaut : inchangée). */
+  aim(dir: Vec2, spread?: number): void;
   /** Annule la visée (aimDir = null). */
   cancelAim(): void;
   /** Tire la volée dans aimDir. Ne fait rien hors phase 'aiming' ou sans aimDir. */
@@ -273,6 +329,10 @@ export interface Sim {
   reroll(): void;
   leaveShop(): void;
   restart(seed?: string): void;
+  /** Seconde chance : en phase 'gameover' après 'run:lost', si revivesUsed < economy.revive.maxPerRun. Renvoie false sinon. Le coût en fragments est débité par l'UI via MetaSystem.spendFragments AVANT l'appel. */
+  revive(): boolean;
+  /** Abandon définitif après 'run:lost' : émet 'run:over' avec le résumé. */
+  giveUp(): void;
   /** Polyline de prévisualisation : départ, premier impact, et court segment réfléchi. */
   preview(dir: Vec2): Vec2[];
   snapshot(): RunSnapshot;
@@ -293,6 +353,8 @@ export interface BoardConfig {
   advanceDurationMs: number;
   /** angle minimal par rapport à l'horizontale (degrés) */
   minAimAngleDeg: number;
+  /** demi-angle max de l'éventail (degrés) quand aimSpread = 1 */
+  maxSpreadDeg: number;
   /** durée max d'une volée avant rappel automatique (ms) */
   maxVolleyMs: number;
   recallSpeed: number;
@@ -319,6 +381,8 @@ export interface BallsConfig {
   comboMilestones: [number, number, number];
   /** nb max de balles dans la volée */
   maxVolley: number;
+  /** multiplicateur de dégâts de la dernière balle (dorée) */
+  lastBallMultiplier: number;
   /** 'fire' : rayon d'explosion en cellules ; dégâts = ratio × dégâts de la balle */
   fire: { radius: number; damageRatio: number };
   lightning: { chainRange: number; damageRatio: number };
@@ -429,6 +493,8 @@ export interface EconomyConfig {
   reward: { skipCoins: number; optionCount: number; relicChance: number; fuseChance: number };
   score: { perDepth: number; perBlock: number; perDamage: number; perBoss: number };
   fragments: { perWave: number; perBoss: number; perDepth: number };
+  /** seconde chance : coût en fragments (0 = gratuit), max par run, PV rendus (ratio de maxHp), rangées du bas effacées */
+  revive: { cost: number; freeOnFirstRun: boolean; maxPerRun: number; hpRatio: number; clearRows: number };
 }
 
 export interface MetaNode {
@@ -473,6 +539,7 @@ export interface GameConfig {
   relics: RelicsConfig;
   economy: EconomyConfig;
   meta: MetaConfig;
+  contracts: ContractsConfig;
 }
 
 // ----------------------------------------------------------------------
@@ -530,6 +597,8 @@ export interface MetaSystem {
   /** crédite fragments, succès, stats, quotidien ; renvoie les succès débloqués */
   onRunEnd(summary: RunSummary): string[];
   buyNode(nodeId: string): boolean;
+  /** débite des fragments (seconde chance…) ; false si insuffisant */
+  spendFragments(amount: number): boolean;
   canBuyNode(nodeId: string): boolean;
   toggleRunMod(id: string): void;
   setCurrentRun(snapshot: RunSnapshot | null): void;

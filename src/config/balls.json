@@ -5,6 +5,7 @@
   "comboDamagePerBounceAfterCap": 0.02,
   "comboMilestones": [3, 8, 16],
   "maxVolley": 30,
+  "lastBallMultiplier": 2,
   "fire": { "radius": 1.1, "damageRatio": 0.6 },
   "lightning": { "chainRange": 2.5, "damageRatio": 0.5 },
   "ice": { "maxFrozenPerShot": 3 },

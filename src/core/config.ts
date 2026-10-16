@@ -6,6 +6,7 @@ import waves from '../config/waves.json';
 import relics from '../config/relics.json';
 import economy from '../config/economy.json';
 import meta from '../config/meta.json';
+import contracts from '../config/contracts.json';
 
 function req(obj: unknown, path: string[], file: string): void {
   let cur: unknown = obj;
@@ -34,6 +35,8 @@ export function validateConfig(c: GameConfig): GameConfig {
   req(c.economy, ['shop', 'prices'], 'economy');
   req(c.economy, ['score'], 'economy');
   req(c.meta, ['nodes'], 'meta');
+  req(c.contracts, ['defs'], 'contracts');
+  req(c.economy, ['revive', 'cost'], 'economy');
   if (!c.balls.defs.some((d) => d.id === 'stone')) throw new Error('config/balls.json : "stone" obligatoire');
   if (c.blocks.board.ballSpeed / 240 > c.blocks.board.ballRadius) {
     throw new Error('config/blocks.json : ballSpeed trop élevée pour le sous-pas de 240 Hz (tunneling)');
@@ -49,5 +52,6 @@ export function loadConfig(): GameConfig {
     relics: relics as unknown as GameConfig['relics'],
     economy: economy as unknown as GameConfig['economy'],
     meta: meta as unknown as GameConfig['meta'],
+    contracts: contracts as unknown as GameConfig['contracts'],
   });
 }
