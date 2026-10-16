@@ -21,8 +21,8 @@ describe('démarrage', () => {
   it('meta : bonus de PV et de balles', () => {
     const sim = newSim('meta', config(), { bonusHp: 2, bonusStartBalls: 1 });
     expect(sim.state.maxHp).toBe(7);
-    // 4 pierres → fusion complète en une balle de rang 3
-    expect(sim.state.volley).toEqual([{ element: 'stone', tier: 3 }]);
+    // plus de fusion automatique : 4 pierres de rang 1
+    expect(sim.state.volley).toEqual(Array.from({ length: 4 }, () => ({ element: 'stone', tier: 1 })));
   });
 });
 
@@ -79,32 +79,121 @@ describe('combo et dégâts', () => {
   });
 });
 
-describe('fusion', () => {
-  it('3 pierres → 1 rang 2 + 1 rang 1', () => {
+describe('fusion (carte de récompense)', () => {
+  const S1 = { element: 'stone', tier: 1 } as const;
+
+  /** Amène la sim en phase récompense (vague 1 nettoyée d'un tir). */
+  function toReward(seed: string, volley: Parameters<typeof setup>[2], cfgMod?: (c: ReturnType<typeof config>) => void) {
+    const cfg = config();
+    cfgMod?.(cfg);
+    const sim = newSim(seed, cfg);
+    setup(sim, [block(sim, 'normal', 3, 4, 1)], volley);
+    const evs = shoot(sim, UP);
+    return { sim, evs };
+  }
+
+  it('départ : 3 pierres = 3 balles, aucune fusion automatique', () => {
     const sim = newSim('fusion');
-    expect(sim.state.volley).toEqual([
-      { element: 'stone', tier: 1 },
-      { element: 'stone', tier: 2 },
-    ]);
-    expect(sim.state.stats.fusions).toBe(1);
-    const f = ofType(sim.step(0), 'volley:fusion');
-    expect(f).toMatchObject([{ type: 'volley:fusion', element: 'stone', tier: 2, index: 0 }]);
+    expect(sim.state.volley).toEqual([S1, S1, S1]);
+    expect(sim.state.stats.fusions).toBe(0);
+    expect(ofType(sim.step(0), 'volley:fusion')).toHaveLength(0);
   });
 
-  it('une balle ramassée rejoint la volée et fusionne', () => {
+  it('une balle ramassée rejoint la volée sans fusionner', () => {
     const sim = newSim('fusion2');
     const t = block(sim, 'normal', 3, 4, 1000);
-    setup(sim, [t], [{ element: 'stone', tier: 1 }, { element: 'stone', tier: 2 }, { element: 'fire', tier: 1 }]);
-    const d = mut(sim).drops;
-    d.push({ id: 9999, kind: 'ball', pos: { x: 3.5, y: 7 }, value: 1, element: 'stone' });
+    setup(sim, [t], [S1, { element: 'stone', tier: 2 }, { element: 'fire', tier: 1 }]);
+    mut(sim).drops.push({ id: 9999, kind: 'ball', pos: { x: 3.5, y: 7 }, value: 1, element: 'stone' });
     const evs = shoot(sim, UP);
     expect(ofType(evs, 'drop:collected')).toHaveLength(1);
-    // stone1 + stone1 → stone2 ; stone2 + stone2 → stone3
-    expect(sim.state.volley).toEqual([
-      { element: 'stone', tier: 3 },
-      { element: 'fire', tier: 1 },
-    ]);
-    expect(ofType(evs, 'volley:fusion').map((e) => e.tier)).toEqual([2, 3]);
+    expect(sim.state.volley).toEqual([S1, S1, { element: 'stone', tier: 2 }, { element: 'fire', tier: 1 }]);
+    expect(ofType(evs, 'volley:fusion')).toHaveLength(0);
+  });
+
+  it('offre fuse : fuseChance = 1 → une seule option fuse, paire du rang le plus élevé, jamais à la place d une relique', () => {
+    for (let k = 0; k < 20; k++) {
+      const { sim } = toReward(`offer-${k}`, [S1, S1, { element: 'stone', tier: 2 }, { element: 'stone', tier: 2 }, { element: 'fire', tier: 1 }], (c) => {
+        c.economy.reward.fuseChance = 1;
+      });
+      const offer = sim.state.rewardOffer!;
+      expect(offer).toHaveLength(3);
+      const fuses = offer.filter((o) => o.kind === 'fuse');
+      expect(fuses).toEqual([{ kind: 'fuse', element: 'stone', tier: 3 }]);
+      expect(new Set(offer.map((o) => JSON.stringify(o))).size).toBe(3);
+    }
+    // sans relique dans le pool, la fusion remplace une option balle
+    const { sim } = toReward('offer-relicless', [S1, S1], (c) => {
+      c.economy.reward.fuseChance = 1;
+      c.economy.reward.relicChance = 1;
+    });
+    const offer = sim.state.rewardOffer!;
+    expect(offer.filter((o) => o.kind === 'relic')).toHaveLength(2);
+    expect(offer.filter((o) => o.kind === 'fuse')).toEqual([{ kind: 'fuse', element: 'stone', tier: 2 }]);
+  });
+
+  it('offre fuse : fuseChance = 0 ou aucune paire → jamais de fuse', () => {
+    const a = toReward('nofuse-a', [S1, S1], (c) => {
+      c.economy.reward.fuseChance = 0;
+    }).sim;
+    expect(a.state.rewardOffer!.some((o) => o.kind === 'fuse')).toBe(false);
+    const b = toReward('nofuse-b', [S1, { element: 'fire', tier: 1 }, { element: 'stone', tier: 3 }, { element: 'stone', tier: 3 }], (c) => {
+      c.economy.reward.fuseChance = 1;
+    }).sim;
+    expect(b.state.rewardOffer!.some((o) => o.kind === 'fuse')).toBe(false); // rang 3 = max
+  });
+
+  it('chooseReward fuse : 2 balles (élément, rang-1) → 1 balle (élément, rang), volley:fusion', () => {
+    const { sim } = toReward('choose-fuse', [S1, S1, S1, { element: 'fire', tier: 1 }], (c) => {
+      c.economy.reward.fuseChance = 1;
+    });
+    const idx = sim.state.rewardOffer!.findIndex((o) => o.kind === 'fuse');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    // un drop de balle a pu être ramassé à la fin de vague : on raisonne en différences
+    const count = (el: string, t: number) => sim.state.volley.filter((v) => v.element === el && v.tier === t).length;
+    const s1 = count('stone', 1);
+    const s2 = count('stone', 2);
+    const n = sim.state.volley.length;
+    sim.chooseReward(idx);
+    expect(count('stone', 1)).toBe(s1 - 2);
+    expect(count('stone', 2)).toBe(s2 + 1);
+    expect(sim.state.volley.length).toBe(n - 1);
+    expect(sim.state.stats.fusions).toBe(1);
+    const f = ofType(sim.step(0), 'volley:fusion');
+    const index = sim.state.volley.findIndex((v) => v.element === 'stone' && v.tier === 2);
+    expect(f).toEqual([{ type: 'volley:fusion', element: 'stone', tier: 2, index, pos: { x: sim.state.launchPos.x, y: sim.state.launchPos.y } }]);
+  });
+
+  it('boutique : une fusion au prix d une balle quand une paire existe', () => {
+    const cfg = config();
+    const sim = newSim('shop-fuse', cfg);
+    mut(sim).wave = 3;
+    setup(sim, [block(sim, 'normal', 3, 4, 1)], [S1, S1, { element: 'fire', tier: 1 }]);
+    shoot(sim, UP);
+    sim.skipReward();
+    const items = sim.state.shop!.items;
+    expect(items).toHaveLength(cfg.economy.shop.itemCount);
+    const fuse = items.filter((i) => i.option.kind === 'fuse');
+    expect(fuse).toHaveLength(1);
+    expect(fuse[0]!.price).toBe(cfg.economy.shop.prices.ball);
+    mut(sim).coins = 100;
+    sim.buy(items.indexOf(fuse[0]!));
+    expect(sim.state.volley).toEqual([{ element: 'stone', tier: 2 }, { element: 'fire', tier: 1 }]);
+  });
+
+  it('au plafond maxVolley : fusion automatique, rang le plus bas d abord, jusqu à repasser sous le plafond', () => {
+    const cfg = config();
+    cfg.balls.maxVolley = 4;
+    const sim = newSim('cap', cfg);
+    const t = block(sim, 'normal', 3, 4, 1000);
+    setup(sim, [t], [{ element: 'stone', tier: 2 }, { element: 'stone', tier: 2 }, S1, S1]);
+    mut(sim).drops.push({ id: 9998, kind: 'ball', pos: { x: 3.5, y: 7 }, value: 1, element: 'fire' });
+    const evs = shoot(sim, UP);
+    // 4 balles = plafond → stone1+stone1 fusionnent d'abord (rang le plus bas) ; le feu entre (4) → stone2+stone2 → stone3
+    const fus = ofType(evs, 'volley:fusion');
+    expect(fus.map((f) => f.tier)).toEqual([2, 3]);
+    expect(sim.state.volley).toEqual([{ element: 'stone', tier: 2 }, { element: 'stone', tier: 3 }, { element: 'fire', tier: 1 }]);
+    expect(sim.state.volley.some((v) => v.element === 'fire')).toBe(true);
+    expect(sim.state.stats.fusions).toBe(fus.length);
   });
 });
 

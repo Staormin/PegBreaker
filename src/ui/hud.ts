@@ -151,8 +151,8 @@ export function createHud(deps: HudDeps): Hud {
       pill.style.setProperty('--c', ballColor(config, it.element));
       pill.setAttribute('aria-label', `${ballName(config, it.element)} rang ${it.tier} ×${n}`);
       pill.title = `${ballName(config, it.element)} · rang ${it.tier}`;
-      pill.append(el('span', 'ball'));
-      if (n > 1) pill.append(el('span', 'num cnt', `×${n}`));
+      // rang écrit dans la balle (II / III) : le rang ne repose pas que sur les anneaux
+      pill.append(el('span', 'ball', it.tier === 1 ? '' : it.tier === 2 ? 'II' : 'III'), el('span', 'num cnt', `×${n}`));
       volleyBox.append(pill);
       if (keys[i] === pendingPulse) retrigger(pill, 'pulse');
     }

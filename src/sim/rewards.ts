@@ -1,9 +1,9 @@
 // sim/rewards.ts — tirages : éléments, reliques, offres de récompense, application d'une option.
-import type { BallElement, DropKind, RewardOption } from '../core/types';
+import type { BallElement, BallTier, DropKind, RewardOption } from '../core/types';
 import type { Ctx } from './ctx';
 import { emit } from './ctx';
 import { addRelic } from './relics';
-import { addVolleyBall } from './volley';
+import { addVolleyBall, bestFusablePair, fusePair } from './volley';
 
 function elementAllowed(ctx: Ctx, el: BallElement): boolean {
   return el === 'stone' || ctx.meta.unlockedElements.includes(el);
@@ -43,6 +43,8 @@ function sameOption(a: RewardOption, b: RewardOption): boolean {
       return b.kind === 'ball' && a.element === b.element && a.tier === b.tier;
     case 'relic':
       return b.kind === 'relic' && a.relicId === b.relicId;
+    case 'fuse':
+      return b.kind === 'fuse' && a.element === b.element && a.tier === b.tier;
     default:
       return true;
   }
@@ -74,11 +76,32 @@ function pickRelic(ctx: Ctx, exclude: readonly RewardOption[]): RewardOption | n
 
 const MAX_ATTEMPTS = 12;
 
+/** Option de fusion pour la paire de rang le plus élevé de la volée, ou null. */
+export function fuseOption(ctx: Ctx): RewardOption | null {
+  const i = bestFusablePair(ctx);
+  const b = ctx.s.volley[i];
+  if (i < 0 || !b) return null;
+  return { kind: 'fuse', element: b.element, tier: (b.tier + 1) as BallTier };
+}
+
+/**
+ * Remplace une option par la fusion : une balle de préférence, sinon une option non-relique, sinon la dernière.
+ * Une seule fusion par offre.
+ */
+function insertFuse(out: RewardOption[], fuse: RewardOption): void {
+  if (out.some((o) => o.kind === 'fuse')) return;
+  let idx = -1;
+  for (let i = out.length - 1; i >= 0; i--) if (out[i]!.kind === 'ball') { idx = i; break; }
+  if (idx < 0) for (let i = out.length - 1; i >= 0; i--) if (out[i]!.kind !== 'relic') { idx = i; break; }
+  if (idx < 0) idx = out.length - 1; // que des reliques : la dernière cède sa place
+  if (idx >= 0) out[idx] = fuse;
+}
+
 /**
  * Génère `count` options distinctes : relique avec `relicChance`, sinon balle (rang 1) d'un élément débloqué.
  * Repli si le pool est épuisé : pièces (si autorisé), puis soin.
  */
-export function makeOptions(ctx: Ctx, count: number, allowCoins: boolean): RewardOption[] {
+export function makeOptions(ctx: Ctx, count: number, allowCoins: boolean, fuse: 'chance' | 'always' | 'never' = 'never'): RewardOption[] {
   const out: RewardOption[] = [];
   const eco = ctx.cfg.economy;
   for (let i = 0; i < count; i++) {
@@ -97,6 +120,10 @@ export function makeOptions(ctx: Ctx, count: number, allowCoins: boolean): Rewar
     const heal: RewardOption = { kind: 'heal', amount: eco.shop.healAmount };
     if (allowCoins && !hasOption(out, coins)) out.push(coins);
     else if (!hasOption(out, heal)) out.push(heal);
+  }
+  if (fuse !== 'never' && out.length > 0) {
+    const f = fuseOption(ctx);
+    if (f && (fuse === 'always' || ctx.rng.chance(eco.reward.fuseChance))) insertFuse(out, f);
   }
   return out;
 }
@@ -122,6 +149,9 @@ export function applyOption(ctx: Ctx, o: RewardOption): void {
       break;
     case 'heal':
       heal(ctx, o.amount);
+      break;
+    case 'fuse':
+      fusePair(ctx, o.element, o.tier);
       break;
   }
 }

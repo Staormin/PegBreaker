@@ -50,6 +50,19 @@ export function describeOption(config: GameConfig, o: RewardOption): OptionView 
       return { kind: 'Pièces', name: 'Bourse', desc: `+${o.amount} pièces`, color: '#ffe95c' };
     case 'heal':
       return { kind: 'Soin', name: 'Soin', desc: `+${o.amount} PV`, color: '#ff7ab8' };
+    case 'fuse': {
+      const name = ballName(config, o.element);
+      const from = o.tier > 1 ? ((o.tier - 1) as BallTier) : 1;
+      const mult = String(config.balls.tierDamageMultiplier).replace('.', ',');
+      const full = `2 × ${name + TIER_SUFFIX[from]} → 1 × ${name + TIER_SUFFIX[o.tier]} (dégâts ×${mult})`;
+      return {
+        kind: `Fusion · rang ${o.tier}`,
+        name: `Fusion : ${name + TIER_SUFFIX[o.tier]}`,
+        // sans le multiplicateur si la phrase dépasse 60 caractères
+        desc: full.length <= 60 ? full : clip(`2 × ${name + TIER_SUFFIX[from]} → 1 × ${name + TIER_SUFFIX[o.tier]}`),
+        color: ballColor(config, o.element),
+      };
+    }
   }
 }
 
@@ -88,6 +101,17 @@ export function optionIcon(config: GameConfig, o: RewardOption): SVGSVGElement {
       svg.append(svgEl('path', { d: 'M24 42 L7 25 A9.5 9.5 0 0 1 24 13 A9.5 9.5 0 0 1 41 25 Z', fill: '#ff7ab8' }));
       svg.append(svgEl('rect', { x: 21, y: 19, width: 6, height: 16, rx: 1.5, fill: '#ffffff' }));
       svg.append(svgEl('rect', { x: 16, y: 24, width: 16, height: 6, rx: 1.5, fill: '#ffffff' }));
+      break;
+    }
+    case 'fuse': {
+      // deux disques qui convergent vers un anneau central
+      svg.append(svgEl('circle', { cx: 9, cy: 30, r: 6.5, fill: v.color, opacity: 0.85 }));
+      svg.append(svgEl('circle', { cx: 39, cy: 30, r: 6.5, fill: v.color, opacity: 0.85 }));
+      svg.append(svgEl('path', { d: 'M15 27 L19 25 M33 27 L29 25', stroke: v.color, 'stroke-width': 2.5, 'stroke-linecap': 'round' }));
+      svg.append(svgEl('circle', { cx: 24, cy: 20, r: 12, fill: 'none', stroke: v.color, 'stroke-width': 3 }));
+      if (o.tier >= 3) svg.append(svgEl('circle', { cx: 24, cy: 20, r: 16, fill: 'none', stroke: v.color, 'stroke-width': 2 }));
+      svg.append(svgEl('circle', { cx: 24, cy: 20, r: 7.5, fill: v.color }));
+      svg.append(svgEl('circle', { cx: 21.5, cy: 17.5, r: 2.5, fill: '#ffffff', opacity: 0.8 }));
       break;
     }
   }

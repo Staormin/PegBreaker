@@ -45,7 +45,7 @@ export function setup(sim: Sim, blocks: Block[], volley: VolleyBall[], opts: { r
   const s = mut(sim);
   s.blocks = blocks;
   s.drops = [];
-  s.volley = volley;
+  s.volley = volley.map((v) => ({ ...v })); // objets distincts (la sim peut trier/remplacer)
   s.rowsLeftInWave = opts.rowsLeft ?? 0;
   if (opts.launchX !== undefined) s.launchPos.x = opts.launchX;
   sim.step(0); // purge des événements de démarrage

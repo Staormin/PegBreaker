@@ -106,7 +106,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     if (r === 0 && relic) return { kind: 'relic', relicId: relic.id };
     if (r === 1) return { kind: 'heal', amount: 2 };
     if (r === 2) return { kind: 'coins', amount: 25 };
-    if (r === 3 && relic) return { kind: 'relic', relicId: relic.id };
+    if (r === 3) return { kind: 'fuse', element: el, tier: i % 2 === 0 ? 2 : 3 };
     return { kind: 'ball', element: el, tier: ((i % 3) + 1) as 1 | 2 | 3 };
   }
   function makeShopItems(): ShopItem[] {
@@ -170,7 +170,14 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       if (o.kind === 'ball') state.volley.push({ element: o.element, tier: o.tier });
       else if (o.kind === 'coins') state.coins += o.amount;
       else if (o.kind === 'heal') state.hp = Math.min(state.maxHp, state.hp + o.amount);
-      else state.relics.push(o.relicId);
+      else if (o.kind === 'relic') state.relics.push(o.relicId);
+      else {
+        const prev = (o.tier - 1) as 1 | 2;
+        const i1 = state.volley.findIndex((b) => b.element === o.element && b.tier === prev);
+        if (i1 >= 0) state.volley.splice(i1, 1);
+        const i2 = state.volley.findIndex((b) => b.element === o.element && b.tier === prev);
+        if (i2 >= 0) state.volley.splice(i2, 1, { element: o.element, tier: o.tier });
+      }
       state.rewardOffer = null;
       state.phase = 'aiming';
       bus.emit({ type: 'reward:chosen', option: o });

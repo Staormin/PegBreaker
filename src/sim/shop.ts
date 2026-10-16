@@ -16,6 +16,8 @@ export function priceOf(ctx: Ctx, o: RewardOption): number {
     }
     case 'heal':
       return p.heal;
+    case 'fuse':
+      return p.ball; // décision architecte : réutilise le prix d'une balle
     case 'coins':
       return 0;
   }
@@ -28,10 +30,10 @@ export function rerollCost(ctx: Ctx, used: number): number {
   return s.rerollBase + s.rerollGrowth * used;
 }
 
-/** Articles : (itemCount − 1) tirages balle/relique distincts + un soin. */
+/** Articles : (itemCount − 1) tirages balle/relique distincts (dont une fusion si une paire existe) + un soin. */
 function makeItems(ctx: Ctx): ShopItem[] {
   const n = Math.max(1, ctx.cfg.economy.shop.itemCount);
-  const opts = makeOptions(ctx, n - 1, false);
+  const opts = makeOptions(ctx, n - 1, false, 'always');
   const items: ShopItem[] = opts.map((option) => ({ option, price: Math.round(priceOf(ctx, option)), sold: false }));
   const heal: RewardOption = { kind: 'heal', amount: ctx.cfg.economy.shop.healAmount };
   if (!opts.some((o) => o.kind === 'heal')) items.push({ option: heal, price: Math.round(priceOf(ctx, heal)), sold: false });

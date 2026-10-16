@@ -154,7 +154,7 @@ function clearWave(ctx: Ctx): void {
   collectAllDrops(ctx);
   s.internal.wavesCleared++;
   emit(ctx, { type: 'wave:cleared', wave: s.wave });
-  const offer = makeOptions(ctx, ctx.cfg.economy.reward.optionCount, true);
+  const offer = makeOptions(ctx, ctx.cfg.economy.reward.optionCount, true, 'chance');
   s.rewardOffer = offer;
   s.phase = 'reward';
   s.advanceProgress = 0;

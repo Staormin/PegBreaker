@@ -6,32 +6,73 @@ import { acquireBall } from './pools';
 
 const MAX_TIER = 3;
 
-/** Trie par élément puis rang, puis fusionne les paires adjacentes jusqu'à stabilité. */
+/**
+ * Trie la volée par élément puis rang. La fusion n'est plus automatique (c'est une carte de récompense),
+ * SAUF au plafond : tant que volley.length >= maxVolley, fusionne une paire à la fois (rang le plus bas d'abord).
+ */
 export function fuseVolley(ctx: Ctx): void {
   const v = ctx.s.volley;
-  for (;;) {
-    v.sort(ctx.cmpVolley);
-    let fused = -1;
+  v.sort(ctx.cmpVolley);
+  while (v.length >= ctx.cfg.balls.maxVolley) {
+    let best = -1;
     for (let i = 0; i + 1 < v.length; i++) {
       const a = v[i] as VolleyBall;
       const b = v[i + 1] as VolleyBall;
-      if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER) {
-        a.tier = (a.tier + 1) as BallTier;
-        // retrait de i+1 sans splice
-        for (let j = i + 1; j + 1 < v.length; j++) v[j] = v[j + 1] as VolleyBall;
-        v.pop();
-        fused = i;
-        ctx.s.stats.fusions++;
-        emit(ctx, { type: 'volley:fusion', element: a.element, tier: a.tier, index: i, pos: { x: ctx.s.launchPos.x, y: ctx.s.launchPos.y } });
-        break;
-      }
+      if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER && (best < 0 || a.tier < (v[best] as VolleyBall).tier)) best = i;
     }
-    if (fused < 0) return;
+    if (best < 0) return;
+    const a = v[best] as VolleyBall;
+    fusePair(ctx, a.element, (a.tier + 1) as BallTier);
   }
 }
 
-/** Ajoute une balle à la volée (plafond maxVolley) puis fusionne. */
+/** Index de la première paire fusionnable (même élément, même rang < 3) du rang le plus élevé, -1 sinon. Volée triée. */
+export function bestFusablePair(ctx: Ctx): number {
+  const v = ctx.s.volley;
+  v.sort(ctx.cmpVolley);
+  let best = -1;
+  for (let i = 0; i + 1 < v.length; i++) {
+    const a = v[i] as VolleyBall;
+    const b = v[i + 1] as VolleyBall;
+    if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER && (best < 0 || a.tier > (v[best] as VolleyBall).tier)) best = i;
+  }
+  return best;
+}
+
+/**
+ * Retire deux balles (element, tier-1) et ajoute une (element, tier). Émet volley:fusion.
+ * Renvoie faux (sans rien changer) si la paire n'existe pas.
+ */
+export function fusePair(ctx: Ctx, element: BallElement, tier: BallTier): boolean {
+  const v = ctx.s.volley;
+  if (tier <= 1 || tier > MAX_TIER) return false;
+  const from = tier - 1;
+  let first = -1;
+  let second = -1;
+  for (let i = 0; i < v.length; i++) {
+    const b = v[i] as VolleyBall;
+    if (b.element !== element || b.tier !== from) continue;
+    if (first < 0) first = i;
+    else {
+      second = i;
+      break;
+    }
+  }
+  if (second < 0) return false;
+  const fused: VolleyBall = { element, tier }; // nouvel objet : jamais de mutation d'une entrée partagée
+  v[first] = fused;
+  for (let j = second; j + 1 < v.length; j++) v[j] = v[j + 1] as VolleyBall;
+  v.pop();
+  v.sort(ctx.cmpVolley);
+  const index = v.indexOf(fused);
+  ctx.s.stats.fusions++;
+  emit(ctx, { type: 'volley:fusion', element, tier, index, pos: { x: ctx.s.launchPos.x, y: ctx.s.launchPos.y } });
+  return true;
+}
+
+/** Ajoute une balle à la volée (au plafond : fusion d'une paire pour faire de la place, sinon refus). */
 export function addVolleyBall(ctx: Ctx, element: BallElement, tier: BallTier): boolean {
+  if (ctx.s.volley.length >= ctx.cfg.balls.maxVolley) fuseVolley(ctx);
   if (ctx.s.volley.length >= ctx.cfg.balls.maxVolley) return false;
   ctx.s.volley.push({ element, tier });
   fuseVolley(ctx);
