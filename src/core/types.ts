@@ -473,6 +473,9 @@ export interface RunModEffect {
 export interface WavesConfig {
   /** effets des mutateurs par id (absent = valeurs par défaut de sim/mods.ts) */
   runModEffects?: Record<string, RunModEffect>;
+  /** à partir de cette vague : brèche +1 PV tous les 5 vagues et rangée supplémentaire tous les lateExtraRowEvery tirs (anti-infini) */
+  lateWave?: number;
+  lateExtraRowEvery?: number;
   /** PV de base rangée = baseHp × growthPerWave^(wave-1) × (1 + growthPerShot × shotInWave) */
   baseHp: number;
   /** si présent, remplace baseHp/growthPerWave : PV de base interpolés linéairement entre les points (extrapolés géométriquement au-delà du dernier) */
