@@ -84,7 +84,9 @@ export type RewardOption =
   | { kind: 'ball'; element: BallElement; tier: BallTier }
   | { kind: 'relic'; relicId: RelicId }
   | { kind: 'coins'; amount: number }
-  | { kind: 'heal'; amount: number };
+  | { kind: 'heal'; amount: number }
+  /** fusionne deux balles (element, tier-1) de la volée en une (element, tier) */
+  | { kind: 'fuse'; element: BallElement; tier: BallTier };
 
 export interface ShopItem {
   option: RewardOption;
@@ -165,7 +167,7 @@ export interface RunState {
 }
 
 /** Instantané sérialisable d'une run : identique à RunState (pas de classes). */
-export type RunSnapshot = RunState;
+export type RunSnapshot = RunState & { internal?: unknown };
 
 // ----------------------------------------------------------------------
 // Événements (la sim produit ; render, audio, ui, systems consomment)
@@ -187,7 +189,7 @@ export type GameEvent =
   | { type: 'ball:split'; pos: Vec2 }
   | { type: 'combo:milestone'; combo: number; pos: Vec2; level: 1 | 2 | 3 }
   | { type: 'volley:end'; shotDamage: number; bestCombo: number }
-  | { type: 'volley:fusion'; element: BallElement; tier: BallTier; index: number }
+  | { type: 'volley:fusion'; element: BallElement; tier: BallTier; index: number; pos: Vec2 }
   | { type: 'rows:advanced'; wave: number; newRow: boolean }
   | { type: 'drop:spawned'; dropId: number; kind: DropKind; pos: Vec2 }
   | { type: 'drop:collected'; dropId: number; kind: DropKind; pos: Vec2; value: number }
@@ -313,7 +315,7 @@ export interface BallsConfig {
   /** 'fire' : rayon d'explosion en cellules ; dégâts = ratio × dégâts de la balle */
   fire: { radius: number; damageRatio: number };
   lightning: { chainRange: number; damageRatio: number };
-  split: { maxSplitsPerShot: number };
+  split: { maxSplitsPerShot: number; angleDeg: number };
   lead: { damageMultiplier: number };
   defs: BallDef[];
 }
@@ -372,6 +374,8 @@ export interface WavesConfig {
   bossEvery: number;
   shopEvery: number;
   bosses: BossDef[];
+  /** rangées présentes au début de chaque vague */
+  startRows: number;
   /** éléments de départ et nombre de balles initiales */
   start: { hp: number; balls: number; elements: BallElement[] };
 }
@@ -402,7 +406,8 @@ export interface EconomyConfig {
     rerollGrowth: number;
     healAmount: number;
   };
-  reward: { skipCoins: number; optionCount: number; relicChance: number };
+  /** fuseChance : probabilité qu'une option soit remplacée par une fusion quand une paire existe */
+  reward: { skipCoins: number; optionCount: number; relicChance: number; fuseChance: number };
   score: { perDepth: number; perBlock: number; perDamage: number; perBoss: number };
   fragments: { perWave: number; perBoss: number; perDepth: number };
 }
@@ -543,6 +548,7 @@ export interface Renderer {
   setShake(v: boolean): void;
   /** nombre de particules vivantes (QA/perf) */
   readonly particleCount: number;
+  dispose?(): void;
 }
 
 export interface AudioSystem {

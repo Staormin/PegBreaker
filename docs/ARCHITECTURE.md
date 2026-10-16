@@ -83,6 +83,9 @@ Toutes les interfaces sont dans [`src/core/types.ts`](../src/core/types.ts). Ré
 - Implémente `TimeControl` (hit-stop : timeScale 0 pendant N ms ; slow-mo).
 - Expose `window.__pegbreaker: DebugApi` (état, actions, compteurs d'événements, `setSpeed()`) pour Playwright.
 
+### Convention `advancing`
+Pendant la phase `advancing`, la sim ne touche pas à `row` : elle fait monter `advanceProgress` de 0 à 1, puis incrémente `row` et fait apparaître la nouvelle rangée **à la fin**. Le renderer dessine donc les blocs non gelés à `row + easeOutBack(advanceProgress)`.
+
 ## Système d'événements
 
 `EventBus<GameEvent>` dans `core/events.ts` : `on(type, handler): unsubscribe`, `emit(event)`. `GameEvent` est une union discriminée sur `type` (voir `types.ts`) : `ball:bounce`, `block:hit`, `block:destroyed`, `block:breached`, `combo:milestone`, `volley:start`, `volley:end`, `volley:fusion`, `drop:spawned`, `drop:collected`, `wave:cleared`, `boss:spawned`, `reward:offered`, `reward:chosen`, `shop:opened`, `shop:bought`, `player:damaged`, `player:healed`, `run:started`, `run:over`, `meta:unlocked`, `ui:click`.

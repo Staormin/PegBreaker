@@ -5,7 +5,7 @@
     { "id": "piggy", "name": "Tirelire", "description": "Toutes les 10 pièces ramassées rendent 1 PV.", "rarity": "common", "value": 10, "weight": 10 },
     { "id": "firstblood", "name": "Premier sang", "description": "Le premier bloc touché à chaque tir est détruit.", "rarity": "rare", "value": 1, "weight": 6 },
     { "id": "bigboom", "name": "Poudre noire", "description": "Les explosions ont un rayon ×2.", "rarity": "rare", "value": 2, "weight": 6 },
-    { "id": "safetynet", "name": "Filet", "description": "Une fois par tir, toucher le sol ne remet pas le combo à zéro.", "rarity": "epic", "value": 1, "weight": 3 },
+    { "id": "safetynet", "name": "Filet", "description": "Une fois par tir, le sol ne casse pas le combo.", "rarity": "epic", "value": 1, "weight": 3 },
     { "id": "magnet", "name": "Aimant", "description": "Les drops sont ramassés automatiquement en fin de tir.", "rarity": "common", "value": 1, "weight": 8 }
   ]
 }

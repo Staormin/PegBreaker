@@ -7,11 +7,11 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 | ID | Agent | Statut | Dépend de | Critère d'acceptation |
 |---|---|---|---|---|
 | T1 | architecte | done | — | Squelette Vite+TS, `core/` (types, events, rng, math, config), `npm run build` passe, docs/DESIGN.md et ARCHITECTURE.md écrits. |
-| T2 | gameplay-dev | todo | T1 | `createSim` complet : physique sans tunneling, volée en rafale, rebonds, combo, blocs (normal, peg, explosive, heart), drops, avancée des rangées, PV, vagues depuis waves.json, offres de récompense (balles stone/fire/lightning/split + 6 reliques), fusion, boutique, game over, restart. Tests Vitest : 1 000 tirs aléatoires sans NaN ni balle hors plateau, déterminisme par seed. |
-| T3 | feel-artist | todo | T1 | Renderer canvas : plateau, blocs avec PV lisibles, balles, drops, ligne de visée avec premier rebond, nombres de dégâts flottants, particules simples à la casse d'un bloc. 60 fps avec 30 balles. Formes simples, palette imposée. |
-| T4 | ui-dev | todo | T1 | Drag-to-aim souris et tactile, bouton rappel, HUD (PV, vague, pièces, volée), overlay récompense (3 cartes), écran fin de run avec « Rejouer ». Portrait responsive 360 px → 1440 px. |
-| T5 | architecte | todo | T2,T3,T4 | `main.ts` intègre tout, `window.__pegbreaker` exposé, build OK, zéro erreur console. |
-| T6 | qa-tester | todo | T5 | Bot Playwright qui joue 5 runs : rapport docs/qa/j1.md avec temps avant première récompense, décisions/min, durée de run, moments morts > 5 s, progression run1→run5, erreurs console. |
+| T2 | gameplay-dev | done | T1 | `createSim` complet : physique sans tunneling, volée en rafale, rebonds, combo, blocs (normal, peg, explosive, heart), drops, avancée des rangées, PV, vagues depuis waves.json, offres de récompense (balles stone/fire/lightning/split + 6 reliques), fusion, boutique, game over, restart. Tests Vitest : 1 000 tirs aléatoires sans NaN ni balle hors plateau, déterminisme par seed. |
+| T3 | feel-artist | done | T1 | Renderer canvas : plateau, blocs avec PV lisibles, balles, drops, ligne de visée avec premier rebond, nombres de dégâts flottants, particules simples à la casse d'un bloc. 60 fps avec 30 balles. Formes simples, palette imposée. |
+| T4 | ui-dev | done | T1 | Drag-to-aim souris et tactile, bouton rappel, HUD (PV, vague, pièces, volée), overlay récompense (3 cartes), écran fin de run avec « Rejouer ». Portrait responsive 360 px → 1440 px. |
+| T5 | architecte | done | T2,T3,T4 | `main.ts` intègre tout, `window.__pegbreaker` exposé, build OK, zéro erreur console. |
+| T6 | qa-tester | doing | T5 | Bot Playwright qui joue 5 runs : rapport docs/qa/j1.md avec temps avant première récompense, décisions/min, durée de run, moments morts > 5 s, progression run1→run5, erreurs console. |
 
 ## Jalon 2 — Juice et feedback
 

@@ -5,7 +5,7 @@
   "maxVolley": 30,
   "fire": { "radius": 1.1, "damageRatio": 0.6 },
   "lightning": { "chainRange": 2.5, "damageRatio": 0.5 },
-  "split": { "maxSplitsPerShot": 12 },
+  "split": { "maxSplitsPerShot": 12, "angleDeg": 25 },
   "lead": { "damageMultiplier": 3 },
   "defs": [
     { "id": "stone", "name": "Pierre", "description": "Une balle honnête.", "baseDamage": 1, "weight": 10, "color": "#cfd6e6" },

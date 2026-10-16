@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121a2b"/>
+      <stop offset="1" stop-color="#0b0f1a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- grille discrète -->
+  <g stroke="#1b2740" stroke-width="4">
+    <line x1="128" y1="40" x2="128" y2="472"/>
+    <line x1="256" y1="40" x2="256" y2="472"/>
+    <line x1="384" y1="40" x2="384" y2="472"/>
+  </g>
+  <!-- bloc -->
+  <rect x="236" y="92" width="196" height="148" rx="22" fill="#4f7cff"/>
+  <rect x="254" y="104" width="160" height="8" rx="4" fill="#ffffff" opacity="0.3"/>
+  <rect x="254" y="220" width="160" height="8" rx="4" fill="#000000" opacity="0.25"/>
+  <text x="334" y="190" text-anchor="middle" font-family="system-ui, sans-serif" font-size="78" font-weight="900" fill="#ffffff" stroke="#0b0f1a" stroke-width="8" paint-order="stroke">42</text>
+  <!-- trajectoire -->
+  <path d="M150 420 L250 250" stroke="#ffe95c" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 30" fill="none"/>
+  <!-- étincelles d'impact -->
+  <g stroke="#ffe95c" stroke-width="12" stroke-linecap="round">
+    <line x1="224" y1="236" x2="196" y2="226"/>
+    <line x1="232" y1="262" x2="208" y2="282"/>
+    <line x1="252" y1="272" x2="252" y2="300"/>
+  </g>
+  <!-- balle -->
+  <circle cx="140" cy="404" r="64" fill="#ff7a3d"/>
+  <circle cx="140" cy="404" r="82" fill="none" stroke="#ff7a3d" stroke-width="10" opacity="0.6"/>
+  <circle cx="118" cy="382" r="20" fill="#ffffff" opacity="0.8"/>
+</svg>

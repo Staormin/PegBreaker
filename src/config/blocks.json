@@ -22,11 +22,11 @@
     "dropChance": 0.35,
     "weights": [
       { "kind": "coin", "weight": 60 },
-      { "kind": "ball", "weight": 25 },
+      { "kind": "ball", "weight": 15 },
       { "kind": "fragment", "weight": 15 }
     ],
     "coinValue": { "min": 2, "max": 5 },
     "fragmentValue": { "min": 1, "max": 2 },
-    "guaranteedBallEvery": 6
+    "guaranteedBallEvery": 10
   }
 }

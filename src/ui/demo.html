@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0b0f1a" />
+    <title>Pegbreaker — démo UI</title>
+  </head>
+  <body>
+    <!-- Page de dev uniquement (non incluse dans le build) : `npm run dev` puis /src/ui/demo.html (?title pour l'écran titre) -->
+    <div id="app">
+      <canvas id="game"></canvas>
+      <div id="ui"></div>
+    </div>
+    <script type="module">
+      import { mountUiDemo } from './demo.ts';
+      mountUiDemo(document.getElementById('ui'), document.getElementById('game'));
+    </script>
+  </body>
+</html>

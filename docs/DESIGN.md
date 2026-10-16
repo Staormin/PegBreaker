@@ -63,8 +63,9 @@ Références de ton : Ball x Pit, Peglin, Ballz, Nubby's Number Factory, Balatro
 
 ### La fusion (le twist)
 
-- La volée est une liste de balles typées. Quand deux balles du **même type et même rang** se trouvent côte à côte dans la volée, elles fusionnent automatiquement en une seule balle de rang +1 (dégâts ×2,5, effet amplifié). Rang maximal : 3.
-- Fusionner réduit le nombre de balles mais augmente l'impact par balle : le joueur choisit entre « beaucoup de petites balles » (combo facile) et « peu de grosses balles » (dégâts par touche). C'est la tension de build centrale.
+- La volée est une liste de balles typées. Quand le joueur possède deux balles de **même type et même rang** (rang < 3), l'écran de récompense peut proposer une carte **Fusion** : les deux balles deviennent une seule balle de rang +1 (dégâts ×2,5, effet amplifié). C'est un **choix**, jamais automatique : garder beaucoup de petites balles (combo facile, chaos) ou concentrer la puissance (dégâts par touche, effets élémentaires plus forts). Rang maximal : 3.
+- Seule exception : au plafond de 30 balles, la fusion devient automatique (elle borne le coût de la volée et récompense l'accumulation).
+- Décision d'architecte après le premier test jouable : la fusion automatique compressait la volée (4 pierres → 1 balle de rang 3) et supprimait la montée en nombre de balles, qui est la sensation centrale du genre.
 
 ### Les éléments (types de balles)
 

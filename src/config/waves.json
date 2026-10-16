@@ -1,7 +1,7 @@
 {
-  "baseHp": 10,
-  "growthPerWave": 1.18,
-  "growthPerShot": 0.04,
+  "baseHp": 2.5,
+  "growthPerWave": 1.75,
+  "growthPerShot": 0.1,
   "hpVariance": { "min": 0.6, "max": 1.4 },
   "rowsBase": 5,
   "rowsPerWave": 0.5,
@@ -12,6 +12,7 @@
     { "wave": 10, "blocks": 5 },
     { "wave": 20, "blocks": 6 }
   ],
+  "startRows": 3,
   "bossEvery": 5,
   "shopEvery": 3,
   "bosses": [
