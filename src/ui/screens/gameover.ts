@@ -1,21 +1,26 @@
 // ui/screens/gameover.ts — fin de run : stats, fragments (compteur animé), Rejouer, Puits.
 import type { EventBus } from '../../core/events';
-import type { RunSummary, Sim } from '../../core/types';
+import type { RunSummary } from '../../core/types';
 import { button, el, fmt } from '../dom';
 import { createScreen, type ScreenEl } from './screen';
 
 export interface GameoverScreen extends ScreenEl {
-  open(summary: RunSummary, reduceMotion: boolean): void;
+  /** `bestDepthBefore` : record de profondeur avant cette run (null = inconnu, pas de méta) */
+  open(summary: RunSummary, reduceMotion: boolean, bestDepthBefore: number | null): void;
 }
 
 const COUNT_MS = 900;
 
-export function createGameoverScreen(
-  sim: Sim,
-  bus: EventBus,
-  onRestart: () => void,
-  onWell: (() => void) | null,
-): GameoverScreen {
+export interface GameoverDeps {
+  bus: EventBus;
+  /** « Rejouer » : décide lui-même entre sim.restart(), reload ou retour en run normale */
+  onRestart: () => void;
+  onWell: (() => void) | null;
+  onDaily: (() => void) | null;
+}
+
+export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
+  const { bus, onRestart, onWell, onDaily } = d;
   const s = createScreen('gameover', 'Fin de la descente');
   const grid = el('div', 'stats');
   const mk = (label: string): HTMLSpanElement => {
@@ -36,10 +41,10 @@ export function createGameoverScreen(
   fragRow.append(fragVal, fragIco, el('span', 'stat-label', 'fragments'));
   fragRow.setAttribute('aria-live', 'polite');
 
-  const restart = button(bus, 'btn btn-primary btn-big', '↻ Rejouer', () => {
-    sim.restart();
-    onRestart();
-  });
+  const record = el('div', 'record');
+  record.hidden = true;
+
+  const restart = button(bus, 'btn btn-primary btn-big', '↻ Rejouer', onRestart);
   restart.dataset.action = 'restart';
   const well = button(bus, 'btn btn-ghost', onWell ? 'Le Puits' : '🔒 Le Puits', () => onWell?.());
   well.dataset.action = 'well';
@@ -47,12 +52,22 @@ export function createGameoverScreen(
     well.disabled = true;
     well.title = 'Bientôt';
   }
+  const dailyBtn = button(bus, 'btn btn-ghost', '📅 Défi du jour', () => onDaily?.());
+  dailyBtn.dataset.action = 'daily';
+  dailyBtn.hidden = !onDaily;
+  const row2 = el('div', 'actions');
+  row2.append(well, dailyBtn);
   const actions = el('div', 'actions actions-col');
-  actions.append(restart, well);
-  s.panel.append(grid, fragRow, actions);
+  actions.append(restart, row2);
+  s.panel.append(record, grid, fragRow, actions);
 
   let raf = 0;
-  function open(summary: RunSummary, reduceMotion: boolean): void {
+  function open(summary: RunSummary, reduceMotion: boolean, bestDepthBefore: number | null): void {
+    const isRecord = bestDepthBefore !== null && summary.depth > 0 && summary.depth >= bestDepthBefore;
+    record.hidden = !isRecord;
+    if (isRecord) {
+      record.textContent = `${summary.depth > (bestDepthBefore ?? 0) ? '★ Nouveau record' : '★ Record égalé'} : profondeur ${fmt(summary.depth)}`;
+    }
     vDepth.textContent = fmt(summary.depth);
     vWave.textContent = fmt(summary.wave);
     vCombo.textContent = fmt(summary.stats.bestCombo);

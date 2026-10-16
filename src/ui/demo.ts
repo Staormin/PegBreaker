@@ -13,11 +13,11 @@ import type {
   RewardOption,
   RunState,
   RunSummary,
-  SaveData,
   ShopItem,
   Sim,
   Vec2,
 } from '../core/types';
+import { createMeta, createMemoryStorage } from '../systems';
 import { createUI } from './index';
 
 const ELEMENTS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
@@ -249,19 +249,10 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     setMusicVolume() {},
   };
 
-  // ?title : simule un premier lancement (meta factice, onboarded=false)
+  // méta en mémoire (rien n'est écrit dans localStorage) ; ?title : premier lancement
   const params = new URLSearchParams(location.search);
-  let meta: MetaSystem | null = null;
-  if (params.has('title')) {
-    const data = { onboarded: false, settings: { sfx: 1, music: 1, shake: true, reduceMotion: false } } as unknown as SaveData;
-    meta = {
-      data,
-      setOnboarded() {
-        log('meta.setOnboarded()');
-        (data as { onboarded: boolean }).onboarded = true;
-      },
-    } as unknown as MetaSystem;
-  }
+  const meta: MetaSystem = createMeta(createMemoryStorage(), config);
+  if (!params.has('title')) meta.setOnboarded();
 
   sizeCanvas();
   window.addEventListener('resize', sizeCanvas);
@@ -375,6 +366,8 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       score: 1234,
     };
     bus.emit({ type: 'run:over', summary });
+    // comme main.ts : crédite la méta puis annonce les succès
+    for (const id of meta.onRunEnd(summary)) bus.emit({ type: 'achievement:unlocked', achievementId: id });
   });
   add('−1 PV', () => {
     state.hp = Math.max(0, state.hp - 1);
@@ -413,6 +406,30 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     state.wave++;
   });
   add('écran titre', () => ui.show('title'));
+  add('+200 ◆ méta', () => {
+    meta.onRunEnd({
+      seed: 'demo-bank',
+      depth: 0,
+      wave: 1,
+      stats: { ...freshState({ x: 0, y: 0 }).stats, fragmentsEarned: 200 },
+      relics: [],
+      volley: [],
+      isDaily: false,
+      dailyDate: null,
+      score: 0,
+    });
+  });
+  add('toast succès', () => {
+    const a = config.meta.achievements[Math.floor(Math.random() * config.meta.achievements.length)];
+    if (a) bus.emit({ type: 'achievement:unlocked', achievementId: a.id });
+  });
+  add('résultat quotidien', () => {
+    const st = freshState({ x: 0, y: 0 }).stats;
+    meta.onRunEnd({ seed: 'daily', depth: 7, wave: 3, stats: st, relics: [], volley: [], isDaily: true, dailyDate: meta.todayKey(), score: 1234 });
+  });
+  add('Puits', () => ui.show('meta'));
+  add('Réglages', () => ui.show('settings'));
+  add('Quotidien', () => ui.show('daily'));
   document.body.append(panel);
 
   (window as unknown as { __uiDemo: unknown }).__uiDemo = { sim, bus, ui, get state() { return state; } };

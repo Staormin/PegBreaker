@@ -55,7 +55,8 @@ function boot(): void {
   const params = new URLSearchParams(location.search);
   const isDaily = params.get('daily') === '1';
   const forcedSeed = params.get('seed');
-  const resume = !forcedSeed && !isDaily && meta.data.currentRun ? meta.data.currentRun : undefined;
+  const fresh = params.get('fresh') === '1';
+  const resume = !forcedSeed && !isDaily && !fresh && meta.data.currentRun ? meta.data.currentRun : undefined;
   const seed = forcedSeed ?? (isDaily ? meta.dailySeed() : `run-${Date.now().toString(36)}`);
   const audio: AudioSystem = createAudio(bus, meta.data.settings);
   const sim = createSim(config, {
@@ -82,8 +83,13 @@ function boot(): void {
   // --- Persistance : reprise de run, fin de run, succès -------------------
   let lastPhase: RunPhase = sim.state.phase;
   let sinceSave = 0;
+  let persistEnabled = true;
+  // plus aucune écriture une fois la page en cours de déchargement (l'UI fait setCurrentRun(null) puis reload)
+  window.addEventListener('pagehide', () => {
+    persistEnabled = false;
+  });
   const persistRun = (): void => {
-    if (forcedSeed) return; // runs QA/debug : jamais sauvegardées
+    if (forcedSeed || !persistEnabled) return; // runs QA/debug : jamais sauvegardées
     meta.setCurrentRun(sim.state.phase === 'gameover' ? null : sim.snapshot());
   };
   bus.on('run:over', (e) => {

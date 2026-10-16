@@ -1,5 +1,6 @@
 // ui/screens/title.ts — écran titre (premier lancement uniquement : meta.data.onboarded === false).
-// Disparaît au premier pointerdown (ou touche clavier).
+// Disparaît au premier pointerdown (ou touche clavier). L'onboarding n'est validé
+// (meta.setOnboarded) qu'au premier tir réussi, géré par ui/index.ts.
 import { el } from '../dom';
 import { createScreen, type ScreenEl } from './screen';
 

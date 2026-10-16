@@ -17,6 +17,11 @@ export interface HudDeps {
   sim: Sim;
   bus: EventBus;
   config: GameConfig;
+  /** bouton ◆ (le Puits) et ⚙ (réglages), visibles en phase 'aiming' ; null = absents */
+  onWell?: (() => void) | null;
+  onSettings?: (() => void) | null;
+  /** run du défi quotidien : badge « Quotidien » */
+  isDaily?: boolean;
 }
 
 export interface Hud {
@@ -42,12 +47,19 @@ export function createHud(deps: HudDeps): Hud {
   const coinVal = el('span', 'num', '0');
   coinBox.append(coinIcon(), coinVal);
   coinBox.setAttribute('aria-label', 'Pièces');
-  const fragBox = el('div', 'hud-stat hud-frags');
+  const fragBox = el('button', 'hud-stat hud-frags');
+  fragBox.type = 'button';
   const fragVal = el('span', 'num', '0');
   const fragIco = el('span', 'ico-frag', '◆');
   fragIco.setAttribute('aria-hidden', 'true');
   fragBox.append(fragIco, fragVal);
-  fragBox.setAttribute('aria-label', 'Fragments');
+  fragBox.setAttribute('aria-label', 'Fragments de la run — ouvrir le Puits');
+  fragBox.disabled = true;
+  fragBox.addEventListener('click', () => {
+    if (fragBox.disabled || !deps.onWell) return;
+    bus.emit({ type: 'ui:click' });
+    deps.onWell();
+  });
   right.append(coinBox, fragBox);
   top.append(hpBox, waveBox, right);
 
@@ -84,7 +96,21 @@ export function createHud(deps: HudDeps): Hud {
   hint.setAttribute('aria-hidden', 'true');
   hint.append(el('div', 'hint-arrow'), el('div', 'hint-dot'));
 
-  frame.append(top, shot, volleyBox, recall, hint);
+  // --- ⚙ réglages (même emplacement que Rappel, mais en phase 'aiming') ----
+  const gear = el('button', 'hud-gear', '⚙');
+  gear.type = 'button';
+  gear.setAttribute('aria-label', 'Réglages');
+  gear.addEventListener('click', () => {
+    if (!deps.onSettings) return;
+    bus.emit({ type: 'ui:click' });
+    deps.onSettings();
+  });
+
+  frame.append(top, shot, volleyBox, recall, gear, hint);
+  if (deps.isDaily) {
+    const badge = el('div', 'hud-daily', '📅 Quotidien');
+    frame.append(badge);
+  }
   root.append(frame);
 
   // --- cache des valeurs affichées --------------------------------------
@@ -99,6 +125,7 @@ export function createHud(deps: HudDeps): Hud {
   let cShot = -1;
   let shotVisible = false;
   let recallVisible = false;
+  let menuVisible = false;
   let hintVisible = false;
   let shotHideAt = 0;
   let shotLingering = false;
@@ -247,6 +274,13 @@ export function createHud(deps: HudDeps): Hud {
     if (firing !== recallVisible) {
       recallVisible = firing;
       setVisible(recall, firing);
+    }
+    const menus = s.phase === 'aiming';
+    if (menus !== menuVisible) {
+      menuVisible = menus;
+      setVisible(gear, menus && !!deps.onSettings);
+      fragBox.disabled = !(menus && deps.onWell);
+      fragBox.classList.toggle('on', menus && !!deps.onWell);
     }
     if (showHint !== hintVisible) {
       hintVisible = showHint;

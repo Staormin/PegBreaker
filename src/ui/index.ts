@@ -17,11 +17,14 @@ import type { AudioSystem, GameConfig, MetaSystem, RunPhase, RunState, RunSummar
 import { createHud } from './hud';
 import { createInput } from './input';
 import { createGameoverScreen } from './screens/gameover';
-import { createPlaceholderScreen } from './screens/placeholder';
+import { createDailyScreen } from './screens/daily';
 import { createRewardScreen } from './screens/reward';
 import type { ScreenEl } from './screens/screen';
+import { createSettingsScreen } from './screens/settings';
 import { createShopScreen } from './screens/shop';
 import { createTitleScreen } from './screens/title';
+import { createToasts } from './screens/toasts';
+import { createWellScreen } from './screens/well';
 
 export interface UiDeps {
   root: HTMLElement;
@@ -35,6 +38,8 @@ export interface UiDeps {
 }
 
 const MODAL_RUN_SCREENS: ReadonlySet<UiScreen> = new Set<UiScreen>(['reward', 'shop', 'gameover']);
+/** écrans « hors run » ouverts par-dessus un autre, refermés par « Retour » */
+const SUB_SCREENS: ReadonlySet<UiScreen> = new Set<UiScreen>(['meta', 'daily', 'settings']);
 
 export function createUI(deps: UiDeps): UI {
   const { root, canvas, sim, bus, renderer, audio, meta, config } = deps;
@@ -49,7 +54,42 @@ export function createUI(deps: UiDeps): UI {
     meta?.data.settings.reduceMotion ?? window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   // --- HUD + input ---------------------------------------------------------
-  const hud = createHud({ root, canvas, sim, bus, config });
+  const isDaily = new URLSearchParams(location.search).get('daily') === '1';
+  /** modificateurs avec lesquels la sim courante a été créée (la sim ne relit pas la méta) */
+  const createdWith = meta ? JSON.stringify(meta.getModifiers()) : '';
+  const metaChanged = (): boolean => !!meta && JSON.stringify(meta.getModifiers()) !== createdWith;
+  /** nouvelle run avec les modificateurs à jour : seul un rechargement recrée la sim */
+  const freshRunReload = (): void => {
+    meta?.setCurrentRun(null);
+    location.reload();
+  };
+  const backStack: UiScreen[] = [];
+  function openSub(id: UiScreen): void {
+    if (!SUB_SCREENS.has(screen)) backStack.length = 0;
+    if (screen !== id) backStack.push(screen);
+    show(id);
+  }
+  function back(): void {
+    let prev = backStack.pop();
+    while (prev !== undefined && prev === screen) prev = backStack.pop();
+    show(prev ?? (sim.state.phase === 'gameover' ? 'gameover' : 'game'));
+  }
+
+  if (meta) {
+    audio?.setSfxVolume(meta.data.settings.sfx);
+    audio?.setMusicVolume(meta.data.settings.music);
+  }
+
+  const hud = createHud({
+    root,
+    canvas,
+    sim,
+    bus,
+    config,
+    onWell: meta ? () => openSub('meta') : null,
+    onSettings: meta ? () => openSub('settings') : null,
+    isDaily,
+  });
   createInput({
     canvas,
     sim,
@@ -64,22 +104,39 @@ export function createUI(deps: UiDeps): UI {
   // --- écrans ----------------------------------------------------------------
   const reward = createRewardScreen(sim, bus, config);
   const shop = createShopScreen(sim, bus, config);
-  const gameover = createGameoverScreen(
-    sim,
+  const gameover = createGameoverScreen({
     bus,
-    () => show('game'),
-    meta ? () => show('meta') : null,
-  );
+    onRestart: () => {
+      if (isDaily) {
+        location.href = './'; // fin du défi : retour en run normale
+        return;
+      }
+      if (metaChanged()) {
+        freshRunReload();
+        return;
+      }
+      sim.restart();
+      show('game');
+    },
+    onWell: meta ? () => openSub('meta') : null,
+    onDaily: meta ? () => openSub('daily') : null,
+  });
   const title = createTitleScreen(() => {
     audio?.unlock();
-    meta?.setOnboarded();
     show('game');
   });
-  const metaScreen = createPlaceholderScreen('meta', 'Le Puits', bus, () => show(sim.state.phase === 'gameover' ? 'gameover' : 'game'));
-  const settings = createPlaceholderScreen('settings', 'Réglages', bus, () => show('game'));
-  const daily = createPlaceholderScreen('daily', 'Défi du jour', bus, () => show('game'));
+  const subScreens: ScreenEl[] = [];
+  const well = meta
+    ? createWellScreen({ meta, bus, config, onBack: back, onDaily: () => openSub('daily'), onRestartNow: freshRunReload })
+    : null;
+  const dailyScreen = meta ? createDailyScreen(meta, bus, back) : null;
+  const settingsScreen = meta ? createSettingsScreen(meta, bus, audio, renderer, back) : null;
+  if (well) subScreens.push(well);
+  if (dailyScreen) subScreens.push(dailyScreen);
+  if (settingsScreen) subScreens.push(settingsScreen);
+  const toasts = createToasts(root);
 
-  const screens: ScreenEl[] = [title, reward, shop, gameover, metaScreen, settings, daily];
+  const screens: ScreenEl[] = [title, reward, shop, gameover, ...subScreens];
   for (const s of screens) root.append(s.root);
 
   function show(next: UiScreen): void {
@@ -88,6 +145,9 @@ export function createUI(deps: UiDeps): UI {
     for (const s of screens) s.root.classList.toggle('visible', s.id === next);
     root.dataset.screen = next;
     if (next === 'game') hud.layout();
+    if (next === 'meta') well?.refresh(true);
+    else if (next === 'daily') dailyScreen?.refresh(true);
+    else if (next === 'settings') settingsScreen?.refresh(true);
     // focus clavier sur le premier bouton de l'écran modal
     const visible = screens.find((s) => s.id === next);
     if (visible && next !== 'gameover') {
@@ -110,8 +170,10 @@ export function createUI(deps: UiDeps): UI {
     lastCoins = sim.state.coins;
     show('shop');
   }
+  // record de profondeur AVANT la run (main.ts appelle meta.onRunEnd sur run:over)
+  let bestDepthBefore: number | null = meta ? meta.data.stats.bestDepth : null;
   function openGameover(summary: RunSummary): void {
-    gameover.open(summary, reduceMotion());
+    gameover.open(summary, reduceMotion(), bestDepthBefore);
     show('gameover');
   }
   function summaryFromState(s: Readonly<RunState>): RunSummary {
@@ -154,7 +216,17 @@ export function createUI(deps: UiDeps): UI {
   bus.on('run:over', (e) => openGameover(e.summary));
   bus.on('run:started', () => {
     hud.reset();
+    bestDepthBefore = meta ? meta.data.stats.bestDepth : null;
     if (screen !== 'title') show('game');
+  });
+
+  // onboarding validé au premier tir réussi
+  bus.on('volley:start', () => {
+    if (meta && !meta.data.onboarded) meta.setOnboarded();
+  });
+  bus.on('achievement:unlocked', (e) => {
+    const def = config.meta.achievements.find((a) => a.id === e.achievementId);
+    toasts.push(def?.name ?? e.achievementId, `+${def?.rewardFragments ?? 0} ◆`);
   });
 
   // --- premier geste de la session : déverrouille l'audio -------------------
@@ -184,6 +256,10 @@ export function createUI(deps: UiDeps): UI {
       else if (state.phase === 'gameover' && screen !== 'gameover' && screen !== 'title') openGameover(summaryFromState(state));
       else if ((state.phase === 'aiming' || state.phase === 'firing') && MODAL_RUN_SCREENS.has(screen)) show('game');
     }
+    // écrans méta : reconstruits seulement si meta.data a changé de référence
+    if (screen === 'meta') well?.refresh();
+    else if (screen === 'daily') dailyScreen?.refresh();
+    else if (screen === 'settings') settingsScreen?.refresh();
     if (screen === 'shop' && state.coins !== lastCoins) {
       lastCoins = state.coins;
       shop.refreshAffordability(state.coins);

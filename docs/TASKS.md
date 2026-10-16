@@ -26,7 +26,7 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 | ID | Agent | Statut | Dépend de | Critère d'acceptation |
 |---|---|---|---|---|
 | T10 | systems-dev | done | T6 | Sauvegarde localStorage versionnée, reprise de run, le Puits (3 branches), succès, défi quotidien, `MetaModifiers` consommés par la sim. Tests Vitest sur migration et modificateurs. |
-| T11 | ui-dev | doing | T10 | Écrans Puits, succès, quotidien, réglages ; boutique in-run. |
+| T11 | ui-dev | done | T10 | Écrans Puits, succès, quotidien, réglages ; boutique in-run. |
 | T12 | qa-tester | todo | T10,T11 | Rapport j3 : persistance après reload, aucune régression. |
 
 ## Jalon 4 — Contenu, équilibrage, onboarding, polish
