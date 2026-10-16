@@ -9,6 +9,7 @@
     16
   ],
   "maxVolley": 30,
+  "maxLiveBalls": 30,
   "lastBallMultiplier": 2,
   "lastBallMultiplierPerBall": 0.12,
   "lastBallMultiplierMax": 5,

@@ -393,6 +393,8 @@ export interface BallsConfig {
   comboMilestones: [number, number, number];
   /** nb max de balles dans la volée */
   maxVolley: number;
+  /** nb max de balles vivantes en vol par tir, mini-balles comprises (perf) */
+  maxLiveBalls: number;
   /** multiplicateur de dégâts de la dernière balle (dorée) : lastBallMultiplier + lastBallMultiplierPerBall × (N − 1), plafonné à lastBallMultiplierMax */
   lastBallMultiplier: number;
   lastBallMultiplierPerBall: number;
