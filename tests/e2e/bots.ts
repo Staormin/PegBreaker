@@ -7,7 +7,6 @@
 // invariants, fps) et une boucle de jeu `play(cond)` cadencée par requestAnimationFrame.
 import type { Page } from '@playwright/test';
 import type { Block, DebugApi, RewardOption, RunPhase, RunState, Vec2 } from '../../src/core/types';
-import { SPREAD_DEAD_PX, SPREAD_RANGE_PX } from '../../src/ui/input';
 
 export type BotKind = 'naive' | 'greedy' | 'contracts';
 /** à la mort (run:lost) : abandon immédiat (sim.giveUp), rien (le test pilote l'écran « Revanche ? »),
@@ -15,8 +14,10 @@ export type BotKind = 'naive' | 'greedy' | 'contracts';
 export type LostPolicy = 'giveUp' | 'none' | 'reviveIfAffordable';
 /** ouverture de l'éventail : 'none' = jamais touchée (0, comportement d'avant le lot 1) ;
  *  'drag' = longueur de geste d'un débutant tirée uniformément dans [40, 320] px CSS → spreadFromDrag ;
- *  'max' = éventail systématique (1) */
-export type SpreadMode = 'none' | 'drag' | 'max';
+ *  (historique lot 1 / 1 bis : l'ouverture ne dépend plus du geste depuis aa89b87) ;
+ *  'max' = « large » systématique via le sélecteur HUD ;
+ *  'rowSelector' = conditionnel : « large » si ≥ 4 blocs cassables sur une même rangée, sinon « rafale » (sélecteur HUD) */
+export type SpreadMode = 'none' | 'drag' | 'max' | 'rowSelector';
 
 export interface QaInstallOptions {
   bot: BotKind;
@@ -214,6 +215,7 @@ export function qaInstall(opt: QaInstallOptions): void {
     destroyedAtFire: 0,
     shotSpread: 0,
     lastTargetPx: 0,
+    selectorClicks: 0,
     shotTargetPx: 0,
     shotContract: null as string | null,
     nextFireAt: -1,
@@ -485,8 +487,25 @@ export function qaInstall(opt: QaInstallOptions): void {
 
   // --- éventail (F1) et bot « contrats » ----------------------------------------------
   /** débutant : longueur de geste uniforme 40–320 px CSS, convertie comme ui/input.ts (90 px morts, 220 px de plage) */
+  /** sélecteur d'ouverture du HUD (aa89b87) : clique jusqu'au niveau voulu, renvoie la valeur 0 / 0,5 / 1 */
+  const LEVEL_VALUES = [0, 0.5, 1];
+  function selectLevel(target: number): number {
+    const btn = document.querySelector<HTMLButtonElement>('button.hud-spread[data-action="spread-cycle"]');
+    if (!btn) return LEVEL_VALUES[target] ?? 0;
+    for (let i = 0; i < 3 && Number(btn.dataset.level) !== target; i++) btn.click();
+    rec.selectorClicks++;
+    return LEVEL_VALUES[Number(btn.dataset.level)] ?? 0;
+  }
+  function rowWithFour(): boolean {
+    const n = new Map<number, number>();
+    for (const b of sim.state.blocks) if (breakable(b)) n.set(b.row, (n.get(b.row) ?? 0) + 1);
+    for (const v of n.values()) if (v >= 4) return true;
+    return false;
+  }
+
   function dragSpread(): number {
-    if (opt.spreadMode === 'max') return 1;
+    if (opt.spreadMode === 'max') return selectLevel(2);
+    if (opt.spreadMode === 'rowSelector') return selectLevel(rowWithFour() ? 2 : 0);
     if ((opt.spreadMode ?? 'none') !== 'drag') return sim.state.aimSpread ?? 0;
     const len = 40 + rand() * 280;
     const v = (len - (opt.spreadDeadPx ?? 150)) / (opt.spreadRangePx ?? 220);
@@ -935,8 +954,8 @@ export async function installBot(page: Page, o: Partial<QaInstallOptions> & { bo
     handleChoices: o.handleChoices ?? true,
     onLost: o.onLost ?? 'giveUp',
     spreadMode: o.spreadMode ?? 'none',
-    spreadDeadPx: o.spreadDeadPx ?? SPREAD_DEAD_PX,
-    spreadRangePx: o.spreadRangePx ?? SPREAD_RANGE_PX,
+    spreadDeadPx: o.spreadDeadPx ?? 150,
+    spreadRangePx: o.spreadRangePx ?? 220,
   };
   await page.evaluate(qaInstall, opts);
 }

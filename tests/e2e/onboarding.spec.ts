@@ -7,12 +7,12 @@ import { writeFileSync } from 'node:fs';
 import type { Vec2 } from '../../src/core/types';
 import { QA_OUT, FINAL_SHOTS, boardToClient, installBot, lowestBlockTarget, play, setSpeed, watchErrors, type QaWindow } from './bots';
 
-type HintWindow = QaWindow & { __hints: { reward: number; combo: number; fuse: number; fuseOffers: number; milestones: number; offers: number } };
+type HintWindow = QaWindow & { __hints: { reward: number; combo: number; fuse: number; spread: number; fuseOffers: number; milestones: number; offers: number } };
 
 /** Compte les apparitions des indices one-shot (MutationObserver) et les occasions de les montrer. */
 function hintProbe(): void {
   const w = window as unknown as HintWindow;
-  const h = { reward: 0, combo: 0, fuse: 0, fuseOffers: 0, milestones: 0, offers: 0 };
+  const h = { reward: 0, combo: 0, fuse: 0, spread: 0, fuseOffers: 0, milestones: 0, offers: 0 };
   w.__hints = h;
   const root = document.getElementById('ui') as HTMLElement;
   const had = new WeakMap<Element, Set<string>>();
@@ -27,7 +27,11 @@ function hintProbe(): void {
         const prev = had.get(t) ?? new Set<string>();
         const cur = new Set(Array.from(t.classList));
         if (t.classList.contains('hud-combo-hint') && cur.has('on') && !prev.has('on')) h.combo++;
-        if (cur.has('hint-pulse') && !prev.has('hint-pulse')) h.fuse++;
+        // aa89b87 : l'indice du sélecteur d'ouverture (.hud-spread) réutilise la classe hint-pulse
+        if (cur.has('hint-pulse') && !prev.has('hint-pulse')) {
+          if (t.classList.contains('hud-spread')) h.spread++;
+          else h.fuse++;
+        }
         had.set(t, cur);
       }
     }
@@ -126,5 +130,6 @@ test('indices one-shot : récompense, combo, fusion — une seule fois chacun', 
   expect(h.combo, 'indice combo montré une fois').toBe(1);
   if (h.fuseOffers > 0) expect(h.fuse, `indice fusion une fois (${h.fuseOffers} offres de fusion)`).toBe(1);
   else expect(h.fuse).toBe(0);
+  expect(h.spread, 'indice du sélecteur d\'ouverture au plus une fois').toBeLessThanOrEqual(1);
   expect(errors).toEqual([]);
 });

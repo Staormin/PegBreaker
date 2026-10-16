@@ -155,3 +155,98 @@ Corrigés depuis `fun-lot1.md`, vérifiés par un test vert :
 - **`share.spec.ts`** : vérifie l'égalité et le crédit de la run de défi ; le `test.fail` est retiré.
 - **`fun.spec.ts`** : 4 groupes × 5 seeds, par lots de 10 pages. Sortie dans `docs/qa/fun-final.json`.
 - Les sorties précédentes (`final-*`, `lot1-*`, `fun-shots/`) restent intactes comme références.
+
+## 8. Passe finale (commits `aa89b87` et `a3f2803`)
+
+**Ce qui a changé dans le jeu :**
+- l'ouverture se règle au sélecteur `button.hud-spread[data-action="spread-cycle"]`, sur 3 niveaux : 0 (rafale), 0,5, 1 (large). Le choix persiste d'un tir à l'autre et revient à 0 à `run:started` ;
+- le geste ne touche plus l'ouverture ;
+- pénalité de l'éventail 0,20 ;
+- `gold2.target` revient à 2 ;
+- épique garantie dans le coffre ;
+- courbe de PV v4 420 / v5 420 / v6 540 / v8 680, régénération du boss 2,4 ;
+- revanche à 30 ◆.
+
+Bundle : 196,9 ko brut, **68,6 ko gzip**.
+
+**Résultat :** `npm run build && npm run test:e2e` donne **37 tests sur 37 en 3 min 05**. `npx tsc --noEmit` est vert. Les sections 2 à 7 ci-dessus décrivent la passe précédente (`3d1593f`). Les chiffres de cette section remplacent ceux de [`fun-final.json`](fun-final.json).
+
+### Méthode
+- **3 stratégies × 5 seeds** (qa-1 à qa-5), en `?seed=…&qa=1`, profil vierge, vitesse 8.
+- **Même visée pour tous** : bot naïf, bloc le plus bas ±10°, même aléa par seed.
+- **Même seconde chance pour tous** : prise si payable, donc gratuite ici (`stats.runs` = 0).
+- **Rafale** : niveau 0. **Conditionnel** : un clic DOM sur le sélecteur jusqu'à « large » si au moins 4 blocs cassables partagent une rangée, sinon « rafale ». **Large** : clic jusqu'au niveau 2 à chaque tir.
+
+### Ouvertures involontaires : **0 %**, par construction et vérifié
+
+Test « captures et input réel », vrais événements souris :
+- des drags de 60, 200 et 400 px laissent `aimSpread` à **0**, pendant le geste et au tir ;
+- le sélecteur passe à « moyen » : un drag donne **0,5** ;
+- il passe à « large » : **1** ;
+- le niveau reste à 2 après le tir.
+
+Capture `fun-final-shots/01-eventail-ouvert.png` : sélecteur sur « large ».
+
+### Tableau : avant, lot 1, final
+
+« Lot 1 » : naïf de `fun-lot1.md`, ouverture liée au geste, abandon à la mort. Les cellules donnent la moyenne, puis la médiane entre parenthèses.
+
+| Métrique | Cible | Avant (`final.md`) | Lot 1 (naïf) | **Final rafale** | **Final conditionnel** | **Final large** |
+|---|---|---|---|---|---|---|
+| Ouvertures involontaires | < 20 % | — | 83 % | **0 %** | **0 %** | **0 %** |
+| Décisions par tir (direction, + 1 si ouverture ≠ 0) | ≥ 2 | 1,0 | 1,83 | 1,00 | 1,65 | 2,00 |
+| Décisions/min (temps joueur) | ≥ 8 | 18,5 | 27,4 | 18,6 | 24,0 | 29,4 |
+| Tirs à combo ≥ 5 | ≥ 30 % | 10 % | 39 % | 27 % (32 %) | **58 % (60 %)** | 39 % (37 %) |
+| Tirs à combo ≥ 8 | — | — | 21 % | 15 % | 43 % | 24 % |
+| Contrats réussis par run (taux) | — | — | 2,4 (39 %) | 3,2 (42 %) | **6,6 (62 %)** | 2,8 (48 %) |
+| Durée de la run 1 (temps joueur, min) | ≥ 4 | 2,64 | 4,08 (3,41) | **4,58 (4,46)** | 9,19 (8,49) | 3,76 (4,06) |
+| Vague de la première mort | — | 5,2 | 6,6 (6) | 6,8 (6) | 7,2 (6) | 4,8 (5) |
+| Vague finale | — | 5,2 | 6,6 (6) | 8,2 (8) | **12,0 (12)** | 6,0 (6) |
+| Profondeur | — | — | 54,6 | 72,4 (67) | **117 (109)** | 50,8 (52) |
+| Seconde chance prise | — | — | 0/5 (abandon) | 5/5 | 5/5 | 5/5 |
+| Gain de la revanche | — | — | — | +1,4 vague, +14,8 de profondeur | **+4,8 vagues, +57,4** | +1,2 vague, +11,6 |
+| Dégâts max par tir | — | — | — | 4 496 | **39 865** | 1 771 |
+| Balle dorée : part des dégâts | — | — | 16 % | 24 % | 20 % | 23 % |
+| Première récompense (qa-1, 1,5 s de visée) | < 10 s | 2,2 s | 2,19 s | **2,23 s** | — | — |
+| Premier écran de choix (temps joueur) | ~25 s | 23,8 s | 20,2 s | 19,9 s | 19,8 s | 18,4 s |
+| Moments morts (> 5 s) | 0 | 0 | 0 | **0** (trou max 1,55 s) | 0 | 0 |
+| Erreurs console et page | 0 | 0 | 0 | **0** | 0 | 0 |
+
+Contrats par type, sur les 15 runs (réussis / offerts) :
+
+| Contrat | Réussis / offerts | Taux | Lecture |
+|---|---|---|---|
+| `reachCombo` | 14/21 | 67 % | — |
+| `destroyInOneShot` | 14/20 | 70 % | — |
+| `collectBalls` | 6/7 | 86 % | — |
+| `collectCoins` | 12/25 | 48 % | — |
+| `killWithElement` | 4/9 | 44 % | — |
+| `noDamage` | 7/14 | 50 % | — |
+| `clearUnderShots` | 5/17 | 29 % | — |
+| `goldenKill` (gold2, cible 2) | **1/7** | **14 %** | toujours le plus dur |
+
+### Verdict F1 : **multiplie le fun**
+- **Plus aucune ouverture involontaire**, contre 61 % à la passe précédente. Le choix est explicite.
+- **C'est enfin un vrai dilemme.** Aucune position fixe ne domine : « large » partout fait la pire profondeur (médiane vague 6), « rafale » partout fait mieux (vague 8). Le bon usage, « large » quand une rangée est pleine, gagne nettement : médiane vague **12**, profondeur 109, combo ≥ 5 à 58 %, et 62 % des contrats réussis.
+- **La maîtrise est lisible** : un joueur qui apprend quand ouvrir double sa profondeur.
+- **Réserve** : le conditionnel meurt la première fois au même moment que la rafale (médiane vague 6 dans les deux cas). Son avance se fait **après la revanche** (+4,8 vagues contre +1,4), sur un plateau effacé où les rangées pleines reviennent.
+- **Pour un joueur fort, la run 1 dure 8,5 min en médiane** (19 min sur qa-2). Pour le joueur « rafale », elle dure 4,5 min, dans la cible.
+
+### Coffre (F9) : **épique présente**
+`chest.spec.ts` (qa-2, bot greedy, profil où toutes les épiques sont débloquées) : boss tué en vague 5, profondeur 31. Le coffre propose `paratonnerre` (rare), **`alchimie` (épique)** et `catalyseur` (rare). Révéler, verrouiller puis prendre fonctionne, et le test prend l'épique.
+
+**F9-02 (mineur, design)** : sur un profil **vierge**, la seule épique débloquée est `safetynet`. Le bot greedy la prend en récompense de vague avant le premier boss (qa-2 : possédée au coffre). Le coffre ne contient alors aucune épique (`pyromane`, `firstblood`, `catalyseur`, toutes rares). C'est conforme à la règle « si une épique débloquée n'est pas possédée », mais la promesse « épique garantie » ne tient pas pour un débutant. Fichier : `src/sim/rewards.ts` (`makeBossOptions`), ou `meta.json` pour débloquer une 2e épique de départ.
+
+### Points restants
+- **Mur en vague 6** : sans revanche, les 5 runs de `metrics.spec` (rafale) meurent toutes en vague 6 ou 7. `survivalByWave` donne 5 runs en vie jusqu'en vague 6, puis 1 en vague 7. Première mort médiane : vague 6 pour les trois stratégies. Fichier suspect : `waves.json`, avec v6 = 540 juste après v4 = v5 = 420.
+- **`goldenKill` (gold2)** : 14 % de réussite.
+- **Progression méta** (bot greedy, seed `prog`) : profondeur 23 → 79 → 65 → 66 → 66. Plus plate qu'avant, mais pas croissante.
+- **Le bot greedy reste moins bon que le naïf** (vague 5,2 contre 6,8) : c'est une limite du harnais.
+
+### Harnais (passe finale)
+- **`bots.ts`** :
+  - nouveaux modes `spreadMode: 'max' | 'rowSelector'`, qui cliquent le sélecteur HUD puis appellent `sim.aim(dir, 0 | 0,5 | 1)` ;
+  - suppression des imports `SPREAD_DEAD_PX` et `SPREAD_RANGE_PX`. Le mode `'drag'` est gardé pour l'historique, avec 150 / 220 en dur.
+- **`fun.spec.ts`** : 3 stratégies ; vérifie le 0 % d'involontaires et le sélecteur via l'input réel.
+- **`chest.spec.ts`** : épiques débloquées par la sauvegarde ; vérifie qu'une carte épique est présente.
+- **`onboarding.spec.ts`** : la sonde des indices distingue l'indice du sélecteur (`.hud-spread.hint-pulse`) de l'indice de fusion. Avant, elle les confondait et voyait « fusion ×2 ». Ce n'était pas un bug du jeu.

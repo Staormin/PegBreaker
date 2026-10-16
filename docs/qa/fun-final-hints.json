@@ -2,8 +2,9 @@
   "reward": 1,
   "combo": 1,
   "fuse": 1,
+  "spread": 1,
   "fuseOffers": 2,
-  "milestones": 47,
+  "milestones": 45,
   "offers": 3,
-  "stored": "{\"combo\":true,\"reward\":true,\"fuse\":true}"
+  "stored": "{\"combo\":true,\"reward\":true,\"spread\":true,\"fuse\":true}"
 }
