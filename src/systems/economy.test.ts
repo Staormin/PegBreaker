@@ -9,14 +9,17 @@
 // el_lead 180, mitose/radar 110, berserk 140, glass 90, rush 130 (revive.cost 30 inchangé).
 // Mesuré : sans revanche 27-32 runs (moy. 29), ~63 ◆/run ; revanche une run sur deux
 // 28-36 runs, ~70 ◆/run, revanche payée 58/79 (73 %), coût = 0,43 run.
-// Lot BALLS.md (2026-10-17) : 17 nœuds `unlockElement:` (arsenal), arbre 2 080 → 3 940 ◆
+// Lot BALLS.md (2026-10-17) : 17 nœuds `unlockElement:` (arsenal), arbre 2 080 → 4 850 ◆
 // (contenu long terme voulu). Coûts : magnet 40, acid 45, gold 50, rust 55, pierce 60, twin 80,
-// bomb 90, crystal 100, swarm 110, shock 120, homing/boomerang 130, giant/echo 150, vampire 170,
-// prism 180, void 200 (BALLS.md : 50-150, bas de gamme abaissé pour que les 5 moins chères
-// tombent avant la run 12, haut de gamme relevé). nova/comet/lucky : succès combo15/wave5/shot5000.
-// Mesuré (sim actuelle, ~55 ◆/run) : 1er achat run 1 ; 5 balles les moins chères runs 4-11 ;
-// 8 premières runs 13-21 ; arbre complet 66-69 runs ; avec revanche une run sur deux 72-77 runs,
-// revanche payée 134/189 (71 %), coût = 0,51 run.
+// bomb 90, crystal 100, swarm 150, shock 170, homing/boomerang 190, giant/echo 240, vampire 320,
+// prism 350, void 400. nova/comet/lucky : succès combo15/wave5/shot5000.
+// Recalage sim 27 balles : les ◆/run montent avec le pool débloqué (~55 → ~76 en moyenne, fin
+// d'arbre > 150 ◆/run) ; à 3 940 ◆ l'arbre tombait en 47-56 runs → haut de gamme relevé
+// (+50 à +165 % vs BALLS.md, +10-20 % ne suffisait pas : 4 225 ◆ → 49-54 runs), bas de gamme
+// inchangé ; revive.cost 30 → 35 (30 = 0,34 run moyenne, sous la cible 0,35).
+// Mesuré : 1er achat run 1 ; 5 balles les moins chères runs 3-9 ; 8 premières runs 11-15 ;
+// arbre complet 57-65 runs ; revanche une run sur deux : 51-65 runs, payée 109/149 (73 %),
+// coût = 0,39 run. Une run de la série a atteint 1 200 tirs (vague 88) : voir SHOT_CAP.
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, RunSummary } from '../core/types';
@@ -35,7 +38,7 @@ function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMe
   const rng = createRng(seed);
   let lastWave = 0;
   let sinceWave = 0;
-  for (let shots = 0; shots < 1200; shots++) {
+  for (let shots = 0; shots < SHOT_CAP + SURRENDER_SHOTS; shots++) {
     settle(sim);
     if (sim.state.phase === 'gameover') {
       // onLost (qui paie) n'est consulté que si la sim accepte encore une revanche.
@@ -56,7 +59,10 @@ function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMe
     // Anti-blocage : après 20 tirs dans la même vague, visée aléatoire (voir rapport :
     // un bloc blindé gelé en rangée 8 peut bloquer indéfiniment le bot « plus bas »).
     const a = rng.range(0.2, Math.PI - 0.2);
-    sim.aim(++sinceWave > 20 ? { x: Math.cos(a), y: -Math.sin(a) } : lowestBlockDir(sim));
+    // Au-delà de SHOT_CAP, le joueur « lâche » : tirs rasants inutiles jusqu'à la mort.
+    if (shots === SHOT_CAP) capped.push(`${seed}@v${sim.state.wave}`);
+    if (shots >= SHOT_CAP) sim.aim({ x: Math.cos(0.05), y: -Math.sin(0.05) });
+    else sim.aim(++sinceWave > 20 ? { x: Math.cos(a), y: -Math.sin(a) } : lowestBlockDir(sim));
     sim.fire();
     for (let f = 0; f < 5000; f++) {
       for (const e of sim.step(FRAME)) if (e.type === 'run:over') return e.summary;
@@ -64,13 +70,16 @@ function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMe
       if (p !== 'firing' && p !== 'advancing') break;
     }
   }
-  // Plafond de tirs : le bot abandonne (cas observé quand beaucoup de balles sont débloquées :
-  // le bot naïf ne meurt plus, cf. compteur `capped`).
-  capped.push(`${seed}@v${sim.state.wave}`);
-  sim.giveUp();
-  for (const e of sim.step(0)) if (e.type === 'run:over') return e.summary;
-  throw new Error(`run ${seed} : plafond de tirs, giveUp sans run:over (vague ${sim.state.wave})`);
+  throw new Error(`run ${seed} sans fin : vague ${sim.state.wave}, profondeur ${sim.state.depth}`);
 }
+
+/**
+ * Plafond de tirs (cas observé avec la sim des 27 balles : une fois beaucoup de balles
+ * débloquées, le bot naïf peut ne plus mourir, ex. vague 88 à 1 200 tirs). Au-delà, le joueur
+ * lâche : visée rasante (clampée par la sim) jusqu'à la mort. Comptées dans `capped`.
+ */
+const SHOT_CAP = 1200;
+const SURRENDER_SHOTS = 1500;
 
 /** Runs arrêtées au plafond de tirs (abandon), pour le rapport. */
 const capped: string[] = [];

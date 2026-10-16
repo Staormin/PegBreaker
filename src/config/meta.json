@@ -229,7 +229,7 @@
       "name": "Cristal",
       "description": "Plus fort à chaque rebond, puis éclate.",
       "costs": [
-        120
+        100
       ],
       "effect": "unlockElement:crystal",
       "valuePerLevel": 1,
@@ -241,7 +241,7 @@
       "name": "Essaim",
       "description": "Libère des mini-balles à l'impact.",
       "costs": [
-        130
+        150
       ],
       "effect": "unlockElement:swarm",
       "valuePerLevel": 1,
@@ -255,7 +255,7 @@
       "name": "Choc",
       "description": "Repousse le bloc d'une rangée.",
       "costs": [
-        145
+        170
       ],
       "effect": "unlockElement:shock",
       "valuePerLevel": 1,
@@ -267,7 +267,7 @@
       "name": "Traqueuse",
       "description": "Dévie vers le bloc le plus proche.",
       "costs": [
-        155
+        190
       ],
       "effect": "unlockElement:homing",
       "valuePerLevel": 1,
@@ -281,7 +281,7 @@
       "name": "Boomerang",
       "description": "Revient vers toi en frappant.",
       "costs": [
-        155
+        190
       ],
       "effect": "unlockElement:boomerang",
       "valuePerLevel": 1,
@@ -293,7 +293,7 @@
       "name": "Géante",
       "description": "Énorme, lente, dégâts ×2.",
       "costs": [
-        180
+        240
       ],
       "effect": "unlockElement:giant",
       "valuePerLevel": 1,
@@ -307,7 +307,7 @@
       "name": "Écho",
       "description": "Repart du sol une fois.",
       "costs": [
-        180
+        240
       ],
       "effect": "unlockElement:echo",
       "valuePerLevel": 1,
@@ -321,7 +321,7 @@
       "name": "Vampire",
       "description": "Rend 1 PV par bloc détruit.",
       "costs": [
-        205
+        320
       ],
       "effect": "unlockElement:vampire",
       "valuePerLevel": 1,
@@ -333,7 +333,7 @@
       "name": "Prisme",
       "description": "Rayon sur toute la rangée à chaque mur.",
       "costs": [
-        215
+        350
       ],
       "effect": "unlockElement:prism",
       "valuePerLevel": 1,
@@ -347,7 +347,7 @@
       "name": "Vide",
       "description": "Ignore l'armure, mord les gros blocs.",
       "costs": [
-        240
+        400
       ],
       "effect": "unlockElement:void",
       "valuePerLevel": 1,
