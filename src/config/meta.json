@@ -8,7 +8,7 @@
       "costs": [
         30,
         70,
-        140
+        125
       ],
       "effect": "bonusHp",
       "valuePerLevel": 1,
@@ -21,7 +21,7 @@
       "description": "+1 balle de départ par niveau.",
       "costs": [
         50,
-        130
+        120
       ],
       "effect": "bonusStartBalls",
       "valuePerLevel": 1,
@@ -35,7 +35,7 @@
       "costs": [
         30,
         70,
-        140
+        125
       ],
       "effect": "coinMultiplier",
       "valuePerLevel": 0.1,
@@ -47,7 +47,7 @@
       "name": "Second regard",
       "description": "Un reroll gratuit par boutique.",
       "costs": [
-        120
+        110
       ],
       "effect": "freeRerolls",
       "valuePerLevel": 1,
@@ -97,7 +97,7 @@
       "name": "Glace",
       "description": "Débloque les balles de glace.",
       "costs": [
-        280
+        250
       ],
       "effect": "unlockElement:ice",
       "valuePerLevel": 1,
@@ -111,7 +111,7 @@
       "name": "Fantôme",
       "description": "Débloque les balles fantômes.",
       "costs": [
-        240
+        200
       ],
       "effect": "unlockElement:ghost",
       "valuePerLevel": 1,
@@ -125,7 +125,7 @@
       "name": "Plomb",
       "description": "Débloque les balles de plomb.",
       "costs": [
-        220
+        180
       ],
       "effect": "unlockElement:lead",
       "valuePerLevel": 1,
@@ -151,7 +151,7 @@
       "name": "Mitose",
       "description": "Relique épique : la scission se divise en 3.",
       "costs": [
-        115
+        110
       ],
       "effect": "unlockRelic:mitose",
       "valuePerLevel": 1,
@@ -165,7 +165,7 @@
       "name": "Radar",
       "description": "Relique épique : ×2 sur la rangée la plus basse.",
       "costs": [
-        115
+        110
       ],
       "effect": "unlockRelic:radar",
       "valuePerLevel": 1,
@@ -179,7 +179,7 @@
       "name": "Berserk",
       "description": "Relique épique : +10 % de dégâts par PV manquant.",
       "costs": [
-        165
+        140
       ],
       "effect": "unlockRelic:berserk",
       "valuePerLevel": 1,
@@ -205,7 +205,7 @@
       "name": "Ruée",
       "description": "Les blocs descendent de 2 rangées, fragments ×1,5.",
       "costs": [
-        155
+        130
       ],
       "effect": "runMod:rush",
       "valuePerLevel": 1,

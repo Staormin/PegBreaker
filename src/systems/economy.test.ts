@@ -2,9 +2,13 @@
 // du nœud le moins cher après chaque run. Cibles (brief T10) : 1er achat après 1-2 runs,
 // arbre complet en 25-35 runs (T10c : 16 nœuds, total 1 910).
 // Rééquilibrage sim 3d1593f (dorée progressive, contrats, hpByWave) : ~70 ◆/run, arbre en
-// 21-24 runs → fin d'arbre relevée (total 1 910 → 2 300 : hp/coins niv. 2-3 70/140, balls 130,
-// reroll 120, el_ice 280, el_ghost 240, el_lead 220, mitose/radar 115, berserk 165, glass 90,
-// rush 155) → arbre en 25-36 runs, moyenne ~29.
+// 21-24 runs → fin d'arbre relevée (total 1 910 → 2 300).
+// Recalage aa89b87+ (PV v4-v5 420, v6 540, v8 680, regen boss 2,4, pénalité d'éventail 0,20,
+// revive.cost 30) : ~63 ◆/run, arbre 29-36 runs (revanche : 31-38) → fin d'arbre rabaissée,
+// total 2 300 → 2 080 : hp/coins 30/70/125, balls 50/120, reroll 110, el_ice 250, el_ghost 200,
+// el_lead 180, mitose/radar 110, berserk 140, glass 90, rush 130 (revive.cost 30 inchangé).
+// Mesuré : sans revanche 27-32 runs (moy. 29), ~63 ◆/run ; revanche une run sur deux
+// 28-36 runs, ~70 ◆/run, revanche payée 58/79 (73 %), coût = 0,43 run.
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, RunSummary } from '../core/types';
