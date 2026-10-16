@@ -2,7 +2,8 @@
 // navigator.share absent, navigator.clipboard.writeText intercepté par un init script.
 // 1. fin de run → [data-action=share] → lien ?seed=…&goal=<profondeur> copié + PNG téléchargé (> 20 ko)
 // 2. le lien dans une nouvelle page → badge .hud-challenge, même seed, et .challenge-result cohérent en fin de run
-//    (même bot, même graine → même profondeur → égalité, data-result="tie"). La 1re page est en qa=1 (non créditée).
+//    (data-result = won/tie/lost selon les profondeurs). La 1re page est en qa=1 (non créditée) et joue le pool du
+//    joueur ; le lien joue le pool standard (règle d'équité) : profondeurs différentes attendues.
 import { expect, test, type Page } from '@playwright/test';
 import { copyFileSync, mkdirSync, statSync } from 'node:fs';
 import { FUN_SHOTS, installBot, play, setSpeed, waitReady, watchErrors, type QaWindow } from './bots';
@@ -91,8 +92,9 @@ test('partage : lien de défi copié, PNG téléchargé, défi rejoué sur la m�
   test.info().annotations.push({ type: 'défi', description: JSON.stringify({ goal: end1.depth, end2, result: expected, txt }) });
   if (expected === 'lost') expect(txt).toContain(`P${end2.depth} / P${end1.depth}`);
   await expect(page2.locator('[data-action="replay-challenge"]')).toBeVisible();
-  // déterminisme : même graine + même bot → même profondeur
-  expect(end2.depth, 'défi rejoué à l\'identique').toBe(end1.depth);
+  // Règle d'équité (2026-10-17) : la page 1 (`?seed=` sans goal) joue le pool du joueur, le lien de défi le pool standard ;
+  // les profondeurs ne sont plus comparables ici (le déterminisme défi/défi est vérifié par challenge.spec.ts).
+  test.info().annotations.push({ type: 'pool perso vs standard', description: JSON.stringify({ personal: end1.depth, standard: end2.depth }) });
   const meta2 = await page2.evaluate(() => {
     const m = (window as unknown as QaWindow).__pegbreaker.meta.data;
     return { runs: m.stats.runs, fragments: m.meta.fragments, bestWave: m.stats.bestWave };

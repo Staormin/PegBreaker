@@ -1,0 +1,402 @@
+{
+  "stone": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 745,
+        "destroyed": 10,
+        "wave": 2,
+        "coins": 5,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 929,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 1139,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 2813,
+    "destroyed": 32,
+    "coins": 27,
+    "errors": [],
+    "nan": []
+  },
+  "fire": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 1078,
+        "destroyed": 14,
+        "wave": 2,
+        "coins": 5,
+        "explode": {
+          "fire": 23
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 1850,
+        "destroyed": 20,
+        "wave": 3,
+        "coins": 23,
+        "explode": {
+          "fire": 29
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 706,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {
+          "fire": 27
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 3634,
+    "destroyed": 45,
+    "coins": 39,
+    "errors": [],
+    "nan": []
+  },
+  "lightning": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 1151,
+        "destroyed": 14,
+        "wave": 2,
+        "coins": 5,
+        "explode": {},
+        "chain": {
+          "lightning": 22
+        },
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 1526,
+        "destroyed": 18,
+        "wave": 3,
+        "coins": 11,
+        "explode": {
+          "explosive": 1
+        },
+        "chain": {
+          "lightning": 31
+        },
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 854,
+        "destroyed": 12,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {
+          "lightning": 25
+        },
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 3531,
+    "destroyed": 44,
+    "coins": 27,
+    "errors": [],
+    "nan": []
+  },
+  "ice": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 745,
+        "destroyed": 10,
+        "wave": 2,
+        "coins": 5,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 929,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 1139,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 2813,
+    "destroyed": 32,
+    "coins": 27,
+    "errors": [],
+    "nan": []
+  },
+  "ghost": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 583,
+        "destroyed": 13,
+        "wave": 2,
+        "coins": 6,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 1140,
+        "destroyed": 16,
+        "wave": 2,
+        "coins": 16,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 464,
+        "destroyed": 10,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 2187,
+    "destroyed": 39,
+    "coins": 33,
+    "errors": [],
+    "nan": []
+  },
+  "lead": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 345,
+        "destroyed": 10,
+        "wave": 2,
+        "coins": 5,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 1770,
+        "destroyed": 18,
+        "wave": 2,
+        "coins": 16,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 1425,
+        "destroyed": 14,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 3540,
+    "destroyed": 42,
+    "coins": 32,
+    "errors": [],
+    "nan": []
+  },
+  "split": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 1787,
+        "destroyed": 19,
+        "wave": 2,
+        "coins": 8,
+        "explode": {
+          "explosive": 1
+        },
+        "chain": {},
+        "split": {
+          "split": 30
+        },
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 399,
+        "destroyed": 9,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {
+          "split": 26
+        },
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 832,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {
+          "split": 29
+        },
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 3018,
+    "destroyed": 39,
+    "coins": 30,
+    "errors": [],
+    "nan": []
+  }
+}

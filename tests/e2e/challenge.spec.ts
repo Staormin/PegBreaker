@@ -1,5 +1,7 @@
 // tests/e2e/challenge.spec.ts — propriétaire : qa-tester. Défi par lien (F6) : crédit de la run et résultat.
-// 1. run de référence `?seed=qa-1&qa=1` (non créditée) → profondeur D ;
+// Règle d'équité (FUN.md, 2026-10-17) : un lien `?goal=` joue le pool standard (27 balles, toutes les reliques, sans méta),
+// `?seed=X` seul joue le pool du joueur. La référence doit donc être une run de défi elle aussi : `goal=0&qa=1`.
+// 1. run de référence `?seed=qa-1&goal=0&qa=1` (pool standard, non créditée) → profondeur D ;
 // 2. lien `?seed=qa-1&goal=D` (crédité, F6-01 corrigé), même bot → même profondeur → égalité (data-result="tie") ;
 // 3. `goal` = D − 1 → « won », `goal` = D + 50 → « lost » (même profil : stats.runs 2 puis 3).
 import { expect, test, type Page } from '@playwright/test';
@@ -29,7 +31,7 @@ async function metaView(page: Page): Promise<{ runs: number; fragments: number; 
 test('défi : run créditée, égalité, victoire et défaite', async ({ page }) => {
   test.setTimeout(240_000);
   const errors = watchErrors(page);
-  const ref = await runTo(page, `/?seed=${SEED}&qa=1`);
+  const ref = await runTo(page, `/?seed=${SEED}&goal=0&qa=1`);
   const m0 = await metaView(page);
   expect(m0.runs, 'qa=1 : run non créditée').toBe(0);
   expect(m0.fragments).toBe(0);

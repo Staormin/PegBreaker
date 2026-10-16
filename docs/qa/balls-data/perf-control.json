@@ -1,0 +1,86 @@
+{
+  "viewport": "720×1280",
+  "deviceScaleFactor": 1.5,
+  "cpuThrottle": 4,
+  "mix": [
+    "stone",
+    "fire",
+    "lightning",
+    "ice",
+    "ghost",
+    "lead",
+    "split",
+    "stone",
+    "fire",
+    "lightning",
+    "ice",
+    "ghost",
+    "lead",
+    "split",
+    "stone",
+    "fire",
+    "lightning",
+    "ice",
+    "ghost",
+    "lead",
+    "split",
+    "stone",
+    "fire",
+    "lightning",
+    "ice",
+    "ghost",
+    "lead",
+    "split",
+    "stone",
+    "fire"
+  ],
+  "shots": 3,
+  "fpsSamples": [
+    57,
+    55,
+    60,
+    60,
+    59,
+    46,
+    59,
+    59,
+    60
+  ],
+  "fpsMin": 46,
+  "fpsMean": 57.22222222222222,
+  "frameP50": 16.699999999999818,
+  "frameP95": 16.800000000000182,
+  "frameP99": 33.399999999999864,
+  "frameMax": 100,
+  "frames": 572,
+  "slowFrames": [
+    {
+      "sinceFireMs": 961,
+      "dt": 100,
+      "live": 16
+    }
+  ],
+  "rendererDpr": [
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1,
+    1,
+    1
+  ],
+  "maxParticles": 58,
+  "maxLive": 27,
+  "explodeByEl": {
+    "fire": 3
+  },
+  "splitByEl": {},
+  "kinds": {
+    "main": 90
+  },
+  "nan": [],
+  "violations": [],
+  "note": "mesure valable seulement si le test tourne seul (npx playwright test balls -g perf --workers=1) ; en suite parallèle le CPU est partagé"
+}

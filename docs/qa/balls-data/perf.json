@@ -1,0 +1,103 @@
+{
+  "viewport": "720×1280",
+  "deviceScaleFactor": 1.5,
+  "cpuThrottle": 4,
+  "mix": [
+    "acid",
+    "magnet",
+    "pierce",
+    "bomb",
+    "homing",
+    "giant",
+    "swarm",
+    "vampire",
+    "gold",
+    "prism",
+    "void",
+    "echo",
+    "boomerang",
+    "crystal",
+    "shock",
+    "twin",
+    "rust",
+    "nova",
+    "comet",
+    "lucky",
+    "bomb",
+    "prism",
+    "nova",
+    "swarm",
+    "crystal",
+    "twin",
+    "echo",
+    "lightning",
+    "fire",
+    "split"
+  ],
+  "shots": 3,
+  "fpsSamples": [
+    58,
+    49,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60
+  ],
+  "fpsMin": 49,
+  "fpsMean": 59,
+  "frameP50": 16.699999999999818,
+  "frameP95": 16.799999999999272,
+  "frameP99": 16.80000000000109,
+  "frameMax": 100.10000000000036,
+  "frames": 833,
+  "slowFrames": [
+    {
+      "sinceFireMs": 959,
+      "dt": 100,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1393,
+      "dt": 50,
+      "live": 21
+    }
+  ],
+  "rendererDpr": [
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25,
+    1.25
+  ],
+  "maxParticles": 50,
+  "maxLive": 27,
+  "explodeByEl": {
+    "bomb": 6
+  },
+  "splitByEl": {
+    "twin": 6
+  },
+  "kinds": {
+    "main": 90,
+    "mini": 3,
+    "echo": 6
+  },
+  "nan": [],
+  "violations": [],
+  "note": "mesure valable seulement si le test tourne seul (npx playwright test balls -g perf --workers=1) ; en suite parallèle le CPU est partagé"
+}

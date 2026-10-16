@@ -1,0 +1,187 @@
+{
+  "element": "swarm",
+  "seed": "balls-swarm",
+  "signal": "ball:split element 'swarm' + Ball.kind 'mini'",
+  "measured": "7 splits, 7 mini",
+  "ok": true,
+  "consoleErrors": [],
+  "ref": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 2587,
+        "destroyed": 21,
+        "wave": 3,
+        "coins": 13,
+        "explode": {
+          "explosive": 1
+        },
+        "chain": {},
+        "split": {
+          "swarm": 16
+        },
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 1286,
+        "destroyed": 14,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {
+          "swarm": 8
+        },
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 1076,
+        "destroyed": 15,
+        "wave": 2,
+        "coins": 3,
+        "explode": {
+          "explosive": 1
+        },
+        "chain": {},
+        "split": {
+          "swarm": 14
+        },
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 4949,
+    "destroyed": 50,
+    "coins": 27,
+    "errors": [],
+    "nan": []
+  },
+  "mech": null,
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 2,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 14999.999999999249,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 32,
+      "ball:bounce": 102,
+      "block:destroyed": 15,
+      "contract:progress": 3,
+      "ball:grounded": 37,
+      "volley:end": 6,
+      "rows:advanced": 5,
+      "drop:spawned": 5,
+      "drop:collected": 4,
+      "ball:split": 7,
+      "contract:completed": 1,
+      "combo:milestone": 4,
+      "wave:cleared": 1,
+      "reward:offered": 1,
+      "reward:chosen": 1,
+      "contract:offered": 1,
+      "block:explode": 1
+    },
+    "explodeByEl": {
+      "explosive": 1
+    },
+    "chainByEl": {},
+    "splitByEl": {
+      "swarm": 7
+    },
+    "healBySource": {},
+    "destroyedByEl": {
+      "swarm": 15
+    },
+    "hitsByEl": {
+      "swarm": 31,
+      "stone": 1
+    },
+    "damageByEl": {
+      "swarm": 1386,
+      "stone": 8
+    },
+    "kinds": {
+      "main": 30,
+      "mini": 7
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 2,
+      "hits": 31,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 4,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 7,
+      "comboMax": 6,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 1383.333333333283,
+        "2": 2083.333333333485,
+        "3": 2216.666666666828
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 56,
+    "devOver2": 1,
+    "maxLive": 7,
+    "maxParticles": 144,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      55,
+      20,
+      669,
+      210,
+      230,
+      210
+    ],
+    "captured": true
+  }
+}

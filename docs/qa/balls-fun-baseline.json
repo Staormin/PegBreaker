@@ -1,0 +1,62 @@
+{
+  "source": "docs/qa/fun-final.json au commit 8294ebb (rapport docs/qa/fun-final.md, généré 2026-10-16T22:57:18.939Z, build 0.4.0-j4) : pool personnel d'un profil vierge (stone, fire, lightning)",
+  "groups": {
+    "tight": {
+      "label": "rafale systématique (spread 0)",
+      "average": {
+        "waveOfDeath": 8.2,
+        "depth": 72.4,
+        "firstLossWave": 6.8,
+        "comboGe5": 0.27,
+        "comboGe8": 0.15,
+        "contractsOfferedPerRun": 7.6,
+        "contractsCompletedPerRun": 3.2,
+        "contractSuccessRate": 0.42,
+        "durationHumanMin": 4.57,
+        "reviveShare": 1,
+        "bestShotDamage": 4495.8,
+        "shots": 72.4,
+        "deadMoments": 0,
+        "errors": 0
+      }
+    },
+    "conditional": {
+      "label": "conditionnel : « large » si ≥ 4 blocs sur une rangée, sinon « rafale »",
+      "average": {
+        "waveOfDeath": 12,
+        "depth": 117,
+        "firstLossWave": 7.2,
+        "comboGe5": 0.58,
+        "comboGe8": 0.43,
+        "contractsOfferedPerRun": 10.6,
+        "contractsCompletedPerRun": 6.6,
+        "contractSuccessRate": 0.62,
+        "durationHumanMin": 9.17,
+        "reviveShare": 1,
+        "bestShotDamage": 39865.2,
+        "shots": 117,
+        "deadMoments": 0,
+        "errors": 0
+      }
+    },
+    "fan": {
+      "label": "« large » systématique (spread 1)",
+      "average": {
+        "waveOfDeath": 6,
+        "depth": 50.8,
+        "firstLossWave": 4.8,
+        "comboGe5": 0.39,
+        "comboGe8": 0.24,
+        "contractsOfferedPerRun": 5.8,
+        "contractsCompletedPerRun": 2.8,
+        "contractSuccessRate": 0.48,
+        "durationHumanMin": 3.73,
+        "reviveShare": 1,
+        "bestShotDamage": 1770.8,
+        "shots": 50.8,
+        "deadMoments": 0,
+        "errors": 0
+      }
+    }
+  }
+}

@@ -107,6 +107,8 @@ function summarize(bot: Group, seed: string, r: QaReport, consoleErrors: string[
     },
     bestCombo: st.bestCombo,
     bestShotDamage: st.bestShotDamage,
+    fusions: st.fusions,
+    finalVolley: r.state.volley,
     contractsCompletedStat: st.contractsCompleted,
     deadMoments: r.deadMoments,
     maxFeedbackGapMs: r.maxFeedbackGapMs,
@@ -166,23 +168,29 @@ function aggregate(rows: Row[]) {
     goldenPerShot: avg(rows, (r) => r.golden.perShot),
     goldenDamageShare: avg(rows, (r) => r.golden.damageShare),
     shotsWithGoldenKill: avg(rows, (r) => r.golden.shotsWithGoldenKill),
+    fusions: avg(rows, (r) => r.fusions),
     deadMoments: rows.reduce((a, r) => a + r.deadMoments.length, 0),
     maxFeedbackGapMs: Math.max(...rows.map((r) => r.maxFeedbackGapMs)),
     errors: rows.reduce((a, r) => a + r.consoleErrors.length + r.pageErrors.length, 0),
   };
 }
 
-async function runFast(page: Page, group: Group, seed: string): Promise<Row> {
+async function runFast(page: Page, group: Group, seed: string, url?: string): Promise<Row> {
   const g = GROUPS[group];
-  const { consoleErrors } = await openGame(page, seed);
+  const { consoleErrors } = await openGame(page, seed, url ? { url } : {});
   // même graine de bot que le lot 1 (hash « naive:<seed> » / « contracts:<seed> ») : seul le mode d'éventail change
   await installBot(page, { bot: g.bot, seed, spreadMode: g.spreadMode, onLost: 'reviveIfAffordable' });
   await setSpeed(page, 8);
   const r = await play(page, { maxRealMs: 170_000 });
   const row = summarize(group, seed, r, consoleErrors, null);
+  // balles prises (récompenses) : pour l'analyse du pool standard
+  (row as Row & { rewardsTaken?: string[] }).rewardsTaken = r.rewardsTaken;
   await page.close();
   return row;
 }
+
+/** lignes du pool personnel produites par le premier test (réutilisées par le test des pools) */
+let personalRows: Row[] | null = null;
 
 test.describe.configure({ mode: 'serial' });
 
@@ -211,6 +219,7 @@ test('fun final : rafale, conditionnel, large systématique (5 seeds chacun) con
   rows.push(...(await Promise.all([jobA, ...first.map(([g, seed]) => context.newPage().then((p) => runFast(p, g, seed)))])));
   rows.push(...(await Promise.all(todo.map(([g, seed]) => context.newPage().then((p) => runFast(p, g, seed))))));
   const by = (g: Group): Row[] => rows.filter((r) => r.bot === g).sort((a, b) => a.seed.localeCompare(b.seed));
+  personalRows = rows;
 
   // « avant » : build 7a33cab (docs/qa/final-metrics.json, même formule de durée joueur)
   let before: Record<string, unknown> | null = null;
@@ -386,4 +395,48 @@ test('captures et input réel : éventail, contrat, balle dorée, record', async
   const pageErrors = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice());
   expect(pageErrors).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+// --- Règle d'équité (FUN.md, 2026-10-17) : pool personnel d'un profil vierge (3 éléments) contre pool standard -------
+// Pool standard = `?seed=…&goal=0&qa=1` (27 balles, toutes les reliques, aucune méta ; non crédité). Mêmes bots
+// (tight = naïf rafale, conditional = « bon usage » du sélecteur), mêmes graines qa-1…qa-5, seconde chance gratuite.
+// Pool personnel : lignes du premier test (même profil vierge, `?seed=…&qa=1`). Référence « avant » figée :
+// docs/qa/balls-fun-baseline.json (fun-final.json au commit 8294ebb). Sortie : docs/qa/balls-fun.json.
+const POOL_GROUPS: Group[] = ['tight', 'conditional'];
+const POOL_KEYS = ['waveOfDeath', 'depth', 'firstLossWave', 'comboGe5', 'comboGe8', 'contractsOfferedPerRun', 'contractsCompletedPerRun', 'contractSuccessRate', 'durationHumanMin', 'bestShotDamage', 'fusions', 'shots', 'deadMoments', 'errors'] as const;
+
+test('pools : personnel (profil vierge, 3 éléments) contre standard (défi, 27 balles)', async ({ context }) => {
+  test.setTimeout(420_000);
+  const pick = (a: ReturnType<typeof aggregate>): Record<string, unknown> => Object.fromEntries(POOL_KEYS.map((k) => [k, a[k]]));
+  let personal = personalRows?.filter((r) => POOL_GROUPS.includes(r.bot)) ?? null;
+  const jobs: Promise<Row>[] = [];
+  for (const g of POOL_GROUPS)
+    for (const seed of SEEDS) {
+      jobs.push(context.newPage().then((p) => runFast(p, g, seed, `/?seed=${seed}&goal=0&qa=1`)));
+      if (!personal) jobs.push(context.newPage().then((p) => runFast(p, g, seed).then((r) => ({ ...r, seed: `perso:${seed}` }))));
+    }
+  const all = await Promise.all(jobs);
+  const standard = all.filter((r) => !r.seed.startsWith('perso:'));
+  if (!personal) personal = all.filter((r) => r.seed.startsWith('perso:')).map((r) => ({ ...r, seed: r.seed.slice(6) }));
+  const baseline = existsSync('docs/qa/balls-fun-baseline.json') ? (JSON.parse(readFileSync('docs/qa/balls-fun-baseline.json', 'utf8')) as unknown) : null;
+  const usage: Record<string, number> = {};
+  for (const r of standard) for (const k of (r as Row & { rewardsTaken?: string[] }).rewardsTaken ?? []) usage[k] = (usage[k] ?? 0) + 1;
+  const out = {
+    generatedAt: new Date().toISOString(),
+    method: 'tight = naïf rafale, conditional = sélecteur conditionnel ; seeds qa-1…qa-5 ; vitesse 8 ; seconde chance gratuite (qa=1, stats.runs = 0)',
+    baseline,
+    personal: Object.fromEntries(POOL_GROUPS.map((g) => [g, { average: pick(aggregate(personal!.filter((r) => r.bot === g))), runs: personal!.filter((r) => r.bot === g).map((r) => ({ seed: r.seed, waveOfDeath: r.waveOfDeath, depth: r.depth, comboGe5: r.comboGe5, contracts: r.contracts.completed, fusions: r.fusions, volley: r.finalVolley, min: r.durationHumanMin, stop: r.stopReason })) }])),
+    standard: Object.fromEntries(POOL_GROUPS.map((g) => [g, { average: pick(aggregate(standard.filter((r) => r.bot === g))), runs: standard.filter((r) => r.bot === g).sort((a, b) => a.seed.localeCompare(b.seed)).map((r) => ({ seed: r.seed, waveOfDeath: r.waveOfDeath, depth: r.depth, comboGe5: r.comboGe5, contracts: r.contracts.completed, fusions: r.fusions, volley: r.finalVolley, min: r.durationHumanMin, stop: r.stopReason })) }])),
+    rewardsTakenStandard: Object.fromEntries(Object.entries(usage).sort((a, b) => b[1] - a[1])),
+  };
+  writeFileSync('docs/qa/balls-fun.json', JSON.stringify(out, null, 2) + '\n');
+  test.info().annotations.push({ type: 'pools', description: JSON.stringify({ personal: out.personal, standard: out.standard }) });
+  for (const row of standard) {
+    const tag = `standard ${row.bot}/${row.seed}`;
+    expect(row.pageErrors, `erreurs page ${tag}`).toEqual([]);
+    expect(row.consoleErrors, `erreurs console ${tag}`).toEqual([]);
+    expect(row.softlocks, `softlocks ${tag}`).toEqual([]);
+    expect(FATAL, `arrêt fatal ${tag}`).not.toContain(row.stopReason);
+    if (row.stopReason === 'gameover') expect(row.runOverCount, `run:over unique ${tag}`).toBe(1);
+  }
 });

@@ -1,0 +1,191 @@
+{
+  "element": "homing",
+  "seed": "balls-homing",
+  "signal": "vitesse après rebond ≠ réflexion pure (> 2°)",
+  "measured": "75/81 rebonds déviés, max par rang {\"1\":12,\"2\":20,\"3\":38}°",
+  "ok": true,
+  "consoleErrors": [],
+  "ref": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 2524,
+        "destroyed": 20,
+        "wave": 3,
+        "coins": 7,
+        "explode": {
+          "explosive": 1
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 3736,
+        "destroyed": 23,
+        "wave": 3,
+        "coins": 18,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 2682,
+        "destroyed": 20,
+        "wave": 3,
+        "coins": 11,
+        "explode": {
+          "explosive": 2
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 8942,
+    "destroyed": 63,
+    "coins": 36,
+    "errors": [],
+    "nan": []
+  },
+  "mech": null,
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 2,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 21683.33333333392,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 41,
+      "ball:bounce": 89,
+      "block:destroyed": 22,
+      "contract:progress": 5,
+      "drop:spawned": 10,
+      "contract:completed": 2,
+      "drop:collected": 9,
+      "ball:grounded": 30,
+      "volley:end": 6,
+      "rows:advanced": 5,
+      "combo:milestone": 4,
+      "wave:cleared": 1,
+      "reward:offered": 1,
+      "volley:fusion": 1,
+      "reward:chosen": 1,
+      "contract:offered": 1,
+      "block:explode": 3
+    },
+    "explodeByEl": {
+      "explosive": 3
+    },
+    "chainByEl": {},
+    "splitByEl": {},
+    "healBySource": {},
+    "destroyedByEl": {
+      "homing": 22
+    },
+    "hitsByEl": {
+      "homing": 41
+    },
+    "damageByEl": {
+      "homing": 2463
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 6,
+      "hits": 41,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
+      "homingSamples": 81,
+      "homingDeviated": 75,
+      "homingMaxDevDeg": 37.957819131437724,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 9,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 7,
+      "comboMax": 7,
+      "homingMaxDevByTier": {
+        "1": 12.000000000000018,
+        "2": 20.000000000000032,
+        "3": 37.957819131437724
+      },
+      "homingOverMax": [
+        {
+          "tier": 3,
+          "dev": 38,
+          "angleFromHorizDeg": 38
+        },
+        {
+          "tier": 3,
+          "dev": 33.8,
+          "angleFromHorizDeg": 8
+        }
+      ],
+      "flightMsMaxByTier": {
+        "1": 1233.3333333331539,
+        "2": 5750.000000000215,
+        "3": 4383.3333333326955
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 81,
+    "devOver2": 75,
+    "maxLive": 5,
+    "maxParticles": 101,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      210,
+      545,
+      876,
+      210,
+      210,
+      412
+    ],
+    "captured": true
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T22:57:33.931Z",
+  "generatedAt": "2026-10-16T23:47:10.138Z",
   "seed": "prog",
   "rows": [
     {
@@ -25,7 +25,7 @@
       "bestShotDamage": 956,
       "bestCombo": 16,
       "finalVolley": 13,
-      "durationSimMs": 70379,
+      "durationSimMs": 62729,
       "bossesKilled": 0,
       "perfectWaves": 3,
       "deadMoments": 0,
@@ -78,7 +78,7 @@
       "bestShotDamage": 6486,
       "bestCombo": 23,
       "finalVolley": 20,
-      "durationSimMs": 177662,
+      "durationSimMs": 168412,
       "bossesKilled": 1,
       "perfectWaves": 6,
       "deadMoments": 0,
@@ -144,7 +144,7 @@
       "bestShotDamage": 1422,
       "bestCombo": 13,
       "finalVolley": 17,
-      "durationSimMs": 143413,
+      "durationSimMs": 139796,
       "bossesKilled": 1,
       "perfectWaves": 4,
       "deadMoments": 0,
@@ -200,24 +200,25 @@
         "volley": 6
       },
       "stopReason": "gameover",
-      "depth": 112,
-      "wave": 12,
-      "bestShotDamage": 14064,
-      "bestCombo": 130,
+      "depth": 185,
+      "wave": 18,
+      "bestShotDamage": 129454,
+      "bestCombo": 76,
       "finalVolley": 29,
-      "durationSimMs": 399525,
+      "durationSimMs": 639954,
       "bossesKilled": 2,
-      "perfectWaves": 8,
+      "perfectWaves": 10,
       "deadMoments": 0,
       "softlocks": [],
-      "fragmentsAfterRun": 319,
-      "fragmentsLeft": 14,
+      "fragmentsAfterRun": 461,
+      "fragmentsLeft": 76,
       "bought": [
         "el_gold:50",
         "el_rust:55",
         "el_pierce:60",
         "hp:70",
-        "coins:70"
+        "coins:70",
+        "el_twin:80"
       ],
       "runs": 4,
       "achievements": [
@@ -230,6 +231,7 @@
         "shot5000",
         "combo50",
         "wave10",
+        "wave15",
         "depth80",
         "relic6",
         "volley24",
@@ -246,11 +248,13 @@
         "el_split": 1,
         "el_gold": 1,
         "el_rust": 1,
-        "el_pierce": 1
+        "el_pierce": 1,
+        "el_twin": 1
       },
       "newAchievements": [
         "combo50",
         "wave10",
+        "wave15",
         "depth80",
         "relic6",
         "volley24",
@@ -273,6 +277,7 @@
           "magnet",
           "pierce",
           "gold",
+          "twin",
           "rust",
           "nova",
           "comet",
@@ -283,21 +288,25 @@
         "maxHp": 7,
         "volley": 6
       },
-      "stopReason": "timeout",
-      "depth": 232,
-      "wave": 23,
-      "bestShotDamage": 347484,
-      "bestCombo": 717,
+      "stopReason": "gameover",
+      "depth": 185,
+      "wave": 20,
+      "bestShotDamage": 142472,
+      "bestCombo": 559,
       "finalVolley": 30,
-      "durationSimMs": 1080383,
-      "bossesKilled": 4,
-      "perfectWaves": 16,
+      "durationSimMs": 851829,
+      "bossesKilled": 3,
+      "perfectWaves": 15,
       "deadMoments": 0,
       "softlocks": [],
-      "fragmentsAfterRun": 14,
-      "fragmentsLeft": 14,
-      "bought": [],
-      "runs": 4,
+      "fragmentsAfterRun": 288,
+      "fragmentsLeft": 18,
+      "bought": [
+        "el_bomb:90",
+        "rel_alchimie:90",
+        "mod_glass:90"
+      ],
+      "runs": 5,
       "achievements": [
         "combo15",
         "fusion2",
@@ -308,6 +317,7 @@
         "shot5000",
         "combo50",
         "wave10",
+        "wave15",
         "depth80",
         "relic6",
         "volley24",
@@ -324,10 +334,13 @@
         "el_split": 1,
         "el_gold": 1,
         "el_rust": 1,
-        "el_pierce": 1
+        "el_pierce": 1,
+        "el_twin": 1,
+        "el_bomb": 1,
+        "rel_alchimie": 1,
+        "mod_glass": 1
       },
-      "newAchievements": [],
-      "note": "run interrompue après 45 s réelles à vitesse 24"
+      "newAchievements": []
     }
   ],
   "trend": {
@@ -336,19 +349,19 @@
         23,
         62,
         57,
-        112,
-        232
+        185,
+        185
       ],
       "nonDecreasing": false,
-      "run5MinusRun1": 209
+      "run5MinusRun1": 162
     },
     "bestShotDamage": {
       "values": [
         956,
         6486,
         1422,
-        14064,
-        347484
+        129454,
+        142472
       ],
       "nonDecreasing": false
     },

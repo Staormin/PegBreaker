@@ -1,0 +1,411 @@
+{
+  "generatedAt": "2026-10-16T23:49:27.905Z",
+  "method": "tight = naïf rafale, conditional = sélecteur conditionnel ; seeds qa-1…qa-5 ; vitesse 8 ; seconde chance gratuite (qa=1, stats.runs = 0)",
+  "baseline": {
+    "source": "docs/qa/fun-final.json au commit 8294ebb (rapport docs/qa/fun-final.md, généré 2026-10-16T22:57:18.939Z, build 0.4.0-j4) : pool personnel d'un profil vierge (stone, fire, lightning)",
+    "groups": {
+      "tight": {
+        "label": "rafale systématique (spread 0)",
+        "average": {
+          "waveOfDeath": 8.2,
+          "depth": 72.4,
+          "firstLossWave": 6.8,
+          "comboGe5": 0.27,
+          "comboGe8": 0.15,
+          "contractsOfferedPerRun": 7.6,
+          "contractsCompletedPerRun": 3.2,
+          "contractSuccessRate": 0.42,
+          "durationHumanMin": 4.57,
+          "reviveShare": 1,
+          "bestShotDamage": 4495.8,
+          "shots": 72.4,
+          "deadMoments": 0,
+          "errors": 0
+        }
+      },
+      "conditional": {
+        "label": "conditionnel : « large » si ≥ 4 blocs sur une rangée, sinon « rafale »",
+        "average": {
+          "waveOfDeath": 12,
+          "depth": 117,
+          "firstLossWave": 7.2,
+          "comboGe5": 0.58,
+          "comboGe8": 0.43,
+          "contractsOfferedPerRun": 10.6,
+          "contractsCompletedPerRun": 6.6,
+          "contractSuccessRate": 0.62,
+          "durationHumanMin": 9.17,
+          "reviveShare": 1,
+          "bestShotDamage": 39865.2,
+          "shots": 117,
+          "deadMoments": 0,
+          "errors": 0
+        }
+      },
+      "fan": {
+        "label": "« large » systématique (spread 1)",
+        "average": {
+          "waveOfDeath": 6,
+          "depth": 50.8,
+          "firstLossWave": 4.8,
+          "comboGe5": 0.39,
+          "comboGe8": 0.24,
+          "contractsOfferedPerRun": 5.8,
+          "contractsCompletedPerRun": 2.8,
+          "contractSuccessRate": 0.48,
+          "durationHumanMin": 3.73,
+          "reviveShare": 1,
+          "bestShotDamage": 1770.8,
+          "shots": 50.8,
+          "deadMoments": 0,
+          "errors": 0
+        }
+      }
+    }
+  },
+  "personal": {
+    "tight": {
+      "average": {
+        "waveOfDeath": 8.2,
+        "depth": 72.4,
+        "firstLossWave": 6.8,
+        "comboGe5": 0.27,
+        "comboGe8": 0.15,
+        "contractsOfferedPerRun": 7.6,
+        "contractsCompletedPerRun": 3.2,
+        "contractSuccessRate": 0.42,
+        "durationHumanMin": 4.6,
+        "bestShotDamage": 4495.8,
+        "fusions": 1.8,
+        "shots": 72.4,
+        "deadMoments": 0,
+        "errors": 0
+      },
+      "runs": [
+        {
+          "seed": "qa-1",
+          "waveOfDeath": 7,
+          "depth": 61,
+          "comboGe5": 0.13,
+          "contracts": 2,
+          "fusions": 2,
+          "volley": 12,
+          "min": 3.55,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-2",
+          "waveOfDeath": 8,
+          "depth": 70,
+          "comboGe5": 0.19,
+          "contracts": 3,
+          "fusions": 1,
+          "volley": 21,
+          "min": 4.45,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-3",
+          "waveOfDeath": 11,
+          "depth": 99,
+          "comboGe5": 0.36,
+          "contracts": 5,
+          "fusions": 5,
+          "volley": 29,
+          "min": 6.79,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-4",
+          "waveOfDeath": 8,
+          "depth": 67,
+          "comboGe5": 0.37,
+          "contracts": 5,
+          "fusions": 1,
+          "volley": 22,
+          "min": 4.61,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-5",
+          "waveOfDeath": 7,
+          "depth": 65,
+          "comboGe5": 0.32,
+          "contracts": 1,
+          "fusions": 0,
+          "volley": 16,
+          "min": 3.59,
+          "stop": "gameover"
+        }
+      ]
+    },
+    "conditional": {
+      "average": {
+        "waveOfDeath": 11.8,
+        "depth": 132.6,
+        "firstLossWave": 7.2,
+        "comboGe5": 0.59,
+        "comboGe8": 0.45,
+        "contractsOfferedPerRun": 10.4,
+        "contractsCompletedPerRun": 6.4,
+        "contractSuccessRate": 0.62,
+        "durationHumanMin": 11.25,
+        "bestShotDamage": 55822.6,
+        "fusions": 20.4,
+        "shots": 132.6,
+        "deadMoments": 0,
+        "errors": 0
+      },
+      "runs": [
+        {
+          "seed": "qa-1",
+          "waveOfDeath": 8,
+          "depth": 75,
+          "comboGe5": 0.6,
+          "contracts": 5,
+          "fusions": 2,
+          "volley": 18,
+          "min": 5.23,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-2",
+          "waveOfDeath": 20,
+          "depth": 303,
+          "comboGe5": 0.84,
+          "contracts": 12,
+          "fusions": 81,
+          "volley": 30,
+          "min": 29.3,
+          "stop": "timeout"
+        },
+        {
+          "seed": "qa-3",
+          "waveOfDeath": 12,
+          "depth": 109,
+          "comboGe5": 0.55,
+          "contracts": 7,
+          "fusions": 14,
+          "volley": 29,
+          "min": 9.18,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-4",
+          "waveOfDeath": 12,
+          "depth": 113,
+          "comboGe5": 0.62,
+          "contracts": 5,
+          "fusions": 4,
+          "volley": 29,
+          "min": 8.55,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-5",
+          "waveOfDeath": 7,
+          "depth": 63,
+          "comboGe5": 0.35,
+          "contracts": 3,
+          "fusions": 1,
+          "volley": 15,
+          "min": 3.98,
+          "stop": "gameover"
+        }
+      ]
+    }
+  },
+  "standard": {
+    "tight": {
+      "average": {
+        "waveOfDeath": 10,
+        "depth": 95,
+        "firstLossWave": 7.4,
+        "comboGe5": 0.58,
+        "comboGe8": 0.39,
+        "contractsOfferedPerRun": 9,
+        "contractsCompletedPerRun": 5.4,
+        "contractSuccessRate": 0.6,
+        "durationHumanMin": 8.03,
+        "bestShotDamage": 7471,
+        "fusions": 5.8,
+        "shots": 95,
+        "deadMoments": 0,
+        "errors": 0
+      },
+      "runs": [
+        {
+          "seed": "qa-1",
+          "waveOfDeath": 12,
+          "depth": 132,
+          "comboGe5": 0.65,
+          "contracts": 6,
+          "fusions": 9,
+          "volley": 29,
+          "min": 11.44,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-2",
+          "waveOfDeath": 14,
+          "depth": 138,
+          "comboGe5": 0.75,
+          "contracts": 9,
+          "fusions": 19,
+          "volley": 29,
+          "min": 13.48,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-3",
+          "waveOfDeath": 9,
+          "depth": 83,
+          "comboGe5": 0.42,
+          "contracts": 5,
+          "fusions": 1,
+          "volley": 26,
+          "min": 5.79,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-4",
+          "waveOfDeath": 9,
+          "depth": 72,
+          "comboGe5": 0.75,
+          "contracts": 5,
+          "fusions": 0,
+          "volley": 18,
+          "min": 6,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-5",
+          "waveOfDeath": 6,
+          "depth": 50,
+          "comboGe5": 0.34,
+          "contracts": 2,
+          "fusions": 0,
+          "volley": 15,
+          "min": 3.42,
+          "stop": "gameover"
+        }
+      ]
+    },
+    "conditional": {
+      "average": {
+        "waveOfDeath": 9.8,
+        "depth": 94,
+        "firstLossWave": 8.4,
+        "comboGe5": 0.6,
+        "comboGe8": 0.46,
+        "contractsOfferedPerRun": 9,
+        "contractsCompletedPerRun": 4.4,
+        "contractSuccessRate": 0.49,
+        "durationHumanMin": 7.88,
+        "bestShotDamage": 5513.6,
+        "fusions": 7,
+        "shots": 94,
+        "deadMoments": 0,
+        "errors": 0
+      },
+      "runs": [
+        {
+          "seed": "qa-1",
+          "waveOfDeath": 8,
+          "depth": 82,
+          "comboGe5": 0.66,
+          "contracts": 3,
+          "fusions": 1,
+          "volley": 17,
+          "min": 6.59,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-2",
+          "waveOfDeath": 16,
+          "depth": 171,
+          "comboGe5": 0.67,
+          "contracts": 6,
+          "fusions": 24,
+          "volley": 30,
+          "min": 15.9,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-3",
+          "waveOfDeath": 12,
+          "depth": 109,
+          "comboGe5": 0.65,
+          "contracts": 6,
+          "fusions": 8,
+          "volley": 29,
+          "min": 9.76,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-4",
+          "waveOfDeath": 7,
+          "depth": 58,
+          "comboGe5": 0.69,
+          "contracts": 4,
+          "fusions": 2,
+          "volley": 17,
+          "min": 4.2,
+          "stop": "gameover"
+        },
+        {
+          "seed": "qa-5",
+          "waveOfDeath": 6,
+          "depth": 50,
+          "comboGe5": 0.32,
+          "contracts": 3,
+          "fusions": 0,
+          "volley": 15,
+          "min": 2.93,
+          "stop": "gameover"
+        }
+      ]
+    }
+  },
+  "rewardsTakenStandard": {
+    "fuse:stone2": 8,
+    "relic:bouncy": 7,
+    "relic:pactole": 5,
+    "ball:rust": 4,
+    "relic:radar": 4,
+    "relic:permafrost": 4,
+    "ball:giant": 4,
+    "relic:piggy": 4,
+    "ball:lightning": 3,
+    "relic:bigboom": 3,
+    "relic:ricochet": 3,
+    "relic:gourmand": 3,
+    "ball:lead": 3,
+    "ball:ice": 2,
+    "ball:stone": 2,
+    "relic:pyromane": 2,
+    "relic:alchimie": 2,
+    "relic:berserk": 2,
+    "ball:split": 2,
+    "relic:flipper": 2,
+    "relic:catalyseur": 2,
+    "ball:void": 1,
+    "ball:magnet": 1,
+    "ball:crystal": 1,
+    "ball:bomb": 1,
+    "relic:magnet": 1,
+    "ball:vampire": 1,
+    "ball:shock": 1,
+    "relic:firstblood": 1,
+    "relic:enclume": 1,
+    "fuse:stone3": 1,
+    "relic:safetynet": 1,
+    "relic:paratonnerre": 1,
+    "ball:homing": 1,
+    "ball:comet": 1,
+    "relic:mitose": 1,
+    "ball:boomerang": 1,
+    "ball:swarm": 1,
+    "ball:prism": 1
+  }
+}

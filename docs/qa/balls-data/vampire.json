@@ -1,0 +1,171 @@
+{
+  "element": "vampire",
+  "seed": "balls-vampire",
+  "signal": "player:healed source 'vampire' (PV forcés à max − 3)",
+  "measured": "11 soins vampire",
+  "ok": true,
+  "consoleErrors": [],
+  "ref": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 745,
+        "destroyed": 10,
+        "wave": 2,
+        "coins": 5,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 929,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 1139,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {},
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 2813,
+    "destroyed": 32,
+    "coins": 27,
+    "errors": [],
+    "nan": []
+  },
+  "mech": null,
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 2,
+    "depth": 6,
+    "hp": 3,
+    "maxHp": 5,
+    "simMs": 11816.666666666379,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 34,
+      "ball:bounce": 65,
+      "block:destroyed": 16,
+      "player:healed": 11,
+      "ball:grounded": 30,
+      "volley:end": 6,
+      "rows:advanced": 5,
+      "drop:spawned": 6,
+      "contract:progress": 5,
+      "drop:collected": 6,
+      "combo:milestone": 1,
+      "contract:completed": 2,
+      "wave:cleared": 1,
+      "reward:offered": 1,
+      "reward:chosen": 1,
+      "contract:offered": 1
+    },
+    "explodeByEl": {},
+    "chainByEl": {},
+    "splitByEl": {},
+    "healBySource": {
+      "vampire": 11
+    },
+    "destroyedByEl": {
+      "vampire": 16
+    },
+    "hitsByEl": {
+      "vampire": 34
+    },
+    "damageByEl": {
+      "vampire": 1765
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 2,
+      "hits": 34,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 6,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 14,
+      "comboMax": 5,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 1833.3333333332744,
+        "2": 1849.9999999999477,
+        "3": 2633.3333333333453
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 65,
+    "devOver2": 0,
+    "maxLive": 5,
+    "maxParticles": 124,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      55,
+      1025,
+      55,
+      210,
+      210,
+      210
+    ],
+    "captured": true
+  }
+}

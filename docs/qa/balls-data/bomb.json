@@ -1,0 +1,176 @@
+{
+  "element": "bomb",
+  "seed": "balls-bomb",
+  "signal": "block:explode element 'bomb'",
+  "measured": "30 explosions",
+  "ok": true,
+  "consoleErrors": [],
+  "ref": {
+    "runs": [
+      {
+        "seed": "balls-ref-1",
+        "shots": 6,
+        "damage": 745,
+        "destroyed": 10,
+        "wave": 2,
+        "coins": 5,
+        "explode": {
+          "bomb": 30
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-2",
+        "shots": 6,
+        "damage": 929,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {
+          "bomb": 30
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      },
+      {
+        "seed": "balls-ref-3",
+        "shots": 6,
+        "damage": 1139,
+        "destroyed": 11,
+        "wave": 2,
+        "coins": 11,
+        "explode": {
+          "bomb": 28
+        },
+        "chain": {},
+        "split": {},
+        "heal": {},
+        "acidMax": 0,
+        "rowUp": 0,
+        "maxHpDrop": 0
+      }
+    ],
+    "damage": 2813,
+    "destroyed": 32,
+    "coins": 27,
+    "errors": [],
+    "nan": []
+  },
+  "mech": null,
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 2,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 13899.999999999409,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 46,
+      "ball:bounce": 97,
+      "block:destroyed": 17,
+      "ball:grounded": 30,
+      "block:explode": 32,
+      "volley:end": 6,
+      "rows:advanced": 5,
+      "drop:spawned": 3,
+      "combo:milestone": 7,
+      "drop:collected": 2,
+      "wave:cleared": 1,
+      "contract:failed": 1,
+      "reward:offered": 1,
+      "reward:chosen": 1
+    },
+    "explodeByEl": {
+      "bomb": 30,
+      "explosive": 2
+    },
+    "chainByEl": {},
+    "splitByEl": {},
+    "healBySource": {},
+    "destroyedByEl": {
+      "bomb": 17
+    },
+    "hitsByEl": {
+      "bomb": 46
+    },
+    "damageByEl": {
+      "bomb": 1633
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 4,
+      "hits": 46,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 2,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 19,
+      "comboMax": 5,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 2449.999999999995,
+        "2": 2466.6666666666683,
+        "3": 2316.666666666835
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 93,
+    "devOver2": 0,
+    "maxLive": 5,
+    "maxParticles": 186,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      59,
+      386,
+      20,
+      55,
+      419,
+      694
+    ],
+    "captured": true
+  }
+}

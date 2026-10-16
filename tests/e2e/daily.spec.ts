@@ -29,8 +29,12 @@ async function playDaily(page: Page, tag: string): Promise<{ earned: number; ach
     });
   });
   await installBot(page, { bot: 'naive', seed: `daily-${tag}`, onLost: 'giveUp' });
-  await setSpeed(page, 8);
-  const r = await play(page, { maxRealMs: 120_000 });
+  // Pool standard (règle d'équité) + mutateurs tirés par la date : la longueur de la run dépend du jour
+  // (2026-10-17, pegfest + inferno : vague 14, P135). Vitesse 16 et garde-fou large pour ne pas dépendre de la charge.
+  await setSpeed(page, 16);
+  const t0 = Date.now();
+  const r = await play(page, { maxRealMs: 170_000 });
+  test.info().annotations.push({ type: `durée run ${tag}`, description: JSON.stringify({ realMs: Date.now() - t0, wave: r.state.wave, depth: r.state.depth, stop: r.stopReason }) });
   expect(r.stopReason, 'run quotidienne terminée').toBe('gameover');
   await expect(page.locator('.screen-gameover')).toHaveClass(/visible/);
   await page.waitForTimeout(300);
@@ -43,7 +47,7 @@ async function playDaily(page: Page, tag: string): Promise<{ earned: number; ach
 }
 
 test('quotidien : 2 mutateurs du jour, seed stable, résultat enregistré, série 4 → ×1,3', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   const errors = watchErrors(page);
   await page.goto('/?daily=1');
   await waitReady(page);

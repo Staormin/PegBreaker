@@ -11,15 +11,15 @@
     "ball:launched": {
       "n": 182,
       "withParticles": 25,
-      "particleSum": 114,
+      "particleSum": 111,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
     },
     "block:hit": {
       "n": 354,
-      "withParticles": 318,
-      "particleSum": 318,
+      "withParticles": 310,
+      "particleSum": 310,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -27,7 +27,7 @@
     "ball:bounce:block": {
       "n": 209,
       "withParticles": 209,
-      "particleSum": 385,
+      "particleSum": 379,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -35,7 +35,7 @@
     "ball:bounce:wall": {
       "n": 548,
       "withParticles": 548,
-      "particleSum": 980,
+      "particleSum": 976,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -59,7 +59,7 @@
     "drop:spawned": {
       "n": 18,
       "withParticles": 9,
-      "particleSum": 14,
+      "particleSum": 12,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -67,7 +67,7 @@
     "drop:collected": {
       "n": 18,
       "withParticles": 18,
-      "particleSum": 69,
+      "particleSum": 61,
       "domOk": 0,
       "domChecked": 18,
       "saturated": 0
@@ -83,15 +83,15 @@
     "contract:completed": {
       "n": 2,
       "withParticles": 2,
-      "particleSum": 19,
+      "particleSum": 20,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
     },
     "ball:grounded": {
       "n": 190,
-      "withParticles": 174,
-      "particleSum": 174,
+      "withParticles": 173,
+      "particleSum": 173,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -99,7 +99,7 @@
     "combo:milestone": {
       "n": 23,
       "withParticles": 23,
-      "particleSum": 120,
+      "particleSum": 119,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -123,7 +123,7 @@
     "ball:bounce:peg": {
       "n": 38,
       "withParticles": 38,
-      "particleSum": 69,
+      "particleSum": 63,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -179,7 +179,7 @@
     "lightning:chain": {
       "n": 15,
       "withParticles": 15,
-      "particleSum": 27,
+      "particleSum": 28,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -195,7 +195,7 @@
     "block:frozen": {
       "n": 1,
       "withParticles": 1,
-      "particleSum": 3,
+      "particleSum": 4,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -446,7 +446,7 @@
   "frozenFrames": 0,
   "frozenUnexplained": 0,
   "firingFrozen": 0,
-  "firingFrames": 1269,
+  "firingFrames": 1297,
   "advanceSamples": [
     0.03,
     0.17,
@@ -466,6 +466,7 @@
     0.97,
     0.08,
     0.22,
+    0.35,
     0.48,
     0.62,
     0.75,
@@ -539,7 +540,7 @@
   ],
   "slowmo": {
     "level3": 1,
-    "ratioMin": 0.6138467771640156
+    "ratioMin": 0.7921464585810826
   },
-  "maxParticles": 187
+  "maxParticles": 181
 }
