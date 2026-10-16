@@ -37,6 +37,8 @@ export interface Engine {
   noiseSrc(): AudioBufferSourceNode | null;
   shaper(curve: Float32Array<ArrayBuffer>): WaveShaperNode | null;
   delay(maxS: number): DelayNode | null;
+  /** panoramique stéréo ; null si le contexte n'est pas prêt ou si StereoPannerNode est absent */
+  panner(pan: number): StereoPannerNode | null;
   /** marque une voix active jusqu'à `endNode.onended` */
   trackVoice(endNode: AudioScheduledSourceNode): void;
   resetPeak(): void;
@@ -239,6 +241,13 @@ export function createEngine(opts: { measure: boolean }): Engine {
       const c = ready();
       if (!c) return null;
       return count(c.createDelay(maxS));
+    },
+    panner(pan) {
+      const c = ready();
+      if (!c || typeof c.createStereoPanner !== 'function') return null;
+      const p = count(c.createStereoPanner());
+      p.pan.value = Math.max(-1, Math.min(1, pan));
+      return p;
     },
     trackVoice(n) {
       stats.voicesActive++;

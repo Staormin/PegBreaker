@@ -43,9 +43,10 @@ function boot(): void {
   const resume = !forcedSeed && !isDaily && !fresh && meta.data.currentRun ? meta.data.currentRun : undefined;
   const seed = forcedSeed ?? (isDaily ? meta.dailySeed() : `run-${Date.now().toString(36)}`);
   const audio: AudioSystem = createAudio(bus, meta.data.settings);
+  const baseMods = meta.getModifiers();
   const sim = createSim(config, {
     seed,
-    meta: meta.getModifiers(),
+    meta: isDaily ? { ...baseMods, runMods: meta.dailyMods() } : baseMods,
     ...(resume ? { snapshot: resume } : {}),
     isDaily,
     dailyDate: isDaily ? meta.todayKey() : null,

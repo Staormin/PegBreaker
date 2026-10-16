@@ -13,6 +13,14 @@ import { createSfx, type Sfx } from './sfx';
 
 /** silence laissé au geste au début d'une run (s) */
 const MUSIC_INTRO_SILENCE_S = 2;
+/** contract:progress : au plus 4 tics par seconde */
+const CONTRACT_TICK_MIN_MS = 250;
+/** fondu de sortie de la musique à la mort (s), pendant l'accord mineur */
+const LOST_MUSIC_FADE_S = 1.2;
+/** fondu d'entrée de la musique après une seconde chance (s) */
+const REVIVE_MUSIC_FADE_S = 1;
+/** run:over juste après run:lost : l'accord de mort suffit, pas de descente chromatique en plus */
+const LOST_THEN_OVER_MS = 1500;
 
 export interface AudioDebug {
   readonly engine: EngineStats;
@@ -53,6 +61,12 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   let bossAlive = false;
   let unlockedSeen = false;
   let peakTimer: ReturnType<typeof setInterval> | null = null;
+  let lastContractTick = -Infinity;
+  let lostAt = -Infinity;
+  /** balles dorées en vol (ballId) jusqu'à ball:grounded */
+  const golden = new Set<number>();
+  /** vrai dès qu'un block:hit porte un ballId (évolution de core) : le ping doré passe alors par le hit */
+  let hitCarriesBallId = false;
   const unsubs: (() => void)[] = [];
 
   /** déclenche une recette si le contexte tourne, le volume n'est pas nul et le limiteur l'admet */
@@ -70,19 +84,37 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     unsubs.push(bus.on(type, h));
   };
 
-  function wantMusic(): void {
+  function wantMusic(fadeInS?: number): void {
     if (!engine.running || musicVolume <= 0 || !runActive || document.hidden) return;
     const since = (nowMs() - runStartedAt) / 1000;
     music.setWave(wave);
     music.setTension(bossAlive);
-    music.start(Math.max(0, MUSIC_INTRO_SILENCE_S - since));
+    music.start(Math.max(0, MUSIC_INTRO_SILENCE_S - since), fadeInS);
   }
 
   // --- SFX ---------------------------------------------------------------------------
-  on('ball:bounce', (e) =>
-    fire(0, () => (e.surface === 'wall' ? sfx.bounceWall() : sfx.bounceBlock(e.combo, e.surface === 'peg'))),
-  );
-  on('block:hit', (e) => fire(1, () => sfx.blockHit(e.element, e.crit)));
+  on('ball:bounce', (e) => {
+    fire(0, () => (e.surface === 'wall' ? sfx.bounceWall() : sfx.bounceBlock(e.combo, e.surface === 'peg')));
+    // block:hit ne porte pas (encore) de ballId : la sim émet le hit juste avant le rebond bloc/peg
+    // de la même balle, on attache donc le ping doré à ce rebond.
+    if (e.surface !== 'wall' && !hitCarriesBallId && golden.has(e.ballId)) fire(1, () => sfx.goldenPing(e.combo));
+  });
+  on('block:hit', (e) => {
+    fire(1, () => sfx.blockHit(e.element, e.crit));
+    const id = hitBallId(e);
+    if (id !== null) {
+      hitCarriesBallId = true;
+      if (golden.has(id)) fire(1, () => sfx.goldenPing(e.combo));
+    }
+  });
+  on('ball:launched', (e) => {
+    if (!e.golden) return;
+    golden.add(e.ballId);
+    fire(2, () => sfx.goldenLaunch());
+  });
+  on('ball:grounded', (e) => {
+    golden.delete(e.ballId);
+  });
   on('lightning:chain', () => fire(1, () => sfx.lightningChain()));
   on('drop:collected', (e) => fire(1, () => sfx.dropCollected(e.kind)));
   on('block:destroyed', (e) => fire(2, () => sfx.blockDestroyed(e.kind, e.width)));
@@ -91,12 +123,15 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   on('block:breached', () => fire(2, () => sfx.blockBreached()));
   on('ball:split', () => fire(2, () => sfx.ballSplit()));
   on('combo:milestone', (e) => fire(2, () => sfx.comboMilestone(e.level)));
-  on('volley:start', (e) => fire(2, () => sfx.volleyStart(e.count)));
-  on('volley:end', (e) => fire(2, () => sfx.volleyEnd(e.bestCombo)));
+  on('volley:start', (e) => fire(2, () => sfx.volleyStart(e.count, e.spread)));
+  on('volley:end', (e) => {
+    golden.clear();
+    fire(2, () => sfx.volleyEnd(e.bestCombo));
+  });
   on('volley:fusion', () => fire(2, () => sfx.volleyFusion()));
   on('player:damaged', () => fire(2, () => sfx.playerDamaged()));
   on('player:healed', () => fire(2, () => sfx.playerHealed()));
-  on('reward:offered', () => fire(2, () => sfx.rewardOffered()));
+  on('reward:offered', (e) => fire(2, () => sfx.rewardOffered(e.source)));
   on('reward:chosen', (e) => fire(2, () => sfx.rewardChosen(e.option.kind === 'fuse')));
   on('reward:skipped', () => fire(2, () => sfx.rewardSkipped()));
   on('shop:opened', () => fire(2, () => sfx.shopOpened()));
@@ -105,6 +140,15 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   on('achievement:unlocked', () => fire(2, () => sfx.achievement()));
   on('meta:unlocked', () => fire(2, () => sfx.achievement()));
   on('ui:click', () => fire(2, () => sfx.uiClick()));
+  on('contract:offered', () => fire(2, () => sfx.contractOffered()));
+  on('contract:progress', (e) => {
+    const t = nowMs();
+    if (t - lastContractTick < CONTRACT_TICK_MIN_MS) return;
+    lastContractTick = t;
+    fire(0, () => sfx.contractProgress(e.target > 0 ? e.progress / e.target : 0));
+  });
+  on('contract:completed', (e) => fire(2, () => sfx.contractCompleted(e.reward.kind === 'coins')));
+  on('contract:failed', () => fire(2, () => sfx.contractFailed()));
 
   // --- SFX + musique ----------------------------------------------------------------
   on('wave:cleared', (e) => {
@@ -132,13 +176,30 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     runStartedAt = nowMs();
     wave = 1;
     bossAlive = false;
+    lostAt = -Infinity;
+    golden.clear();
     music.stop(0.3);
     wantMusic();
+  });
+  on('run:lost', () => {
+    runActive = false;
+    lostAt = nowMs();
+    golden.clear();
+    music.stop(LOST_MUSIC_FADE_S);
+    fire(2, () => sfx.runLost());
+  });
+  on('run:revived', () => {
+    runActive = true;
+    runStartedAt = -Infinity; // pas de silence d'intro : reprise immédiate en fondu
+    lostAt = -Infinity;
+    fire(2, () => sfx.runRevived());
+    wantMusic(REVIVE_MUSIC_FADE_S);
   });
   on('run:over', () => {
     runActive = false;
     bossAlive = false;
-    music.resolve();
+    music.resolve(); // sans effet si la musique s'est déjà tue sur run:lost
+    if (nowMs() - lostAt < LOST_THEN_OVER_MS) return;
     fire(2, () => sfx.runOver());
   });
 
@@ -204,6 +265,12 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     },
   };
   return system;
+}
+
+/** ballId d'un block:hit si core l'ajoute un jour (absent du contrat actuel) */
+function hitBallId(e: object): number | null {
+  const v = (e as { ballId?: unknown }).ballId;
+  return typeof v === 'number' ? v : null;
 }
 
 function clamp01(v: number): number {

@@ -2,7 +2,7 @@
 // Les boutons émettent de vrais GameEvent sur un bus local : on teste le même chemin que le jeu
 // (dispatch + limiteur + recettes). `npm run dev` puis /src/audio/preview.html
 import { createEventBus } from '../core/events';
-import type { BallElement, GameEvent, RewardOption } from '../core/types';
+import type { BallElement, ContractDef, ContractState, GameEvent, RewardOption } from '../core/types';
 import { createAudio, type AudioSystemDev } from './index';
 
 const P = { x: 4, y: 6 };
@@ -10,6 +10,13 @@ const N = { x: 0, y: -1 };
 const ELEMENTS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
 const FUSE: RewardOption = { kind: 'fuse', element: 'fire', tier: 2 };
 const BALL: RewardOption = { kind: 'ball', element: 'ice', tier: 1 };
+const COINS: RewardOption = { kind: 'coins', amount: 15 };
+const CONTRACT_DEF: ContractDef = {
+  id: 'combo10', kind: 'reachCombo', target: 10, text: 'Combo {n}', reward: COINS, minWave: 1, weight: 1,
+};
+const CONTRACT_BALL_DEF: ContractDef = { ...CONTRACT_DEF, id: 'oneshot4', kind: 'destroyInOneShot', target: 4, reward: BALL };
+const CONTRACT: ContractState = { id: 'combo10', progress: 0, target: 10, status: 'active' };
+const GOLDEN_ID = 99;
 
 interface Entry {
   label: string;
@@ -17,7 +24,7 @@ interface Entry {
 }
 
 function hit(element: BallElement, crit = false): GameEvent {
-  return { type: 'block:hit', blockId: 1, pos: P, damage: 10, combo: 3, element, hpLeft: 20, crit };
+  return { type: 'block:hit', blockId: 1, ballId: 1, pos: P, damage: 10, combo: 3, element, hpLeft: 20, crit };
 }
 
 const GROUPS: { title: string; entries: Entry[] }[] = [
@@ -60,9 +67,22 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
       })),
       ...[5, 15, 30].map((count) => ({
         label: `volley:start ×${count}`,
-        events: (): GameEvent[] => [{ type: 'volley:start', count, from: P, dir: N }],
+        events: (): GameEvent[] => [{ type: 'volley:start', count, from: P, dir: N, spread: 0 }],
+      })),
+      ...[0.5, 1].map((spread) => ({
+        label: `volley:start ×15 spread ${spread}`,
+        events: (): GameEvent[] => [{ type: 'volley:start', count: 15, from: P, dir: N, spread }],
       })),
       { label: 'volley:end', events: () => [{ type: 'volley:end', shotDamage: 300, bestCombo: 40 }] },
+      {
+        label: 'balle dorée : launch',
+        events: () => [{ type: 'ball:launched', ballId: GOLDEN_ID, element: 'stone', tier: 1, pos: P, golden: true }],
+      },
+      {
+        label: 'balle dorée : hit + rebond',
+        events: () => [hit('stone'), { type: 'ball:bounce', ballId: GOLDEN_ID, pos: P, normal: N, surface: 'block', combo: 6 }],
+      },
+      { label: 'balle dorée : grounded', events: () => [{ type: 'ball:grounded', ballId: GOLDEN_ID, pos: P }] },
       { label: 'volley:fusion', events: () => [{ type: 'volley:fusion', element: 'fire', tier: 2, index: 0, pos: P }] },
     ],
   },
@@ -78,7 +98,8 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
     entries: [
       { label: 'player:damaged', events: () => [{ type: 'player:damaged', amount: 1, hpLeft: 2 }] },
       { label: 'player:healed', events: () => [{ type: 'player:healed', amount: 1, hpLeft: 3 }] },
-      { label: 'reward:offered', events: () => [{ type: 'reward:offered', options: [BALL, FUSE] }] },
+      { label: 'reward:offered', events: () => [{ type: 'reward:offered', options: [BALL, FUSE], source: 'wave' }] },
+      { label: 'reward:offered boss', events: () => [{ type: 'reward:offered', options: [BALL, FUSE], source: 'boss' }] },
       { label: 'reward:chosen', events: () => [{ type: 'reward:chosen', option: BALL }] },
       { label: 'reward:chosen fuse', events: () => [{ type: 'reward:chosen', option: FUSE }] },
       { label: 'reward:skipped', events: () => [{ type: 'reward:skipped' }] },
@@ -90,6 +111,19 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
     ],
   },
   {
+    title: 'Contrats',
+    entries: [
+      { label: 'contract:offered', events: () => [{ type: 'contract:offered', contract: CONTRACT, def: CONTRACT_DEF }] },
+      ...[3, 7].map((progress) => ({
+        label: `contract:progress ${progress}/10`,
+        events: (): GameEvent[] => [{ type: 'contract:progress', progress, target: 10 }],
+      })),
+      { label: 'contract:completed coins', events: () => [{ type: 'contract:completed', def: CONTRACT_DEF, reward: COINS }] },
+      { label: 'contract:completed balle', events: () => [{ type: 'contract:completed', def: CONTRACT_BALL_DEF, reward: BALL }] },
+      { label: 'contract:failed', events: () => [{ type: 'contract:failed', def: CONTRACT_DEF }] },
+    ],
+  },
+  {
     title: 'Vagues, boss, run (pilotent aussi la musique)',
     entries: [
       { label: 'run:started', events: () => [{ type: 'run:started', seed: 'preview' }] },
@@ -97,6 +131,8 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
       { label: 'wave:cleared', events: () => [{ type: 'wave:cleared', wave: 3 }] },
       { label: 'boss:spawned', events: () => [{ type: 'boss:spawned', bossId: 'golem', blockId: 9 }] },
       { label: 'boss:killed', events: () => [{ type: 'boss:killed', bossId: 'golem', pos: P }] },
+      { label: 'run:lost', events: () => [{ type: 'run:lost', canRevive: true, wave: 3, depth: 10 }] },
+      { label: 'run:revived', events: () => [{ type: 'run:revived', hpLeft: 2, revivesUsed: 1 }] },
       { label: 'run:over', events: () => [{ type: 'run:over', summary: summary() }] },
     ],
   },
@@ -110,18 +146,22 @@ function summary(): Extract<GameEvent, { type: 'run:over' }>['summary'] {
     stats: {
       shots: 10, blocksDestroyed: 30, bestCombo: 40, bestShotDamage: 500, totalDamage: 3000,
       coinsEarned: 50, fragmentsEarned: 5, fusions: 1, bossesKilled: 0, durationMs: 60000, perfectWaves: 0,
+      contractsCompleted: 2,
     },
     relics: [],
     volley: [],
     isDaily: false,
     dailyDate: null,
     score: 1000,
+    revivesUsed: 1,
+    contractsCompleted: 2,
   };
 }
 
 /** rafale réaliste : 30 balles lancées toutes les 60 ms, rebonds par dizaines par seconde */
 function stress(emit: (e: GameEvent) => void, seconds: number): void {
-  emit({ type: 'volley:start', count: 30, from: P, dir: N });
+  emit({ type: 'volley:start', count: 30, from: P, dir: N, spread: 0.6 });
+  emit({ type: 'ball:launched', ballId: 0, element: 'stone', tier: 1, pos: P, golden: true });
   const start = performance.now();
   let combo = 0;
   const id = setInterval(() => {

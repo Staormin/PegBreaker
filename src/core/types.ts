@@ -236,7 +236,7 @@ export type GameEvent =
   | { type: 'ball:launched'; ballId: number; element: BallElement; tier: BallTier; pos: Vec2; golden: boolean }
   | { type: 'ball:bounce'; ballId: number; pos: Vec2; normal: Vec2; surface: 'wall' | 'block' | 'peg'; combo: number }
   | { type: 'ball:grounded'; ballId: number; pos: Vec2 }
-  | { type: 'block:hit'; blockId: number; pos: Vec2; damage: number; combo: number; element: BallElement; hpLeft: number; crit: boolean }
+  | { type: 'block:hit'; blockId: number; ballId: number; pos: Vec2; damage: number; combo: number; element: BallElement; hpLeft: number; crit: boolean }
   | { type: 'block:destroyed'; blockId: number; kind: BlockKind; pos: Vec2; width: number; element: BallElement }
   | { type: 'block:frozen'; blockId: number; pos: Vec2 }
   | { type: 'block:explode'; pos: Vec2; radius: number; damage: number }
@@ -266,7 +266,7 @@ export type GameEvent =
   | { type: 'ui:click' }
   | { type: 'ui:screen'; screen: UiScreen };
 
-export type UiScreen = 'title' | 'game' | 'reward' | 'shop' | 'gameover' | 'meta' | 'settings' | 'daily';
+export type UiScreen = 'title' | 'game' | 'reward' | 'shop' | 'revive' | 'gameover' | 'meta' | 'settings' | 'daily';
 
 export interface RunSummary {
   seed: string;
@@ -515,6 +515,8 @@ export interface RunModDef {
   name: string;
   description: string;
   fragmentMultiplier: number;
+  /** peut être tiré comme mutateur du défi quotidien */
+  dailyEligible: boolean;
 }
 
 export interface AchievementDef {
@@ -575,6 +577,10 @@ export interface DailyResult {
   depth: number;
   score: number;
   completedAt: string;
+  /** mutateurs actifs ce jour-là */
+  mods?: string[];
+  /** série de jours consécutifs au moment du résultat */
+  streak?: number;
 }
 
 export interface SaveData {
@@ -605,6 +611,12 @@ export interface MetaSystem {
   updateSettings(patch: Partial<Settings>): void;
   setOnboarded(): void;
   dailySeed(date?: string): string;
+  /** 2 mutateurs tirés déterministement depuis la date parmi runMods.dailyEligible */
+  dailyMods(date?: string): string[];
+  /** jours consécutifs joués (en comptant aujourd'hui s'il est joué) ; 0 si aucune série en cours */
+  dailyStreak(date?: string): number;
+  /** multiplicateur de fragments du quotidien pour une série donnée : 1 + 0,1 × (streak − 1), plafonné à 2 */
+  dailyStreakMultiplier(streak: number): number;
   todayKey(): string;
   reset(): void;
 }

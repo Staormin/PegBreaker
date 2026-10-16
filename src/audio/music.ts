@@ -65,8 +65,8 @@ interface Layer {
 }
 
 export interface Music {
-  /** démarre après `delayS` secondes de silence (fondu d'entrée) ; idempotent */
-  start(delayS: number): void;
+  /** démarre après `delayS` secondes de silence, fondu d'entrée de `fadeInS` (défaut 3 s) ; idempotent */
+  start(delayS: number, fadeInS?: number): void;
   /** fondu de sortie puis arrêt complet */
   stop(fadeS: number): void;
   /** fin de run : accord de résolution (la majeur) puis extinction douce */
@@ -84,6 +84,7 @@ export function createMusic(e: Engine): Music {
   let timer: ReturnType<typeof setInterval> | null = null;
   let startTimer: ReturnType<typeof setTimeout> | null = null;
   let paused = false;
+  let fadeIn = 3;
   let intensity = 0;
   let tension = false;
   let nextTime = 0;
@@ -231,7 +232,7 @@ export function createMusic(e: Engine): Music {
     applyMix(t);
     layer.out.gain.cancelScheduledValues(t);
     layer.out.gain.setValueAtTime(Math.max(FLOOR, layer.out.gain.value), t);
-    layer.out.gain.exponentialRampToValueAtTime(1, t + 3);
+    layer.out.gain.exponentialRampToValueAtTime(1, t + Math.max(0.05, fadeIn));
     step = 0;
     nextTime = t + 0.1;
     if (timer === null) timer = setInterval(tick, TICK_MS);
@@ -241,10 +242,11 @@ export function createMusic(e: Engine): Music {
     get playing() {
       return layer !== null && timer !== null;
     },
-    start(delayS) {
+    start(delayS, fadeInS = 3) {
       if (!e.running) return;
       if (layer && timer !== null) return;
       clearTimers();
+      fadeIn = fadeInS;
       startTimer = setTimeout(begin, Math.max(0, delayS) * 1000);
     },
     stop(fadeS) {
