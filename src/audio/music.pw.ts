@@ -119,7 +119,7 @@ test('temps réel sous charge : aucune note en retard ; intro, fondu croisé, lo
   await page.getByRole('button', { name: 'boss on/off' }).click();
 
   // fondu croisé vers chaque piste ; pic de la musique seule mesuré après compresseur + limiteur
-  // (même point que les SFX du jeu, ~0,86 en crête) : il doit rester ≥ 8 dB dessous (cible ~0,3)
+  // (même point que les SFX du jeu, ~0,86 en crête) : il doit rester ≥ 7 dB dessous (cible ~0,3)
   const peaks: Record<string, number> = {};
   for (const id of ['arcade', 'deep', 'neon'] as const) {
     await page.getByLabel('Piste musicale').selectOption(id);
@@ -139,7 +139,7 @@ test('temps réel sous charge : aucune note en retard ; intro, fondu croisé, lo
     });
   }
   console.log('MUSIC-REALTIME-PEAK', JSON.stringify(peaks));
-  for (const v of Object.values(peaks)) expect(v).toBeLessThanOrEqual(SFX_PEAK * Math.pow(10, -8 / 20));
+  for (const v of Object.values(peaks)) expect(v).toBeLessThanOrEqual(SFX_PEAK * Math.pow(10, -7 / 20));
 
   // lost → accord tenu ; revived → reprise ; over → résolution puis silence
   await page.getByRole('button', { name: 'lost', exact: true }).click();

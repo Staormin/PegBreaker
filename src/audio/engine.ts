@@ -4,7 +4,7 @@
 //
 // Graphe :
 //   voix SFX ─► sfxGain ─┐
-//                        ├─► bus ─► comp (−12 dB, 4:1) ─► limiter (−3 dB, 20:1) ─► safety (soft-clip) ─► destination
+//                        ├─► bus ─► comp (−12 dB, 4:1) ─► limiter (−4,5 dB, 20:1) ─► safety (soft-clip) ─► destination
 //   musique ─► musicGain ┘                                         └─► analyser (dev : mesure du pic)
 
 export interface EngineStats {
@@ -101,7 +101,7 @@ export function createEngine(opts: { measure: boolean }): Engine {
     comp.attack.value = 0.003;
     comp.release.value = 0.15;
     const limiter = count(c.createDynamicsCompressor());
-    limiter.threshold.value = -3;
+    limiter.threshold.value = -4.5;
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
     limiter.attack.value = 0.001;
