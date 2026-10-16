@@ -5,7 +5,7 @@ import type { Ball, Block } from '../core/types';
 import type { Ctx } from './ctx';
 import { emit, isDead } from './ctx';
 import { LAUNCH_MARGIN, PEG_RADIUS } from './constants';
-import { onImpact } from './combat';
+import { bumpCombo, onImpact } from './combat';
 import { collectTouched } from './drops';
 import { compactBlocks, releaseBall } from './pools';
 
@@ -245,12 +245,14 @@ function walls(ctx: Ctx, b: Ball): void {
     b.pos.x = r;
     if (b.vel.x < 0) {
       b.vel.x = -b.vel.x;
+      bumpCombo(ctx, b, ctx.relic.ricochet);
       emit(ctx, { type: 'ball:bounce', ballId: b.id, pos: { x: 0, y: b.pos.y }, normal: { x: 1, y: 0 }, surface: 'wall', combo: b.combo });
     }
   } else if (b.pos.x > cols - r) {
     b.pos.x = cols - r;
     if (b.vel.x > 0) {
       b.vel.x = -b.vel.x;
+      bumpCombo(ctx, b, ctx.relic.ricochet);
       emit(ctx, { type: 'ball:bounce', ballId: b.id, pos: { x: cols, y: b.pos.y }, normal: { x: -1, y: 0 }, surface: 'wall', combo: b.combo });
     }
   }
@@ -258,6 +260,7 @@ function walls(ctx: Ctx, b: Ball): void {
     b.pos.y = r;
     if (b.vel.y < 0) {
       b.vel.y = -b.vel.y;
+      bumpCombo(ctx, b, ctx.relic.ricochet);
       emit(ctx, { type: 'ball:bounce', ballId: b.id, pos: { x: b.pos.x, y: 0 }, normal: { x: 0, y: 1 }, surface: 'wall', combo: b.combo });
     }
   }

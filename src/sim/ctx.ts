@@ -26,6 +26,36 @@ export interface RelicFlags {
   bigboom: number;
   safetynet: boolean;
   magnet: boolean;
+  /** combo par rebond de mur/plafond (ricochet) */
+  ricochet: number;
+  /** combo par cheville (flipper) */
+  pegCombo: number;
+  /** PV rendus par un cœur (gourmand) */
+  heartHeal: number;
+  /** multiplicateur de pièces (pactole) */
+  coinMult: number;
+  /** pyromane : rayon des explosions de feu, part de PV max brûlée au tir suivant */
+  pyroRadius: number;
+  emberRatio: number;
+  /** nombre de blocs frappés par une chaîne de foudre (paratonnerre) */
+  lightningChains: number;
+  /** multiplicateur de dégâts sur bloc gelé (permafrost) */
+  frozenMult: number;
+  /** combo par traversée fantôme (spectre) */
+  ghostCombo: number;
+  /** enclume : part des dégâts du plomb en zone, rayon */
+  anvilRatio: number;
+  anvilRadius: number;
+  /** bonus de dégâts des balles de rang ≥ 2 (catalyseur) */
+  catalyst: number;
+  /** nombre de balles produites par une scission (mitose) */
+  splitParts: number;
+  /** balles de pierre offertes par fusion choisie (alchimie) */
+  alchemy: number;
+  /** multiplicateur du premier impact par balle sur la rangée la plus basse (radar) */
+  radar: number;
+  /** bonus de dégâts par PV manquant (berserk) */
+  berserk: number;
 }
 
 export interface Ctx {
@@ -107,7 +137,30 @@ export function createCtx(cfg: GameConfig, meta: MetaModifiers, rng: Rng, isDail
     stoneDef,
     elementOrder,
     blockDefs,
-    relic: { bouncy: 0, piggy: 0, firstblood: false, bigboom: 1, safetynet: false, magnet: false },
+    relic: {
+      bouncy: 0,
+      piggy: 0,
+      firstblood: false,
+      bigboom: 1,
+      safetynet: false,
+      magnet: false,
+      ricochet: 0,
+      pegCombo: 1,
+      heartHeal: 1,
+      coinMult: 1,
+      pyroRadius: 1,
+      emberRatio: 0,
+      lightningChains: 1,
+      frozenMult: 1,
+      ghostCombo: 1,
+      anvilRatio: 0,
+      anvilRadius: 0,
+      catalyst: 0,
+      splitParts: 2,
+      alchemy: 0,
+      radar: 1,
+      berserk: 0,
+    },
     sinMinAngle: Math.sin(minA),
     cosMinAngle: Math.cos(minA),
     splitCos: Math.cos(splitA),

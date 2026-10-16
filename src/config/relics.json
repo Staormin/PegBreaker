@@ -3,9 +3,23 @@
   "defs": [
     { "id": "bouncy", "name": "Semelles élastiques", "description": "Chaque balle démarre avec +2 de combo.", "rarity": "common", "value": 2, "weight": 10 },
     { "id": "piggy", "name": "Tirelire", "description": "Toutes les 10 pièces ramassées rendent 1 PV.", "rarity": "common", "value": 10, "weight": 10 },
-    { "id": "firstblood", "name": "Premier sang", "description": "Le premier bloc touché à chaque tir est détruit.", "rarity": "rare", "value": 1, "weight": 6 },
-    { "id": "bigboom", "name": "Poudre noire", "description": "Les explosions ont un rayon ×2.", "rarity": "rare", "value": 2, "weight": 6 },
-    { "id": "safetynet", "name": "Filet", "description": "Une fois par tir, le sol ne casse pas le combo.", "rarity": "epic", "value": 1, "weight": 3 },
-    { "id": "magnet", "name": "Aimant", "description": "Les drops sont ramassés automatiquement en fin de tir.", "rarity": "common", "value": 1, "weight": 8 }
+    { "id": "magnet", "name": "Aimant", "description": "Les drops sont ramassés automatiquement en fin de tir.", "rarity": "common", "value": 1, "weight": 8 },
+    { "id": "ricochet", "name": "Bandes", "description": "Les rebonds sur les murs et le plafond donnent +1 combo.", "rarity": "common", "value": 1, "weight": 9 },
+    { "id": "flipper", "name": "Flipper", "description": "Les chevilles donnent +2 combo au lieu de +1.", "rarity": "common", "value": 2, "weight": 9 },
+    { "id": "gourmand", "name": "Gourmand", "description": "Les cœurs rendent 2 PV.", "rarity": "common", "value": 2, "weight": 7 },
+    { "id": "pactole", "name": "Pactole", "description": "+50 % de pièces ramassées.", "rarity": "common", "value": 1.5, "weight": 8 },
+    { "id": "firstblood", "name": "Premier sang", "description": "Le premier bloc touché à chaque tir est détruit (sauf boss).", "rarity": "rare", "value": 1, "weight": 6 },
+    { "id": "bigboom", "name": "Poudre noire", "description": "Toutes les explosions ont un rayon ×2.", "rarity": "rare", "value": 2, "weight": 6 },
+    { "id": "pyromane", "name": "Pyromane", "description": "Explosions de feu +50 % de rayon ; les blocs touchés brûlent et perdent 10 % de leurs PV max au tir suivant.", "rarity": "rare", "value": 1.5, "weight": 7, "requiresElement": "fire", "params": { "radiusMult": 1.5, "emberRatio": 0.1 } },
+    { "id": "paratonnerre", "name": "Paratonnerre", "description": "La foudre rebondit sur 2 blocs au lieu d'un.", "rarity": "rare", "value": 2, "weight": 7, "requiresElement": "lightning" },
+    { "id": "permafrost", "name": "Permafrost", "description": "Les blocs gelés subissent ×1,5 dégâts.", "rarity": "rare", "value": 1.5, "weight": 7, "requiresElement": "ice" },
+    { "id": "spectre", "name": "Spectre", "description": "Les fantômes gagnent +2 combo par traversée.", "rarity": "rare", "value": 2, "weight": 7, "requiresElement": "ghost" },
+    { "id": "enclume", "name": "Enclume", "description": "Chaque impact de plomb inflige aussi 50 % de ses dégâts en zone (1 case).", "rarity": "rare", "value": 0.5, "weight": 7, "requiresElement": "lead", "params": { "radius": 1 } },
+    { "id": "catalyseur", "name": "Catalyseur", "description": "Les balles de rang 2 et plus infligent +20 % de dégâts.", "rarity": "rare", "value": 0.2, "weight": 6 },
+    { "id": "safetynet", "name": "Filet", "description": "Une fois par tir, le sol ne casse pas le combo : la balle suivante en hérite.", "rarity": "epic", "value": 1, "weight": 3 },
+    { "id": "mitose", "name": "Mitose", "description": "La scission se divise en 3 au lieu de 2.", "rarity": "epic", "value": 3, "weight": 3, "requiresElement": "split" },
+    { "id": "alchimie", "name": "Alchimie", "description": "Chaque fusion choisie donne aussi +1 balle de pierre.", "rarity": "epic", "value": 1, "weight": 3 },
+    { "id": "radar", "name": "Radar", "description": "Le premier bloc touché par chaque balle subit ×2 s'il est dans la rangée la plus basse.", "rarity": "epic", "value": 2, "weight": 3 },
+    { "id": "berserk", "name": "Berserk", "description": "+10 % de dégâts par PV manquant.", "rarity": "epic", "value": 0.1, "weight": 3 }
   ]
 }

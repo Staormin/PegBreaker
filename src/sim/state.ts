@@ -40,6 +40,10 @@ export interface SimInternal {
   thawedIds: number[];
   /** le joueur a perdu des PV pendant la vague courante (stats.perfectWaves) */
   damagedThisWave: boolean;
+  /** pyromane : ids des blocs qui brûlent au prochain tir */
+  embers: number[];
+  /** radar : ids des balles ayant déjà touché un bloc dans ce tir */
+  radarUsed: number[];
 }
 
 export interface SimState extends RunState {
@@ -68,6 +72,8 @@ export function createInternal(nextId: number): SimInternal {
     manualRecall: false,
     thawedIds: [],
     damagedThisWave: false,
+    embers: [],
+    radarUsed: [],
   };
 }
 

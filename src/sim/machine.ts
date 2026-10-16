@@ -12,7 +12,8 @@ import { collectAllDrops } from './drops';
 import { makeOptions, applyOption } from './rewards';
 import { openShop } from './shop';
 import { refreshRelics } from './relics';
-import { releaseBall } from './pools';
+import { compactBlocks, releaseBall } from './pools';
+import { burnEmbers } from './combat';
 import { hashString } from '../core/rng';
 import { AUTO_SPEEDUP_RAMP_MS } from './constants';
 
@@ -88,6 +89,8 @@ export function fire(ctx: Ctx): void {
   it.safetynetUsed = false;
   it.absorbElement = null;
   it.manualRecall = false;
+  if (it.radarUsed) it.radarUsed.length = 0;
+  else it.radarUsed = [];
   s.pendingLaunches = it.launchQueue.length;
   s.currentShotDamage = 0;
   s.currentShotCombo = 0;
@@ -95,6 +98,8 @@ export function fire(ctx: Ctx): void {
   s.depth++;
   s.stats.shots++;
   s.phase = 'firing';
+  burnEmbers(ctx); // pyromane : brûlure au début du tir suivant (comptée dans ce tir)
+  if (ctx.blocksDied) compactBlocks(ctx);
   rebuildGrid(ctx);
   emit(ctx, {
     type: 'volley:start',

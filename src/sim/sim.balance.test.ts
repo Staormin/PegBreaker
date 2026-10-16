@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { lowestBlockDir, newSim, ofType, settle, shoot } from './test-helpers';
+import type { MetaModifiers } from '../core/types';
+import { lowestBlockDir, newSim, ofType, settle, shoot, config } from './test-helpers';
+
+const FULL_META: Partial<MetaModifiers> = {
+  bonusHp: 3,
+  bonusStartBalls: 2,
+  coinMultiplier: 1.3,
+  unlockedElements: ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'],
+};
 
 /** Temps de visée humain supposé par tir (méthode QA j1). */
 const AIM_MS = 1500;
 
 describe('sanity d équilibrage', () => {
-  it('bot « vise le bloc le plus bas », 10 seeds : mort v2-6, 5-8 tirs/vague, boss v5 tué ≥ 50 %, 1er tir ≥ 2 blocs ≥ 70 %', () => {
+  it('sans méta, bot « vise le bloc le plus bas », 10 seeds : mort v4-5, 6-8 tirs/vague, boss v5 tué ≥ 50 %, 1er tir ≥ 2 blocs ≥ 70 %', () => {
     const deaths: number[] = [];
     const dmg = new Map<number, number[]>();
     let bossSeen = 0;
@@ -60,12 +68,30 @@ describe('sanity d équilibrage', () => {
         `dégâts/tir v1 ${mean(1)} v3 ${mean(3)} v5 ${mean(5)} | boss v5 tués ${bossKilled}/${bossSeen} | ` +
         `1er tir ≥ 2 blocs ${firstTwo}/10 | 1er choix ${choice.toFixed(1)} s (joueur)`,
     );
-    expect(avg).toBeGreaterThanOrEqual(2);
-    expect(avg).toBeLessThanOrEqual(6);
-    expect(shotsPerWave).toBeGreaterThanOrEqual(5);
+    expect(avg).toBeGreaterThanOrEqual(4);
+    expect(avg).toBeLessThanOrEqual(5);
+    expect(shotsPerWave).toBeGreaterThanOrEqual(6);
     expect(shotsPerWave).toBeLessThanOrEqual(8);
     expect(bossKilled / Math.max(1, bossSeen)).toBeGreaterThanOrEqual(0.5);
     expect(firstTwo).toBeGreaterThanOrEqual(7);
     expect(choice).toBeLessThan(25);
   }, 60_000);
+
+  it('méta complète (bonusHp 3, +2 balles, pièces ×1,3, tous éléments) : mort moyenne v9-12', () => {
+    const cfg = config();
+    const deaths: number[] = [];
+    for (let i = 0; i < 10; i++) {
+      const sim = newSim(`balance-${i}`, cfg, FULL_META);
+      for (let shots = 0; shots < 600 && sim.state.phase !== 'gameover'; shots++) {
+        settle(sim);
+        shoot(sim, lowestBlockDir(sim));
+      }
+      expect(sim.state.phase).toBe('gameover');
+      deaths.push(sim.state.wave);
+    }
+    const avg = deaths.reduce((a, b) => a + b, 0) / deaths.length;
+    console.log(`[balance méta] vagues de mort: ${deaths.join(',')} | moyenne ${avg.toFixed(1)}`);
+    expect(avg).toBeGreaterThanOrEqual(9);
+    expect(avg).toBeLessThanOrEqual(12);
+  }, 120_000);
 });

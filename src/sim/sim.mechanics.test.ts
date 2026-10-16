@@ -486,7 +486,13 @@ describe('vagues, récompense, boutique, boss', () => {
     expect(boss.width).toBe(3);
     expect(boss.col).toBe(2);
     const w = sim.config.waves;
-    expect(boss.maxHp).toBe(Math.round(w.baseHp * Math.pow(w.growthPerWave, 4) * w.bosses[0]!.hpMultiplier));
+    // PV de base vague 5 : interpolation de hpByWave
+    const pts = w.hpByWave!;
+    const j = pts.findIndex((p) => p.wave >= 5);
+    const hi = pts[j]!;
+    const lo = pts[j - 1]!;
+    const base5 = hi.wave === 5 ? hi.baseHp : lo.baseHp + ((hi.baseHp - lo.baseHp) * (5 - lo.wave)) / (hi.wave - lo.wave);
+    expect(boss.maxHp).toBe(Math.round(base5 * w.bosses[0]!.hpMultiplier));
     expect(ofType(evs, 'boss:spawned')).toEqual([{ type: 'boss:spawned', bossId: 'regen', blockId: boss.id }]);
     expect(s.rowsLeftInWave).toBe(0);
 
@@ -515,6 +521,7 @@ describe('vagues, récompense, boutique, boss', () => {
     // volée triée par élément : stone part en premier → stone est absorbé (× param), lead passe plein pot
     expect(hits[0]!.element).toBe('stone');
     expect(hits[0]!.damage).toBe(5);
+    expect(hits[0]!.crit).toBe(false);
     expect(hits[1]!.element).toBe('lead');
     expect(hits[1]!.damage).toBe(30);
   });

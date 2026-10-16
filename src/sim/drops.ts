@@ -32,7 +32,7 @@ export function collectDrop(ctx: Ctx, i: number): void {
   let value = d.value;
   switch (d.kind) {
     case 'coin': {
-      value = Math.round(d.value * ctx.meta.coinMultiplier);
+      value = Math.round(d.value * ctx.meta.coinMultiplier * ctx.relic.coinMult);
       s.coins += value;
       s.stats.coinsEarned += value;
       if (ctx.relic.piggy > 0) {
@@ -51,7 +51,7 @@ export function collectDrop(ctx: Ctx, i: number): void {
       s.stats.fragmentsEarned += d.value;
       break;
     case 'heart':
-      heal(ctx, d.value);
+      heal(ctx, Math.max(d.value, ctx.relic.heartHeal));
       break;
   }
   emit(ctx, { type: 'drop:collected', dropId: d.id, kind: d.kind, pos: { x: d.pos.x, y: d.pos.y }, value });

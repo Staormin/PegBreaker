@@ -399,6 +399,10 @@ export interface RelicDef {
   value: number;
   /** poids de tirage */
   weight: number;
+  /** proposée seulement si la volée contient cet élément */
+  requiresElement?: BallElement;
+  /** paramètres libres lus par sim/relics.ts */
+  params?: Record<string, number>;
 }
 
 export interface RelicsConfig {

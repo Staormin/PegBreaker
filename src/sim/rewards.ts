@@ -2,7 +2,7 @@
 import type { BallElement, BallTier, DropKind, RewardOption } from '../core/types';
 import type { Ctx } from './ctx';
 import { emit } from './ctx';
-import { addRelic } from './relics';
+import { addRelic, relicDef, relicRequiredElement } from './relics';
 import { addVolleyBall, bestFusablePair, fusePair } from './volley';
 
 function elementAllowed(ctx: Ctx, el: BallElement): boolean {
@@ -59,8 +59,15 @@ function hasOption(list: readonly RewardOption[], o: RewardOption): boolean {
 function pickRelic(ctx: Ctx, exclude: readonly RewardOption[]): RewardOption | null {
   const rw = ctx.cfg.relics.rarityWeights;
   let total = 0;
+  // une relique d'élément n'est proposée que si la volée contient cet élément
+  const elementOk = (id: string): boolean => {
+    const def = relicDef(ctx, id);
+    const el = def ? relicRequiredElement(def) : undefined;
+    return !el || ctx.s.volley.some((v) => v.element === el);
+  };
   const ok = (id: string): boolean =>
     ctx.meta.unlockedRelics.includes(id) &&
+    elementOk(id) &&
     !ctx.s.relics.includes(id) &&
     !hasOption(exclude, { kind: 'relic', relicId: id });
   for (const d of ctx.cfg.relics.defs) if (ok(d.id)) total += d.weight * (rw[d.rarity] ?? 1);
@@ -151,7 +158,8 @@ export function applyOption(ctx: Ctx, o: RewardOption): void {
       heal(ctx, o.amount);
       break;
     case 'fuse':
-      fusePair(ctx, o.element, o.tier);
+      // alchimie : seulement sur une fusion choisie (pas l'auto-fusion au plafond, qui bouclerait)
+      if (fusePair(ctx, o.element, o.tier)) for (let i = 0; i < ctx.relic.alchemy; i++) addVolleyBall(ctx, 'stone', 1);
       break;
   }
 }

@@ -2,6 +2,17 @@
   "baseHp": 25,
   "growthPerWave": 1.85,
   "growthPerShot": 0.1,
+  "hpByWave": [
+    { "wave": 1, "baseHp": 25 },
+    { "wave": 2, "baseHp": 65 },
+    { "wave": 3, "baseHp": 140 },
+    { "wave": 4, "baseHp": 200 },
+    { "wave": 6, "baseHp": 260 },
+    { "wave": 8, "baseHp": 380 },
+    { "wave": 10, "baseHp": 600 },
+    { "wave": 12, "baseHp": 1100 },
+    { "wave": 20, "baseHp": 5000 }
+  ],
   "hpVariance": { "min": 0.5, "max": 1.1 },
   "rowsBase": 4,
   "rowsPerWave": 0.5,

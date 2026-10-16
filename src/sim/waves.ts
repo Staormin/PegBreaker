@@ -16,10 +16,34 @@ export function isBossWave(ctx: Ctx, wave: number): boolean {
   return e > 0 && wave % e === 0 && ctx.cfg.waves.bosses.length > 0;
 }
 
-/** PV de base d'une rangée = baseHp × growthPerWave^(wave-1) × (1 + growthPerShot × shot). */
-export function rowBaseHp(ctx: Ctx, wave: number, shot: number): number {
+/**
+ * PV de base d'une vague. Si `hpByWave` est présent (prioritaire) : interpolation linéaire entre les paliers,
+ * prolongée géométriquement au-delà du dernier (même ratio que le dernier segment) ; sinon
+ * baseHp × growthPerWave^(wave-1).
+ */
+export function waveBaseHp(ctx: Ctx, wave: number): number {
   const w = ctx.cfg.waves;
-  return w.baseHp * Math.pow(w.growthPerWave, wave - 1) * (1 + w.growthPerShot * shot);
+  const pts = w.hpByWave;
+  if (!pts || pts.length === 0) return w.baseHp * Math.pow(w.growthPerWave, wave - 1);
+  const first = pts[0]!;
+  if (wave <= first.wave) return first.baseHp;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i]!;
+    if (wave <= p.wave) {
+      const q = pts[i - 1]!;
+      return q.baseHp + ((p.baseHp - q.baseHp) * (wave - q.wave)) / (p.wave - q.wave || 1);
+    }
+  }
+  const last = pts[pts.length - 1]!;
+  const prev = pts[pts.length - 2];
+  if (!prev || prev.baseHp <= 0) return last.baseHp;
+  const perWave = Math.pow(last.baseHp / prev.baseHp, 1 / (last.wave - prev.wave || 1));
+  return last.baseHp * Math.pow(perWave, wave - last.wave);
+}
+
+/** PV de base d'une rangée = waveBaseHp(wave) × (1 + growthPerShot × shot). */
+export function rowBaseHp(ctx: Ctx, wave: number, shot: number): number {
+  return waveBaseHp(ctx, wave) * (1 + ctx.cfg.waves.growthPerShot * shot);
 }
 
 /** PV d'un bloc : base × variance × hpRatio, arrondi, ≥ 1. */
@@ -114,6 +138,7 @@ export function startWave(ctx: Ctx): void {
   s.shotInWave = 0;
   s.internal.damagedThisWave = false;
   if (s.internal.thawedIds) s.internal.thawedIds.length = 0;
+  if (s.internal.embers) s.internal.embers.length = 0;
   s.rowsLeftInWave = rowsForWave(ctx, s.wave);
   if (isBossWave(ctx, s.wave)) {
     spawnBoss(ctx);
