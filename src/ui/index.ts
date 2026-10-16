@@ -13,16 +13,17 @@
 // =====================================================================
 import './styles.css';
 import type { EventBus } from '../core/events';
-import type { AudioSystem, GameConfig, MetaSystem, RunPhase, RunState, RunSummary, Renderer, Sim, UI, UiScreen } from '../core/types';
+import type { AudioSystem, GameConfig, MetaSystem, RewardOption, RunPhase, RunState, RunSummary, Renderer, Sim, UI, UiScreen } from '../core/types';
 import { createHud } from './hud';
+import { createHints } from './hints';
 import { createInput } from './input';
+import { createOnboarding } from './onboarding';
 import { createGameoverScreen } from './screens/gameover';
 import { createDailyScreen } from './screens/daily';
 import { createRewardScreen } from './screens/reward';
 import type { ScreenEl } from './screens/screen';
 import { createSettingsScreen } from './screens/settings';
 import { createShopScreen } from './screens/shop';
-import { createTitleScreen } from './screens/title';
 import { createToasts } from './screens/toasts';
 import { createWellScreen } from './screens/well';
 
@@ -50,8 +51,8 @@ export function createUI(deps: UiDeps): UI {
   let lastPhase: RunPhase | null = null;
   let lastCoins = -1;
 
-  const reduceMotion = (): boolean =>
-    meta?.data.settings.reduceMotion ?? window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const reduceMotion = (): boolean => (meta?.data.settings.reduceMotion ?? false) || (prefersReduced?.matches ?? false);
 
   // --- HUD + input ---------------------------------------------------------
   const isDaily = new URLSearchParams(location.search).get('daily') === '1';
@@ -96,7 +97,7 @@ export function createUI(deps: UiDeps): UI {
     sim,
     renderer,
     audio,
-    isGameScreen: () => screen === 'game',
+    isGameScreen: () => screen === 'game' || screen === 'title',
     onDragChange: (d) => {
       dragging = d;
     },
@@ -122,28 +123,51 @@ export function createUI(deps: UiDeps): UI {
     onWell: meta ? () => openSub('meta') : null,
     onDaily: meta ? () => openSub('daily') : null,
   });
-  const title = createTitleScreen(() => {
-    audio?.unlock();
-    show('game');
-  });
+  // premier lancement : logo + fantôme de geste par-dessus le plateau (ne bloque pas le jeu)
+  const onboarding = createOnboarding(hud.el, renderer, bus, !!meta && meta.data.onboarded === false);
+  const hints = createHints();
   const subScreens: ScreenEl[] = [];
   const well = meta
     ? createWellScreen({ meta, bus, config, onBack: back, onDaily: () => openSub('daily'), onRestartNow: freshRunReload })
     : null;
   const dailyScreen = meta ? createDailyScreen(meta, bus, back) : null;
-  const settingsScreen = meta ? createSettingsScreen(meta, bus, audio, renderer, back) : null;
+  const settingsScreen = meta
+    ? createSettingsScreen(meta, bus, audio, renderer, back, () => {
+        // abandon : nouvelle run (mêmes modificateurs méta que la sim courante)
+        meta.setCurrentRun(null);
+        sim.restart();
+        show('game');
+      })
+    : null;
   if (well) subScreens.push(well);
   if (dailyScreen) subScreens.push(dailyScreen);
   if (settingsScreen) subScreens.push(settingsScreen);
   const toasts = createToasts(root);
 
-  const screens: ScreenEl[] = [title, reward, shop, gameover, ...subScreens];
+  const screens: ScreenEl[] = [reward, shop, gameover, ...subScreens];
   for (const s of screens) root.append(s.root);
 
+  // focus automatique seulement pour les joueurs au clavier (sinon l'anneau de focus
+  // ressemble à une recommandation sur la première carte)
+  let keyboardUser = false;
+  window.addEventListener('keydown', () => (keyboardUser = true), true);
+  window.addEventListener('pointerdown', () => (keyboardUser = false), true);
+  /** transitions : fondu + glissé 200 ms (ouverture via CSS, fermeture via .closing) */
+  const TRANSITION_MS = 200;
   function show(next: UiScreen): void {
     if (next === screen) return;
+    const prev = screen;
     screen = next;
-    for (const s of screens) s.root.classList.toggle('visible', s.id === next);
+    if (next === 'title') onboarding.showLogo();
+    const animate = !reduceMotion();
+    for (const s of screens) {
+      const was = s.id === prev && s.root.classList.contains('visible');
+      s.root.classList.toggle('visible', s.id === next);
+      if (was && animate && s.id !== next) {
+        s.root.classList.add('closing');
+        setTimeout(() => s.root.classList.remove('closing'), TRANSITION_MS);
+      }
+    }
     root.dataset.screen = next;
     if (next === 'game') hud.layout();
     if (next === 'meta') well?.refresh(true);
@@ -151,7 +175,7 @@ export function createUI(deps: UiDeps): UI {
     else if (next === 'settings') settingsScreen?.refresh(true);
     // focus clavier sur le premier bouton de l'écran modal
     const visible = screens.find((s) => s.id === next);
-    if (visible && next !== 'gameover') {
+    if (visible && keyboardUser) {
       const first = visible.root.querySelector<HTMLElement>('button:not([disabled])') ?? visible.root;
       setTimeout(() => first.focus({ preventScroll: true }), 0);
     }
@@ -159,23 +183,61 @@ export function createUI(deps: UiDeps): UI {
   }
   root.dataset.screen = screen;
 
+  /** indices one-shot sur les cartes (récompense ou boutique) */
+  function cardHints(container: HTMLElement, options: readonly RewardOption[], attr: string): void {
+    const ballIdx = options.findIndex((o) => o.kind === 'ball');
+    if (attr === 'data-reward-index' && ballIdx >= 0 && hints.take('reward')) {
+      const card = container.querySelector<HTMLElement>(`[${attr}="${ballIdx}"]`);
+      if (card) {
+        const ping = document.createElement('span');
+        ping.className = 'hint-ping';
+        ping.setAttribute('aria-hidden', 'true');
+        card.append(ping);
+        setTimeout(() => ping.remove(), 2000 + 400);
+      }
+    }
+    const fuseIdx = options.findIndex((o) => o.kind === 'fuse');
+    if (fuseIdx >= 0 && hints.take('fuse')) {
+      const icon = container.querySelector<HTMLElement>(`[${attr}="${fuseIdx}"] .card-icon`);
+      if (icon) {
+        icon.classList.add('hint-pulse');
+        setTimeout(() => icon.classList.remove('hint-pulse'), 2400);
+      }
+    }
+  }
+
   function openReward(options: RunState['rewardOffer']): void {
     if (!options) return;
     reward.open(options);
+    cardHints(reward.root, options, 'data-reward-index');
     show('reward');
   }
   function openShop(): void {
     const st = sim.state.shop;
     if (!st) return;
     shop.render(st, sim.state.coins);
+    cardHints(shop.root, st.items.map((i) => i.option), 'data-shop-index');
     lastCoins = sim.state.coins;
     show('shop');
   }
   // record de profondeur AVANT la run (main.ts appelle meta.onRunEnd sur run:over)
   let bestDepthBefore: number | null = meta ? meta.data.stats.bestDepth : null;
+  /** l'écran de fin attend la fin du feedback de mort */
+  const GAMEOVER_DELAY_MS = 700;
+  let gameoverTimer = 0;
+  let gameoverPending = false;
   function openGameover(summary: RunSummary): void {
+    gameoverPending = false;
+    clearTimeout(gameoverTimer);
     gameover.open(summary, reduceMotion(), bestDepthBefore);
     show('gameover');
+  }
+  function scheduleGameover(summary: RunSummary): void {
+    gameoverPending = true;
+    clearTimeout(gameoverTimer);
+    gameoverTimer = window.setTimeout(() => {
+      if (gameoverPending) openGameover(summary);
+    }, GAMEOVER_DELAY_MS);
   }
   function summaryFromState(s: Readonly<RunState>): RunSummary {
     return {
@@ -201,6 +263,7 @@ export function createUI(deps: UiDeps): UI {
   });
   bus.on('shop:opened', (e) => {
     shop.render(e.shop, sim.state.coins);
+    cardHints(shop.root, e.shop.items.map((i) => i.option), 'data-shop-index');
     lastCoins = sim.state.coins;
     show('shop');
   });
@@ -214,8 +277,10 @@ export function createUI(deps: UiDeps): UI {
   bus.on('shop:left', () => {
     if (screen === 'shop') show('game');
   });
-  bus.on('run:over', (e) => openGameover(e.summary));
+  bus.on('run:over', (e) => scheduleGameover(e.summary));
   bus.on('run:started', () => {
+    gameoverPending = false;
+    clearTimeout(gameoverTimer);
     hud.reset();
     bestDepthBefore = meta ? meta.data.stats.bestDepth : null;
     if (screen !== 'title') show('game');
@@ -225,12 +290,23 @@ export function createUI(deps: UiDeps): UI {
   bus.on('volley:start', () => {
     if (meta && !meta.data.onboarded) meta.setOnboarded();
   });
+  bus.on('combo:milestone', (e) => {
+    if (hints.take('combo')) hud.comboHint(e.combo);
+  });
   bus.on('achievement:unlocked', (e) => {
     const def = config.meta.achievements.find((a) => a.id === e.achievementId);
     toasts.push(def?.name ?? e.achievementId, `+${def?.rewardFragments ?? 0} ◆`);
   });
 
   // --- premier geste de la session : déverrouille l'audio -------------------
+  // le premier geste ferme aussi le logo (screen 'title' → 'game') sans bloquer la visée
+  window.addEventListener(
+    'pointerdown',
+    () => {
+      if (screen === 'title') show('game');
+    },
+    true,
+  );
   const unlockOnce = (): void => {
     audio?.unlock();
     window.removeEventListener('pointerdown', unlockOnce, true);
@@ -238,23 +314,24 @@ export function createUI(deps: UiDeps): UI {
   window.addEventListener('pointerdown', unlockOnce, true);
 
   // --- cadre du HUD calé sur le canvas -------------------------------------
-  const relayout = (): void => hud.layout();
+  const relayout = (): void => {
+    hud.layout();
+    onboarding.relayout();
+  };
   window.addEventListener('resize', relayout);
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(relayout).observe(canvas);
   requestAnimationFrame(relayout);
 
-  // --- écran initial -----------------------------------------------------------
-  if (meta && meta.data.onboarded === false) {
-    show('title');
-  }
+  // pas d'écran titre bloquant : le jeu est visible et jouable dès le chargement
+  let lastMetaRef: unknown = null;
 
   function update(state: Readonly<RunState>): void {
     // secours : écran cohérent avec la phase (reprise de run, événement manqué)
     if (state.phase !== lastPhase) {
       lastPhase = state.phase;
-      if (state.phase === 'reward' && screen !== 'reward' && screen !== 'title') openReward(state.rewardOffer);
-      else if (state.phase === 'shop' && screen !== 'shop' && screen !== 'title') openShop();
-      else if (state.phase === 'gameover' && screen !== 'gameover' && screen !== 'title') openGameover(summaryFromState(state));
+      if (state.phase === 'reward' && screen !== 'reward') openReward(state.rewardOffer);
+      else if (state.phase === 'shop' && screen !== 'shop') openShop();
+      else if (state.phase === 'gameover' && screen !== 'gameover' && !gameoverPending) scheduleGameover(summaryFromState(state));
       else if ((state.phase === 'aiming' || state.phase === 'firing') && MODAL_RUN_SCREENS.has(screen)) show('game');
     }
     // écrans méta : reconstruits seulement si meta.data a changé de référence
@@ -265,8 +342,14 @@ export function createUI(deps: UiDeps): UI {
       lastCoins = state.coins;
       shop.refreshAffordability(state.coins);
     }
-    const hint = state.stats.shots === 0 && state.phase === 'aiming' && screen === 'game' && !dragging;
-    hud.update(state, hint);
+    // mouvements réduits (réglage méta) : coupe les transitions CSS de l'UI
+    if (meta && meta.data !== lastMetaRef) {
+      lastMetaRef = meta.data;
+      root.classList.toggle('pb-reduce', meta.data.settings.reduceMotion);
+    }
+    if (screen === 'settings') settingsScreen?.tick(state);
+    hud.update(state);
+    onboarding.update(state, (screen === 'game' || screen === 'title') && !dragging);
   }
 
   return {

@@ -28,7 +28,9 @@ export interface HudDeps {
 
 export interface Hud {
   readonly el: HTMLElement;
-  update(state: Readonly<RunState>, showHint: boolean): void;
+  update(state: Readonly<RunState>): void;
+  /** gros pop du compteur + icône « ↻ ×combo » pendant 2 s (indice du premier palier) */
+  comboHint(combo: number): void;
   /** recale le cadre du HUD sur le rectangle du canvas */
   layout(): void;
   reset(): void;
@@ -93,10 +95,9 @@ export function createHud(deps: HudDeps): Hud {
     sim.recall();
   });
 
-  // --- indice d'onboarding (flèche bas → haut) ---------------------------
-  const hint = el('div', 'hud-hint');
-  hint.setAttribute('aria-hidden', 'true');
-  hint.append(el('div', 'hint-arrow'), el('div', 'hint-dot'));
+  // --- indice one-shot du premier palier de combo (« ↻ ×N », sans phrase) --
+  const comboHint = el('div', 'hud-combo-hint');
+  comboHint.setAttribute('aria-hidden', 'true');
 
   // --- ⚙ réglages (même emplacement que Rappel, mais en phase 'aiming') ----
   const gear = el('button', 'hud-gear', '⚙');
@@ -108,7 +109,7 @@ export function createHud(deps: HudDeps): Hud {
     deps.onSettings();
   });
 
-  frame.append(top, shot, volleyBox, recall, gear, hint);
+  frame.append(top, shot, comboHint, volleyBox, recall, gear);
   if (deps.isDaily) {
     const badge = el('div', 'hud-daily', '📅 Quotidien');
     frame.append(badge);
@@ -128,7 +129,30 @@ export function createHud(deps: HudDeps): Hud {
   let shotVisible = false;
   let recallVisible = false;
   let menuVisible = false;
-  let hintVisible = false;
+  // compteurs qui roulent (tween 300 ms) : valeur affichée → cible
+  const ROLL_MS = 300;
+  const roll = {
+    coins: { from: 0, to: 0, t0: 0, shown: -1, el: coinVal },
+    frags: { from: 0, to: 0, t0: 0, shown: -1, el: fragVal },
+  };
+  type Roll = (typeof roll)['coins'];
+  function rollTo(r: Roll, v: number, now: number, instant: boolean): void {
+    const cur = r.shown < 0 ? v : r.shown;
+    r.from = instant ? v : cur;
+    r.to = v;
+    r.t0 = now;
+  }
+  function rollStep(r: Roll, now: number): void {
+    if (r.shown === r.to) return;
+    const t = Math.min(1, (now - r.t0) / ROLL_MS);
+    const k = 1 - Math.pow(1 - t, 3);
+    const v = t >= 1 ? r.to : Math.round(r.from + (r.to - r.from) * k);
+    if (v !== r.shown) {
+      r.shown = v;
+      r.el.textContent = fmt(v);
+    }
+  }
+  let comboHintTimer = 0;
   let shotHideAt = 0;
   let shotLingering = false;
   let pendingPulse = -1; // clé (élément, rang) à faire pulser après fusion
@@ -137,9 +161,21 @@ export function createHud(deps: HudDeps): Hud {
     e.classList.toggle('on', v);
   }
 
-  function renderHp(hp: number, maxHp: number): void {
-    hpBox.textContent = '';
+  function renderHp(hp: number, maxHp: number, prevHp: number, prevMax: number): void {
     hpBox.setAttribute('aria-label', `PV ${hp} sur ${maxHp}`);
+    if (maxHp <= MAX_HEARTS && maxHp === prevMax && hpBox.children.length === maxHp) {
+      // même nombre de cœurs : on anime seulement ceux qui changent (vidage 300 ms)
+      for (let i = 0; i < maxHp; i++) {
+        const h = hpBox.children[i] as HTMLElement;
+        const full = i < hp;
+        const was = i < prevHp;
+        h.classList.toggle('full', full);
+        if (was && !full) retrigger(h, 'lost');
+        else if (!was && full) retrigger(h, 'gain');
+      }
+      return;
+    }
+    hpBox.textContent = '';
     if (maxHp <= MAX_HEARTS) {
       for (let i = 0; i < maxHp; i++) hpBox.append(el('span', i < hp ? 'heart full' : 'heart', '♥'));
     } else {
@@ -260,25 +296,28 @@ export function createHud(deps: HudDeps): Hud {
     layoutShot(r.width, r.height, r.top);
   }
 
-  function update(s: Readonly<RunState>, showHint: boolean): void {
+  function update(s: Readonly<RunState>): void {
     if (s.hp !== cHp || s.maxHp !== cMaxHp) {
+      renderHp(s.hp, s.maxHp, cHp, cMaxHp);
       cHp = s.hp;
       cMaxHp = s.maxHp;
-      renderHp(s.hp, s.maxHp);
     }
     if (s.wave !== cWave) {
       cWave = s.wave;
       waveBox.textContent = `V${s.wave}`;
     }
+    const now = performance.now();
     if (s.coins !== cCoins) {
+      rollTo(roll.coins, s.coins, now, cCoins < 0 || s.coins < cCoins);
       cCoins = s.coins;
-      coinVal.textContent = fmt(s.coins);
     }
+    rollStep(roll.coins, now);
     const frags = s.stats.fragmentsEarned;
     if (frags !== cFrags) {
+      rollTo(roll.frags, frags, now, cFrags < 0 || frags < cFrags);
       cFrags = frags;
-      fragVal.textContent = fmt(frags);
     }
+    rollStep(roll.frags, now);
     if (volleyDirty || s.volley.length !== cVolleyLen || volleySignature(s.volley) !== cVolleySig) {
       cVolleyLen = s.volley.length;
       cVolleySig = volleySignature(s.volley);
@@ -304,24 +343,32 @@ export function createHud(deps: HudDeps): Hud {
       setVisible(recall, firing);
     }
     const menus = s.phase === 'aiming';
+    const gearOn = (menus || firing) && !!deps.onSettings;
+    if (gearOn !== gear.classList.contains('on')) setVisible(gear, gearOn);
+    if (firing !== frame.classList.contains('firing')) frame.classList.toggle('firing', firing);
     if (menus !== menuVisible) {
       menuVisible = menus;
-      setVisible(gear, menus && !!deps.onSettings);
       fragBox.disabled = !(menus && deps.onWell);
       fragBox.classList.toggle('on', menus && !!deps.onWell);
     }
-    if (showHint !== hintVisible) {
-      hintVisible = showHint;
-      setVisible(hint, showHint);
-    }
+  }
+
+  function showComboHint(combo: number): void {
+    retrigger(shot, 'pop-big');
+    comboHint.textContent = `↻ ×${combo}`;
+    comboHint.style.top = `calc(${shot.style.top || '0px'} + var(--shot-size, 28px) + 6px)`;
+    setVisible(comboHint, true);
+    clearTimeout(comboHintTimer);
+    comboHintTimer = window.setTimeout(() => setVisible(comboHint, false), 2000);
   }
 
   function reset(): void {
     cHp = cMaxHp = cWave = cCoins = cFrags = cVolleyLen = cShot = -1;
+    roll.coins.shown = roll.frags.shown = -1;
     volleyDirty = true;
     shotLingering = false;
     shot.dataset.level = '0';
   }
 
-  return { el: frame, update, layout, reset };
+  return { el: frame, update, layout, reset, comboHint: showComboHint };
 }

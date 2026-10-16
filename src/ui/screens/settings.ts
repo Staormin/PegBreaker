@@ -1,11 +1,13 @@
 // ui/screens/settings.ts — réglages (ui:screen 'settings') : volumes, secousses, mouvements réduits, reset.
 import type { EventBus } from '../../core/events';
-import type { AudioSystem, MetaSystem, Renderer, SaveData } from '../../core/types';
+import type { AudioSystem, MetaSystem, Renderer, RunState, SaveData } from '../../core/types';
 import { button, el } from '../dom';
 import { createScreen, type ScreenEl } from './screen';
 
 export interface SettingsScreen extends ScreenEl {
   refresh(force?: boolean): void;
+  /** chaque frame quand l'écran est visible : état de la run (« Volée en cours », abandon possible) */
+  tick(state: Readonly<RunState>): void;
 }
 
 const RESET_CONFIRM_MS = 4000;
@@ -16,8 +18,13 @@ export function createSettingsScreen(
   audio: AudioSystem | null,
   renderer: Renderer,
   onBack: () => void,
+  onAbandon: (() => void) | null = null,
 ): SettingsScreen {
-  const s = createScreen('settings', 'Réglages');
+  // fait aussi office de menu pause (la sim n'avance pas en visée ; une volée continue)
+  const s = createScreen('settings', '⏸ Pause');
+  const status = el('p', 'pause-status', '');
+  status.hidden = true;
+  s.panel.append(status);
 
   function slider(label: string, key: 'sfx' | 'music'): HTMLInputElement {
     const row = el('label', 'set-row');
@@ -60,6 +67,31 @@ export function createSettingsScreen(
   const shake = toggle('Secousses d’écran', 'shake');
   const reduce = toggle('Mouvements réduits', 'reduceMotion');
 
+  // abandon de la descente : confirmation en deux clics
+  let abArmed = false;
+  let abTimer = 0;
+  const ABANDON_LABEL = '⚑ Abandonner la descente';
+  const abandon = button(bus, 'btn btn-danger', ABANDON_LABEL, () => {
+    if (!abArmed) {
+      abArmed = true;
+      abandon.textContent = 'Confirmer l’abandon ?';
+      abandon.classList.add('armed');
+      clearTimeout(abTimer);
+      abTimer = window.setTimeout(disarmAbandon, RESET_CONFIRM_MS);
+      return;
+    }
+    disarmAbandon();
+    onAbandon?.();
+  });
+  abandon.dataset.action = 'abandon-run';
+  abandon.hidden = !onAbandon;
+  function disarmAbandon(): void {
+    abArmed = false;
+    abandon.textContent = ABANDON_LABEL;
+    abandon.classList.remove('armed');
+  }
+  s.panel.append(abandon);
+
   let armed = false;
   let timer = 0;
   const reset = button(bus, 'btn btn-danger', 'Réinitialiser la sauvegarde', () => {
@@ -80,8 +112,9 @@ export function createSettingsScreen(
     reset.textContent = 'Réinitialiser la sauvegarde';
     reset.classList.remove('armed');
   }
-  const back = button(bus, 'btn btn-primary', '← Retour', () => {
+  const back = button(bus, 'btn btn-primary', '▶ Reprendre', () => {
     disarm();
+    disarmAbandon();
     onBack();
   });
   s.panel.append(reset, back);
@@ -103,7 +136,18 @@ export function createSettingsScreen(
     }
     if (!force) return;
     disarm();
+    disarmAbandon();
   }
 
-  return { ...s, refresh };
+  let lastPhase = '';
+  function tick(state: Readonly<RunState>): void {
+    if (state.phase === lastPhase) return;
+    lastPhase = state.phase;
+    const firing = state.phase === 'firing';
+    status.hidden = !firing;
+    status.textContent = firing ? '⏩ Volée en cours' : '';
+    abandon.hidden = !onAbandon || state.phase === 'gameover';
+  }
+
+  return { ...s, refresh, tick };
 }

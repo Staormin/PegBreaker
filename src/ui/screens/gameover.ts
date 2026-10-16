@@ -94,7 +94,6 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     };
     fragRow.classList.remove('done');
     raf = requestAnimationFrame(tick);
-    setTimeout(() => restart.focus({ preventScroll: true }), 0);
   }
 
   return { ...s, open };
