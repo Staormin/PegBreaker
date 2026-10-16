@@ -14,7 +14,14 @@ export interface Vec2 {
 // Balles
 // ----------------------------------------------------------------------
 
-export type BallElement = 'stone' | 'fire' | 'lightning' | 'ice' | 'ghost' | 'lead' | 'split';
+export type BallElement =
+  | 'stone' | 'fire' | 'lightning' | 'ice' | 'ghost' | 'lead' | 'split'
+  | 'acid' | 'magnet' | 'pierce' | 'bomb' | 'homing' | 'giant' | 'swarm' | 'vampire' | 'gold' | 'prism'
+  | 'void' | 'echo' | 'boomerang' | 'crystal' | 'shock' | 'twin' | 'rust' | 'nova' | 'comet' | 'lucky';
+
+/** famille d'éléments (rendu et audio partagent les timbres/silhouettes par famille) */
+export type BallFamily = 'elemental' | 'heavy' | 'tricky' | 'swarm' | 'greed' | 'arcane';
+export const BALL_FAMILIES: readonly BallFamily[] = ['elemental', 'heavy', 'tricky', 'swarm', 'greed', 'arcane'];
 export type BallTier = 1 | 2 | 3;
 
 /** Une balle dans la volée (inventaire du joueur), pas encore en vol. */
@@ -368,6 +375,9 @@ export interface BallDef {
   id: BallElement;
   name: string;
   description: string;
+  family: BallFamily;
+  /** paramètres de la mécanique par rang (index 0 = rang I) ; clés libres lues par sim/elements/<id>.ts */
+  params?: Record<string, [number, number, number]>;
   baseDamage: number;
   /** poids dans les tirages (0 = jamais en drop aléatoire) */
   weight: number;
@@ -544,6 +554,8 @@ export interface AchievementDef {
   name: string;
   description: string;
   rewardFragments: number;
+  /** élément débloqué par ce succès (sans fragment) */
+  unlocksElement?: BallElement;
   /** condition déclarative optionnelle (sinon : table par id dans systems/achievements.ts) */
   condition?: { stat: 'bestCombo' | 'bestShotDamage' | 'bestDepth' | 'bestWave' | 'bossesKilled' | 'wave' | 'maxTier' | 'isDaily' | 'perfectWaves'; gte: number };
 }

@@ -3,24 +3,507 @@
   "comboDamagePerBounce": 0.1,
   "comboSoftCap": 30,
   "comboDamagePerBounceAfterCap": 0.02,
-  "comboMilestones": [3, 8, 16],
+  "comboMilestones": [
+    3,
+    8,
+    16
+  ],
   "maxVolley": 30,
   "lastBallMultiplier": 2,
   "lastBallMultiplierPerBall": 0.12,
   "lastBallMultiplierMax": 5,
   "spreadDamagePenalty": 0.2,
-  "fire": { "radius": 1.1, "damageRatio": 0.6 },
-  "lightning": { "chainRange": 2.5, "damageRatio": 0.5 },
-  "ice": { "maxFrozenPerShot": 3 },
-  "split": { "maxSplitsPerShot": 12, "angleDeg": 25 },
-  "lead": { "damageMultiplier": 3 },
+  "fire": {
+    "radius": 1.1,
+    "damageRatio": 0.6
+  },
+  "lightning": {
+    "chainRange": 2.5,
+    "damageRatio": 0.5
+  },
+  "ice": {
+    "maxFrozenPerShot": 3
+  },
+  "split": {
+    "maxSplitsPerShot": 12,
+    "angleDeg": 25
+  },
+  "lead": {
+    "damageMultiplier": 3
+  },
   "defs": [
-    { "id": "stone", "name": "Pierre", "description": "Une balle honnête.", "baseDamage": 10, "weight": 10, "color": "#cfd6e6" },
-    { "id": "fire", "name": "Feu", "description": "Explose au premier impact.", "baseDamage": 10, "weight": 6, "color": "#ff7a3d" },
-    { "id": "lightning", "name": "Foudre", "description": "Chaque impact frappe aussi le bloc le plus proche.", "baseDamage": 10, "weight": 6, "color": "#ffe95c" },
-    { "id": "ice", "name": "Glace", "description": "Gèle le bloc touché : il ne descend pas.", "baseDamage": 10, "weight": 5, "color": "#7fe4ff" },
-    { "id": "ghost", "name": "Fantôme", "description": "Traverse les blocs, rebondit sur les murs.", "baseDamage": 10, "weight": 4, "color": "#c08cff" },
-    { "id": "lead", "name": "Plomb", "description": "Dégâts ×3, pas de combo.", "baseDamage": 10, "weight": 4, "color": "#6b7280" },
-    { "id": "split", "name": "Scission", "description": "Se divise en deux au premier impact.", "baseDamage": 10, "weight": 5, "color": "#5cff9d" }
+    {
+      "id": "stone",
+      "name": "Pierre",
+      "description": "Une balle honnête.",
+      "baseDamage": 10,
+      "weight": 10,
+      "color": "#cfd6e6",
+      "family": "arcane"
+    },
+    {
+      "id": "fire",
+      "name": "Feu",
+      "description": "Explose au premier impact.",
+      "baseDamage": 10,
+      "weight": 6,
+      "color": "#ff7a3d",
+      "family": "elemental"
+    },
+    {
+      "id": "lightning",
+      "name": "Foudre",
+      "description": "Chaque impact frappe aussi le bloc le plus proche.",
+      "baseDamage": 10,
+      "weight": 6,
+      "color": "#ffe95c",
+      "family": "elemental"
+    },
+    {
+      "id": "ice",
+      "name": "Glace",
+      "description": "Gèle le bloc touché : il ne descend pas.",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#7fe4ff",
+      "family": "elemental"
+    },
+    {
+      "id": "ghost",
+      "name": "Fantôme",
+      "description": "Traverse les blocs, rebondit sur les murs.",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#c08cff",
+      "family": "tricky"
+    },
+    {
+      "id": "lead",
+      "name": "Plomb",
+      "description": "Dégâts ×3, pas de combo.",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#6b7280",
+      "family": "heavy"
+    },
+    {
+      "id": "split",
+      "name": "Scission",
+      "description": "Se divise en deux au premier impact.",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#5cff9d",
+      "family": "swarm"
+    },
+    {
+      "id": "acid",
+      "name": "Acide",
+      "description": "Ronge le bloc pendant 3 tirs.",
+      "family": "elemental",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#9dff3d",
+      "params": {
+        "pctPerTurn": [
+          6,
+          9,
+          12
+        ],
+        "turns": [
+          3,
+          3,
+          3
+        ],
+        "maxCharges": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "id": "magnet",
+      "name": "Aimant",
+      "description": "Ramasse les drops proches de sa route.",
+      "family": "greed",
+      "baseDamage": 10,
+      "weight": 6,
+      "color": "#ff4fd8",
+      "params": {
+        "radius": [
+          1.2,
+          1.8,
+          2.5
+        ]
+      }
+    },
+    {
+      "id": "pierce",
+      "name": "Perforante",
+      "description": "Traverse le premier bloc touché.",
+      "family": "tricky",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#ffffff",
+      "params": {
+        "pierces": [
+          1,
+          2,
+          3
+        ],
+        "damageMult": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "id": "bomb",
+      "name": "Bombe",
+      "description": "Explose en touchant le sol.",
+      "family": "heavy",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#ff3d3d",
+      "params": {
+        "radius": [
+          1.4,
+          1.8,
+          2.2
+        ],
+        "damageMult": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "id": "homing",
+      "name": "Traqueuse",
+      "description": "Dévie vers le bloc le plus proche.",
+      "family": "tricky",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#ff9cf5",
+      "params": {
+        "maxDeg": [
+          12,
+          20,
+          30
+        ]
+      }
+    },
+    {
+      "id": "giant",
+      "name": "Géante",
+      "description": "Énorme, lente, dégâts ×2.",
+      "family": "heavy",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#b8c0d0",
+      "params": {
+        "radiusMult": [
+          1.8,
+          2.1,
+          2.4
+        ],
+        "damageMult": [
+          2,
+          2,
+          2
+        ],
+        "speedMult": [
+          0.85,
+          0.85,
+          0.85
+        ]
+      }
+    },
+    {
+      "id": "swarm",
+      "name": "Essaim",
+      "description": "Libère des mini-balles à l'impact.",
+      "family": "swarm",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#d4ff5c",
+      "params": {
+        "chance": [
+          0.25,
+          0.35,
+          0.5
+        ],
+        "maxPerShot": [
+          6,
+          6,
+          6
+        ],
+        "damageMult": [
+          0.3,
+          0.3,
+          0.3
+        ]
+      }
+    },
+    {
+      "id": "vampire",
+      "name": "Vampire",
+      "description": "Rend 1 PV par bloc détruit.",
+      "family": "greed",
+      "baseDamage": 10,
+      "weight": 3,
+      "color": "#c21e4a",
+      "params": {
+        "perShot": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "gold",
+      "name": "Or",
+      "description": "Les blocs détruits lâchent des pièces.",
+      "family": "greed",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#ffd34d",
+      "params": {
+        "coinMult": [
+          1.5,
+          2,
+          3
+        ],
+        "damageMult": [
+          0.7,
+          0.7,
+          0.7
+        ]
+      }
+    },
+    {
+      "id": "prism",
+      "name": "Prisme",
+      "description": "Rayon sur toute la rangée à chaque mur.",
+      "family": "arcane",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#9af0ff",
+      "params": {
+        "rowRatio": [
+          0.3,
+          0.45,
+          0.6
+        ]
+      }
+    },
+    {
+      "id": "void",
+      "name": "Vide",
+      "description": "Ignore l'armure, mord les gros blocs.",
+      "family": "arcane",
+      "baseDamage": 10,
+      "weight": 3,
+      "color": "#5b2d8e",
+      "params": {
+        "pctMaxHp": [
+          6,
+          9,
+          12
+        ]
+      }
+    },
+    {
+      "id": "echo",
+      "name": "Écho",
+      "description": "Repart du sol une fois.",
+      "family": "tricky",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#7fffd4",
+      "params": {
+        "ratio": [
+          0.5,
+          0.7,
+          1
+        ]
+      }
+    },
+    {
+      "id": "boomerang",
+      "name": "Boomerang",
+      "description": "Revient vers toi en frappant.",
+      "family": "tricky",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#ffb347",
+      "params": {
+        "returns": [
+          1,
+          2,
+          3
+        ],
+        "afterMs": [
+          1500,
+          1500,
+          1500
+        ]
+      }
+    },
+    {
+      "id": "crystal",
+      "name": "Cristal",
+      "description": "Plus fort à chaque rebond, puis éclate.",
+      "family": "arcane",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#e0f7ff",
+      "params": {
+        "perBouncePct": [
+          20,
+          20,
+          20
+        ],
+        "bounces": [
+          8,
+          10,
+          12
+        ],
+        "shards": [
+          4,
+          4,
+          4
+        ],
+        "shardMult": [
+          0.25,
+          0.25,
+          0.25
+        ]
+      }
+    },
+    {
+      "id": "shock",
+      "name": "Choc",
+      "description": "Repousse le bloc d'une rangée.",
+      "family": "heavy",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#ffe066",
+      "params": {
+        "perBlock": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "twin",
+      "name": "Jumelle",
+      "description": "Part en deux balles miroirs.",
+      "family": "swarm",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#c4ffb2",
+      "params": {
+        "count": [
+          2,
+          3,
+          4
+        ],
+        "angleDeg": [
+          8,
+          8,
+          8
+        ],
+        "damageMult": [
+          0.7,
+          0.7,
+          0.7
+        ]
+      }
+    },
+    {
+      "id": "rust",
+      "name": "Rouille",
+      "description": "Affaiblit le bloc pour de bon.",
+      "family": "arcane",
+      "baseDamage": 10,
+      "weight": 5,
+      "color": "#b5651d",
+      "params": {
+        "pctMaxHp": [
+          15,
+          22,
+          30
+        ]
+      }
+    },
+    {
+      "id": "nova",
+      "name": "Nova",
+      "description": "Explose à chaque palier de combo.",
+      "family": "arcane",
+      "baseDamage": 10,
+      "weight": 3,
+      "color": "#ff6ad5",
+      "params": {
+        "radius": [
+          1.2,
+          1.2,
+          1.2
+        ],
+        "comboMult": [
+          3,
+          4,
+          6
+        ]
+      }
+    },
+    {
+      "id": "comet",
+      "name": "Comète",
+      "description": "Rapide, le plafond donne du combo.",
+      "family": "elemental",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#ff8c42",
+      "params": {
+        "speedMult": [
+          1.4,
+          1.4,
+          1.4
+        ],
+        "ceilingCombo": [
+          3,
+          4,
+          6
+        ]
+      }
+    },
+    {
+      "id": "lucky",
+      "name": "Chance",
+      "description": "Critiques ×3, drops doublés.",
+      "family": "greed",
+      "baseDamage": 10,
+      "weight": 4,
+      "color": "#4dff88",
+      "params": {
+        "critChance": [
+          0.2,
+          0.3,
+          0.4
+        ],
+        "critMult": [
+          3,
+          3,
+          3
+        ]
+      }
+    }
   ]
 }
