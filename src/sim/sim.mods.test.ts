@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { GameEvent, Sim } from '../core/types';
 import type { RunModEffect } from './mods';
-import { config, createRng, lowestBlockDir, mut, newSim, ofType, randomDir, settle, setup, shoot, FRAME } from './test-helpers';
+import { createSim } from './index';
+import { config, createRng, lowestBlockDir, meta, mut, newSim, ofType, randomDir, settle, setup, shoot, FRAME } from './test-helpers';
 
 const mods = (...ids: string[]) => ({ runMods: ids });
 
@@ -150,4 +151,26 @@ describe('mutateurs de run', () => {
     }
     console.log(`[mods] vague de mort moyenne (bot naïf)\n${lines.join('\n')}`);
   }, 180_000);
+});
+
+describe('rewardSource', () => {
+  it('renseigné à reward:offered (= source), conservé dans le snapshot, remis à undefined une fois l offre consommée', () => {
+    const sim = newSim('rs-0');
+    expect(sim.state.rewardSource).toBeUndefined();
+    let seen = 0;
+    for (let n = 0; n < 200 && sim.state.phase !== 'gameover' && seen < 2; n++) {
+      const evs = shoot(sim, lowestBlockDir(sim));
+      const off = ofType(evs, 'reward:offered')[0];
+      if (!off) continue;
+      seen++;
+      expect(sim.state.rewardSource).toBe(off.source);
+      const resumed = createSim(sim.config, { seed: 'rs-0', meta: meta(sim.config), snapshot: sim.snapshot() });
+      expect(resumed.state.rewardSource).toBe(off.source);
+      if (seen === 1) sim.chooseReward(0);
+      else sim.skipReward();
+      expect(sim.state.rewardSource).toBeUndefined();
+      settle(sim);
+    }
+    expect(seen).toBe(2);
+  });
 });

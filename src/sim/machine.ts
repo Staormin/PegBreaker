@@ -232,6 +232,7 @@ function clearWave(ctx: Ctx): void {
   const count = ctx.cfg.economy.reward.optionCount;
   const offer = source === 'boss' ? makeBossOptions(ctx, count) : makeOptions(ctx, count, true, 'chance');
   s.rewardOffer = offer;
+  s.rewardSource = source;
   s.phase = 'reward';
   s.advanceProgress = 0;
   // copie superficielle (pas de structuredClone dans step) : les options sont des objets plats
@@ -241,6 +242,7 @@ function clearWave(ctx: Ctx): void {
 function afterReward(ctx: Ctx): void {
   const s = ctx.s;
   s.rewardOffer = null;
+  s.rewardSource = undefined;
   const every = ctx.cfg.waves.shopEvery;
   if (every > 0 && s.wave % every === 0) openShop(ctx);
   else nextWave(ctx);

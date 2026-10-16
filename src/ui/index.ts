@@ -16,8 +16,8 @@
 // - Lot 2 : F8 quotidien muté (`?daily=1`) : mutateurs `meta.dailyMods()` dans le badge HUD,
 //   écran 'daily' (mutateurs, multiplicateur, série + calendrier 7 j), « Série : N jours, ×M
 //   fragments » en fin de quotidien. F9 : `reward:offered.source === 'boss'` → coffre
-//   (screens/reward.ts). Une reprise de sauvegarde en phase 'reward' rouvre en mode normal
-//   (RunState ne mémorise pas la source de l'offre).
+//   (screens/reward.ts). Une reprise en phase 'reward' rouvre le coffre si
+//   `state.rewardSource === 'boss'`, sinon l'écran normal.
 // =====================================================================
 import './styles.css';
 import type { EventBus } from '../core/events';
@@ -414,7 +414,7 @@ export function createUI(deps: UiDeps): UI {
     // secours : écran cohérent avec la phase (reprise de run, événement manqué)
     if (state.phase !== lastPhase) {
       lastPhase = state.phase;
-      if (state.phase === 'reward' && screen !== 'reward') openReward(state.rewardOffer);
+      if (state.phase === 'reward' && screen !== 'reward') openReward(state.rewardOffer, state.rewardSource === 'boss' ? 'boss' : 'wave');
       else if (state.phase === 'shop' && screen !== 'shop') openShop();
       else if (state.phase === 'gameover' && screen !== 'gameover' && screen !== 'revive' && !gameoverPending && !lostPending) {
         // reprise d'une run perdue en attente de décision (snapshot pris après run:lost)
