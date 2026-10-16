@@ -34,6 +34,8 @@ export interface SimInternal {
   piggyCoins: number;
   wavesCleared: number;
   restarts: number;
+  /** recall() appelé pendant la volée en cours (désactive l'accélération automatique) */
+  manualRecall: boolean;
 }
 
 export interface SimState extends RunState {
@@ -59,6 +61,7 @@ export function createInternal(nextId: number): SimInternal {
     piggyCoins: 0,
     wavesCleared: 0,
     restarts: 0,
+    manualRecall: false,
   };
 }
 

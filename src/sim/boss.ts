@@ -41,7 +41,7 @@ export function bossOnShotEnd(ctx: Ctx): void {
   for (const b of ctx.s.blocks) {
     if (b.kind !== 'boss' || !isBreakable(b)) continue;
     const def = bossDef(ctx, b.bossId);
-    if (def?.behavior === 'regen') b.hp = Math.min(b.maxHp, b.hp + def.param * b.maxHp);
+    if (def?.behavior === 'regen') b.hp = Math.min(b.maxHp, b.hp + Math.round(def.param * b.maxHp));
   }
 }
 

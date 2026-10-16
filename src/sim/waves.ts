@@ -148,7 +148,8 @@ function shiftOnce(ctx: Ctx): void {
     const b = s.blocks[i] as Block;
     if (b.row < board.rows - 1) continue;
     if (b.kind !== 'peg' && b.hp > 0) {
-      const dmg = Math.min(Math.ceil(b.hp), ctx.cfg.blocks.breachDamageCap);
+      // boss : dégâts de brèche dédiés (non plafonnés par breachDamageCap)
+      const dmg = b.kind === 'boss' ? ctx.cfg.blocks.bossBreachDamage : Math.min(Math.ceil(b.hp), ctx.cfg.blocks.breachDamageCap);
       emit(ctx, { type: 'block:breached', blockId: b.id, kind: b.kind, damage: dmg });
       s.hp = Math.max(0, s.hp - dmg);
       emit(ctx, { type: 'player:damaged', amount: dmg, hpLeft: s.hp });

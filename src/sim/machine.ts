@@ -14,6 +14,7 @@ import { openShop } from './shop';
 import { refreshRelics } from './relics';
 import { releaseBall } from './pools';
 import { hashString } from '../core/rng';
+import { AUTO_SPEEDUP_RAMP_MS } from './constants';
 
 /** Construit l'état initial d'une run et génère la vague 1. */
 export function startRun(ctx: Ctx, seed: string, restarts: number): void {
@@ -86,6 +87,7 @@ export function fire(ctx: Ctx): void {
   it.firstbloodUsed = false;
   it.safetynetUsed = false;
   it.absorbElement = null;
+  it.manualRecall = false;
   s.pendingLaunches = it.launchQueue.length;
   s.currentShotDamage = 0;
   s.currentShotCombo = 0;
@@ -103,7 +105,20 @@ export function fire(ctx: Ctx): void {
 }
 
 export function recall(ctx: Ctx): void {
-  if (ctx.s.phase === 'firing') ctx.s.recallSpeed = ctx.cfg.blocks.board.recallSpeed;
+  if (ctx.s.phase !== 'firing') return;
+  ctx.s.internal.manualRecall = true;
+  ctx.s.recallSpeed = ctx.cfg.blocks.board.recallSpeed;
+}
+
+/** Accélération automatique : au-delà de autoSpeedupAfterMs, rampe linéaire 1 → recallSpeed sur AUTO_SPEEDUP_RAMP_MS. */
+function autoSpeedup(ctx: Ctx): void {
+  const s = ctx.s;
+  const board = ctx.cfg.blocks.board;
+  if (s.internal.manualRecall || !(board.autoSpeedupAfterMs > 0)) return;
+  const over = s.internal.volleyElapsed - board.autoSpeedupAfterMs;
+  if (over <= 0) return;
+  const t = Math.min(1, over / AUTO_SPEEDUP_RAMP_MS);
+  s.recallSpeed = 1 + (board.recallSpeed - 1) * t;
 }
 
 function endVolley(ctx: Ctx): void {
@@ -253,6 +268,7 @@ export function tick(ctx: Ctx, dt: number): void {
   if (s.phase === 'firing') {
     const it = s.internal;
     it.volleyElapsed += dt;
+    autoSpeedup(ctx);
     const board = ctx.cfg.blocks.board;
     const speed = Math.max(1, s.recallSpeed);
     const n = Math.ceil(speed - 1e-9);

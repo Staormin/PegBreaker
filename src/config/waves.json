@@ -1,9 +1,9 @@
 {
-  "baseHp": 2.5,
-  "growthPerWave": 1.75,
+  "baseHp": 25,
+  "growthPerWave": 1.85,
   "growthPerShot": 0.1,
-  "hpVariance": { "min": 0.6, "max": 1.4 },
-  "rowsBase": 5,
+  "hpVariance": { "min": 0.5, "max": 1.1 },
+  "rowsBase": 4,
   "rowsPerWave": 0.5,
   "rowsMax": 9,
   "densityByWave": [
@@ -16,9 +16,9 @@
   "bossEvery": 5,
   "shopEvery": 3,
   "bosses": [
-    { "id": "regen", "name": "Le Dévoreur", "width": 3, "hpMultiplier": 25, "behavior": "regen", "param": 0.05 },
-    { "id": "spawner", "name": "La Ruche", "width": 3, "hpMultiplier": 20, "behavior": "spawner", "param": 2 },
-    { "id": "absorb", "name": "Le Miroir", "width": 3, "hpMultiplier": 22, "behavior": "absorb", "param": 0.5 }
+    { "id": "regen", "name": "Le Dévoreur", "width": 3, "hpMultiplier": 3.6, "behavior": "regen", "param": 0.05 },
+    { "id": "spawner", "name": "La Ruche", "width": 3, "hpMultiplier": 3.2, "behavior": "spawner", "param": 2 },
+    { "id": "absorb", "name": "Le Miroir", "width": 3, "hpMultiplier": 3.2, "behavior": "absorb", "param": 0.5 }
   ],
-  "start": { "hp": 5, "balls": 3, "elements": ["stone", "stone", "stone"] }
+  "start": { "hp": 5, "balls": 5, "elements": ["stone", "stone", "stone", "stone", "stone"] }
 }

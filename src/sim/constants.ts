@@ -15,6 +15,8 @@ export const LAUNCH_MARGIN = 0.3;
 export const PREVIEW_REFLECT_LEN = 1.5;
 /** Seuil sous lequel un bloc est considéré détruit (PV flottants). */
 export const HP_EPS = 1e-6;
+/** Durée de la rampe d'accélération automatique des longues volées (1 → recallSpeed). */
+export const AUTO_SPEEDUP_RAMP_MS = 1500;
 /** Valeurs de repli si les clés optionnelles ajoutées aux JSON manquent. */
 export const DEFAULT_SPLIT_ANGLE_DEG = 25;
 export const DEFAULT_START_ROWS = 3;

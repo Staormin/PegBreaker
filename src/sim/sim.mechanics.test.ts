@@ -13,7 +13,7 @@ describe('démarrage', () => {
     expect(s.phase).toBe('aiming');
     expect(s.launchPos).toEqual({ x: cfg.blocks.board.cols / 2, y: cfg.blocks.board.rows });
     expect(new Set(s.blocks.map((b) => b.row))).toEqual(new Set([0, 1, 2]));
-    expect(s.rowsLeftInWave).toBe(5 - 3);
+    expect(s.rowsLeftInWave).toBe(4 - 3); // rowsBase 4
     expect(s.hp).toBe(cfg.waves.start.hp);
     expect(sim.step(0).some((e) => e.type === 'run:started')).toBe(true);
   });
@@ -21,19 +21,19 @@ describe('démarrage', () => {
   it('meta : bonus de PV et de balles', () => {
     const sim = newSim('meta', config(), { bonusHp: 2, bonusStartBalls: 1 });
     expect(sim.state.maxHp).toBe(7);
-    // plus de fusion automatique : 4 pierres de rang 1
-    expect(sim.state.volley).toEqual(Array.from({ length: 4 }, () => ({ element: 'stone', tier: 1 })));
+    // plus de fusion automatique : 5 + 1 pierres de rang 1
+    expect(sim.state.volley).toEqual(Array.from({ length: 6 }, () => ({ element: 'stone', tier: 1 })));
   });
 });
 
 describe('combo et dégâts', () => {
   it('premier impact : base × tierMult^(tier-1) ; plomb ×3 sans combo ; bouncy +2 de combo', () => {
     const cases: [Parameters<typeof setup>[2], string[], number][] = [
-      [[{ element: 'stone', tier: 1 }], [], 1],
-      [[{ element: 'stone', tier: 2 }], [], 2.5],
-      [[{ element: 'stone', tier: 3 }], [], 6.25],
-      [[{ element: 'lead', tier: 1 }], [], 3],
-      [[{ element: 'stone', tier: 1 }], ['bouncy'], 1.2],
+      [[{ element: 'stone', tier: 1 }], [], 10],
+      [[{ element: 'stone', tier: 2 }], [], 25],
+      [[{ element: 'stone', tier: 3 }], [], 63], // 62,5 arrondi
+      [[{ element: 'lead', tier: 1 }], [], 30],
+      [[{ element: 'stone', tier: 1 }], ['bouncy'], 12],
     ];
     for (const [volley, relics, expected] of cases) {
       const sim = newSim('dmg');
@@ -43,14 +43,16 @@ describe('combo et dégâts', () => {
       const evs = shoot(sim, UP);
       const hits = ofType(evs, 'block:hit');
       expect(hits).toHaveLength(1);
-      expect(hits[0]!.damage).toBeCloseTo(expected, 9);
-      expect(sim.state.currentShotDamage).toBeCloseTo(expected, 9);
-      expect(sim.state.stats.totalDamage).toBeCloseTo(expected, 9);
-      expect(ofType(evs, 'volley:end')[0]!.shotDamage).toBeCloseTo(expected, 9);
+      expect(hits[0]!.damage).toBe(expected);
+      expect(sim.state.currentShotDamage).toBe(expected);
+      expect(sim.state.stats.totalDamage).toBe(expected);
+      expect(sim.state.stats.bestShotDamage).toBe(expected);
+      expect(ofType(evs, 'volley:end')[0]!.shotDamage).toBe(expected);
+      expect(Number.isInteger(hits[0]!.hpLeft)).toBe(true);
     }
   });
 
-  it('dégâts = 1 + 0,1 × combo sur chaque impact direct, combo croissant, paliers émis', () => {
+  it('dégâts = round(10 × (1 + 0,1 × combo)), entiers, sur chaque impact direct, combo croissant, paliers émis', () => {
     const cfg = config();
     cfg.balls.comboMilestones = [2, 4, 6];
     const sim = newSim('combo', cfg);
@@ -62,7 +64,8 @@ describe('combo et dégâts', () => {
       mut(sim).volley = [{ element: 'stone', tier: 1 }];
       const evs = shoot(sim, randomDir(rng));
       for (const h of ofType(evs, 'block:hit')) {
-        expect(h.damage).toBeCloseTo(1 + 0.1 * h.combo, 9);
+        expect(h.damage).toBe(Math.round(10 * (1 + 0.1 * h.combo)));
+        expect(Number.isInteger(h.hpLeft)).toBe(true);
         expect(h.crit).toBe(h.combo >= 2);
         maxCombo = Math.max(maxCombo, h.combo);
       }
@@ -92,9 +95,9 @@ describe('fusion (carte de récompense)', () => {
     return { sim, evs };
   }
 
-  it('départ : 3 pierres = 3 balles, aucune fusion automatique', () => {
+  it('départ : 5 pierres = 5 balles, aucune fusion automatique', () => {
     const sim = newSim('fusion');
-    expect(sim.state.volley).toEqual([S1, S1, S1]);
+    expect(sim.state.volley).toEqual([S1, S1, S1, S1, S1]);
     expect(sim.state.stats.fusions).toBe(0);
     expect(ofType(sim.step(0), 'volley:fusion')).toHaveLength(0);
   });
@@ -186,6 +189,7 @@ describe('fusion (carte de récompense)', () => {
     const sim = newSim('cap', cfg);
     const t = block(sim, 'normal', 3, 4, 1000);
     setup(sim, [t], [{ element: 'stone', tier: 2 }, { element: 'stone', tier: 2 }, S1, S1]);
+    mut(sim).stats.fusions = 0; // la volée de départ (5 ≥ 4) a déjà fusionné
     mut(sim).drops.push({ id: 9998, kind: 'ball', pos: { x: 3.5, y: 7 }, value: 1, element: 'fire' });
     const evs = shoot(sim, UP);
     // 4 balles = plafond → stone1+stone1 fusionnent d'abord (rang le plus bas) ; le feu entre (4) → stone2+stone2 → stone3
@@ -208,9 +212,9 @@ describe('éléments', () => {
     const ex = ofType(evs, 'block:explode');
     expect(ex).toHaveLength(1);
     expect(ex[0]!.radius).toBeCloseTo(1.1);
-    expect(ex[0]!.damage).toBeCloseTo(0.6);
-    expect(hpOf(sim.state.blocks, a.id)).toBeCloseTo(99);
-    expect(hpOf(sim.state.blocks, b.id)).toBeCloseTo(99.4);
+    expect(ex[0]!.damage).toBeCloseTo(6);
+    expect(hpOf(sim.state.blocks, a.id)).toBe(90);
+    expect(hpOf(sim.state.blocks, b.id)).toBe(94);
     expect(hpOf(sim.state.blocks, far.id)).toBe(100);
     expect(ofType(evs, 'ball:grounded')).toHaveLength(1);
   });
@@ -225,8 +229,8 @@ describe('éléments', () => {
     const ch = ofType(evs, 'lightning:chain');
     expect(ch).toHaveLength(1);
     expect(ch[0]!.to).toEqual({ x: 5.5, y: 4.5 });
-    expect(ch[0]!.damage).toBeCloseTo(0.5);
-    expect(hpOf(sim.state.blocks, near.id)).toBeCloseTo(99.5);
+    expect(ch[0]!.damage).toBe(5);
+    expect(hpOf(sim.state.blocks, near.id)).toBe(95);
     expect(hpOf(sim.state.blocks, far.id)).toBe(100);
   });
 
@@ -287,7 +291,7 @@ describe('blocs spéciaux', () => {
     setup(sim, [a], [{ element: 'stone', tier: 1 }]);
     const evs = shoot(sim, UP);
     expect(ofType(evs, 'block:hit')).toHaveLength(1);
-    expect(hpOf(sim.state.blocks, a.id)).toBe(49);
+    expect(hpOf(sim.state.blocks, a.id)).toBe(40);
 
     const sim2 = newSim('armor2');
     const side = block(sim2, 'armored', 3, 5, 50);
@@ -451,7 +455,7 @@ describe('vagues, récompense, boutique, boss', () => {
     expect(s.shotInWave).toBe(0);
     expect(s.shop).toBeNull();
     expect(new Set(s.blocks.map((b) => b.row))).toEqual(new Set([0, 1, 2]));
-    expect(s.rowsLeftInWave).toBe(7 - 3);
+    expect(s.rowsLeftInWave).toBe(6 - 3); // round(4 + 0,5 × 3) = 6
   });
 
   it('skipReward donne skipCoins ; freeRerolls de la meta', () => {
@@ -491,7 +495,7 @@ describe('vagues, récompense, boutique, boss', () => {
     boss.hp = boss.maxHp - 100;
     shoot(sim, UP);
     const after = s.blocks[0]!;
-    expect(after.hp).toBeCloseTo(Math.min(after.maxHp, after.maxHp - 100 - 1 + w.bosses[0]!.param * after.maxHp), 6);
+    expect(after.hp).toBe(Math.min(after.maxHp, after.maxHp - 100 - 10 + Math.round(w.bosses[0]!.param * after.maxHp)));
 
     after.hp = 1;
     const evs2 = shoot(sim, UP);
@@ -510,9 +514,57 @@ describe('vagues, récompense, boutique, boss', () => {
     const hits = ofType(evs, 'block:hit');
     // volée triée par élément : stone part en premier → stone est absorbé (× param), lead passe plein pot
     expect(hits[0]!.element).toBe('stone');
-    expect(hits[0]!.damage).toBeCloseTo(1 * 0.5);
+    expect(hits[0]!.damage).toBe(5);
     expect(hits[1]!.element).toBe('lead');
-    expect(hits[1]!.damage).toBeCloseTo(3);
+    expect(hits[1]!.damage).toBe(30);
+  });
+});
+
+describe('T2c', () => {
+  it('un boss qui franchit la ligne inflige bossBreachDamage (non plafonné), vague validée sans kill', () => {
+    const sim = newSim('boss-breach');
+    const b = block(sim, 'boss', 2, 8, 5000, 3);
+    b.bossId = 'regen';
+    setup(sim, [b], [{ element: 'stone', tier: 1 }], { launchX: 0.5 });
+    const evs = shoot(sim, { x: 0, y: -1 });
+    expect(ofType(evs, 'block:breached')).toEqual([{ type: 'block:breached', blockId: b.id, kind: 'boss', damage: 3 }]);
+    expect(sim.state.hp).toBe(2);
+    expect(ofType(evs, 'boss:killed')).toHaveLength(0);
+    expect(ofType(evs, 'wave:cleared')).toHaveLength(1);
+  });
+
+  it('accélération automatique des longues volées : rampe 1 → recallSpeed après autoSpeedupAfterMs', () => {
+    const run = (manual: boolean): number[] => {
+      const sim = newSim('speedup');
+      // balle coincée verticalement entre le plafond et le dessus d'un bloc indestructible
+      const t = block(sim, 'normal', 3, 3, 1e9);
+      setup(sim, [t], [{ element: 'stone', tier: 1 }], { rowsLeft: 2 });
+      sim.aim({ x: 0, y: -1 });
+      sim.fire();
+      sim.step(5); // un sous-pas : la balle est lancée
+      const ball = mut(sim).balls[0]!;
+      ball.pos.x = 3.5;
+      ball.pos.y = 1.5;
+      ball.vel.x = 0;
+      ball.vel.y = -sim.config.blocks.board.ballSpeed;
+      const speeds: number[] = [];
+      for (let ms = 0; ms < 8000 && sim.state.phase === 'firing'; ms += 250) {
+        sim.step(250);
+        if (manual && ms === 1000) sim.recall();
+        speeds.push(sim.state.recallSpeed);
+      }
+      return speeds;
+    };
+    const auto = run(false);
+    const board = config().blocks.board;
+    const idx = (ms: number) => Math.round(ms / 250) - 1;
+    expect(auto[idx(4000)]).toBe(1);
+    expect(auto[idx(5250)]).toBeGreaterThan(1);
+    expect(auto[idx(5250)]).toBeLessThan(board.recallSpeed);
+    expect(auto[idx(7000)]).toBe(board.recallSpeed);
+    // recall manuel : valeur pleine immédiate, pas de rampe
+    const manual = run(true);
+    expect(manual.slice(idx(1250)).every((v) => v === board.recallSpeed)).toBe(true);
   });
 });
 

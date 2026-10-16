@@ -30,6 +30,8 @@ export function damageBlock(ctx: Ctx, bi: number, amount: number, element: BallE
   if (!blk || !isBreakable(blk)) return;
   if (blk.kind === 'boss') amount = bossDamage(ctx, blk, amount, element);
   if (amount <= 0) return;
+  // dégâts entiers (≥ 1) : PV des blocs et stats restent entiers
+  amount = Math.max(1, Math.round(amount));
   blk.hp -= amount;
   if (blk.hp <= HP_EPS) blk.hp = 0;
   s.currentShotDamage += amount;
