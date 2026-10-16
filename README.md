@@ -56,6 +56,24 @@ npm run test:e2e     # tests de bout en bout (Playwright, sur le build servi par
 
 Le dossier `dist/` est entièrement statique : sers-le avec n'importe quel serveur statique (par exemple `npx vite preview`, ou `python3 -m http.server` dans `dist/`) puis ouvre `index.html`. Les navigateurs ne prennent pas en charge l'ouverture directe en `file://` pour les modules JavaScript.
 
+## Publier sur GitHub Pages
+
+Le build est entièrement relatif (`base: './'`, service worker et manifeste sur `./`) : il fonctionne tel quel sous `https://<utilisateur>.github.io/<dépôt>/`.
+
+1. Crée un dépôt GitHub et pousse la branche `main` :
+
+```bash
+git remote add origin git@github.com:<utilisateur>/pegbreaker.git
+git push -u origin main
+```
+
+2. Dans le dépôt : **Settings → Pages → Build and deployment → Source : GitHub Actions** (une seule fois).
+3. Chaque `push` sur `main` lance [`.github/workflows/pages.yml`](.github/workflows/pages.yml) : tests unitaires, build, publication. L'URL s'affiche dans l'onglet Actions (environnement `github-pages`).
+
+Déploiement manuel sans Actions : `npm run build` puis publie le contenu de `dist/` sur la branche `gh-pages` (par exemple avec `npx gh-pages -d dist`).
+
+La suite Playwright complète tourne à la demande ou chaque lundi via [`.github/workflows/e2e.yml`](.github/workflows/e2e.yml).
+
 ## Jouer hors ligne / installer
 
 Pegbreaker est une PWA : un service worker (`public/sw.js`) met le jeu en cache dès la première visite. Ensuite, il se recharge et se joue **sans réseau**.
