@@ -9,10 +9,12 @@ import { physicsStep, rebuildGrid } from './physics';
 import { advanceRows, clearBoard, startWave, waveCleared } from './waves';
 import { bossAfterAdvance, bossOnShotEnd } from './boss';
 import { collectAllDrops } from './drops';
-import { makeOptions, applyOption } from './rewards';
+import { makeBossOptions, makeOptions, applyOption } from './rewards';
 import { openShop } from './shop';
 import { refreshRelics } from './relics';
-import { compactBlocks, releaseBall } from './pools';
+import { compactBlocks, releaseBall, releaseBlock, releaseDrop } from './pools';
+import { clampAim } from './aim';
+import { contractOnFire, contractOnWaveEnd, contractSeed } from './contracts';
 import { burnEmbers } from './combat';
 import { hashString } from '../core/rng';
 import { AUTO_SPEEDUP_RAMP_MS } from './constants';
@@ -49,6 +51,9 @@ export function startRun(ctx: Ctx, seed: string, restarts: number): void {
     relics: [],
     launchPos: { x: board.cols / 2, y: board.rows },
     aimDir: null,
+    aimSpread: 0,
+    contract: null,
+    revivesUsed: 0,
     currentShotDamage: 0,
     currentShotCombo: 0,
     rewardOffer: null,
@@ -61,6 +66,7 @@ export function startRun(ctx: Ctx, seed: string, restarts: number): void {
     internal: createInternal(1),
   };
   s.internal.restarts = restarts;
+  s.internal.contractRng = contractSeed(seed);
   ctx.s = s;
   ctx.spareBalls.length = 0;
   ctx.spareDrops.length = 0;
@@ -72,12 +78,54 @@ export function startRun(ctx: Ctx, seed: string, restarts: number): void {
   ctx.gridDirty = true;
 }
 
+/**
+ * Ordre de départ. Éventail ouvert (spread > 0) : centré, indices triés par distance au centre, la gauche
+ * d'abord à égalité (N = 5 → 2, 1, 3, 0, 4 ; N = 4 → 1, 2, 0, 3). Rafale serrée (spread = 0) : ordre de la
+ * volée, toutes les balles ayant le même angle (garde le jeu à l'identique du tir sans éventail).
+ * Dans les deux cas, la dernière balle lancée (la dorée) est l'indice N − 1.
+ */
+export function launchOrder(n: number, centered: boolean): number[] {
+  const m = (n - 1) / 2;
+  const order: number[] = [];
+  for (let i = 0; i < n; i++) order.push(i);
+  if (centered) order.sort((a, b) => Math.abs(a - m) - Math.abs(b - m) || a - b);
+  return order;
+}
+
+/**
+ * Éventail : la balle i de N part à base + maxSpreadDeg × spread × (2i/(N−1) − 1) (N = 1 : base).
+ * Remplit launchQueue (ordre de départ) et launchDirs (directions alignées, angle minimal imposé).
+ */
+function planVolley(ctx: Ctx, dirX: number, dirY: number, spread: number): void {
+  const s = ctx.s;
+  const it = s.internal;
+  const n = s.volley.length;
+  const half = ((ctx.cfg.blocks.board.maxSpreadDeg * Math.PI) / 180) * spread;
+  const order = launchOrder(n, spread > 0);
+  it.launchQueue = [];
+  it.launchDirs = [];
+  for (const i of order) {
+    const v = s.volley[i]!;
+    it.launchQueue.push({ element: v.element, tier: v.tier });
+    const a = n > 1 ? half * ((2 * i) / (n - 1) - 1) : 0;
+    if (a === 0) {
+      it.launchDirs.push(dirX, dirY); // exact : à spread 0, trajectoires identiques au tir sans éventail
+    } else {
+      const c = Math.cos(a);
+      const sn = Math.sin(a);
+      const d = clampAim(ctx, { x: dirX * c - dirY * sn, y: dirX * sn + dirY * c });
+      it.launchDirs.push(d.x, d.y);
+    }
+  }
+}
+
 export function fire(ctx: Ctx): void {
   const s = ctx.s;
   if (s.phase !== 'aiming' || !s.aimDir || s.volley.length === 0) return;
   const it = s.internal;
   refreshRelics(ctx); // l'état a pu être modifié de l'extérieur (reprise, outils de debug)
-  it.launchQueue = s.volley.map((v) => ({ element: v.element, tier: v.tier }));
+  const spread = Number.isFinite(s.aimSpread) ? Math.min(1, Math.max(0, s.aimSpread)) : 0;
+  planVolley(ctx, s.aimDir.x, s.aimDir.y, spread);
   it.launchTimer = 0;
   it.volleyElapsed = 0;
   it.originX = s.launchPos.x;
@@ -99,6 +147,7 @@ export function fire(ctx: Ctx): void {
   s.depth++;
   s.stats.shots++;
   s.phase = 'firing';
+  contractOnFire(ctx);
   burnEmbers(ctx); // pyromane : brûlure au début du tir suivant (comptée dans ce tir)
   if (ctx.blocksDied) compactBlocks(ctx);
   rebuildGrid(ctx);
@@ -107,6 +156,7 @@ export function fire(ctx: Ctx): void {
     count: s.pendingLaunches,
     from: { x: s.launchPos.x, y: s.launchPos.y },
     dir: { x: s.aimDir.x, y: s.aimDir.y },
+    spread,
   });
 }
 
@@ -176,12 +226,15 @@ function clearWave(ctx: Ctx): void {
   s.internal.wavesCleared++;
   if (!s.internal.damagedThisWave) s.stats.perfectWaves = (s.stats.perfectWaves ?? 0) + 1;
   emit(ctx, { type: 'wave:cleared', wave: s.wave });
-  const offer = makeOptions(ctx, ctx.cfg.economy.reward.optionCount, true, 'chance');
+  contractOnWaveEnd(ctx);
+  const source = s.internal.bossKilledThisWave ? 'boss' : 'wave';
+  const count = ctx.cfg.economy.reward.optionCount;
+  const offer = source === 'boss' ? makeBossOptions(ctx, count) : makeOptions(ctx, count, true, 'chance');
   s.rewardOffer = offer;
   s.phase = 'reward';
   s.advanceProgress = 0;
   // copie superficielle (pas de structuredClone dans step) : les options sont des objets plats
-  emit(ctx, { type: 'reward:offered', options: offer.map((o) => ({ ...o })) });
+  emit(ctx, { type: 'reward:offered', options: offer.map((o) => ({ ...o })), source });
 }
 
 function afterReward(ctx: Ctx): void {
@@ -255,13 +308,53 @@ export function buildSummary(ctx: Ctx): RunSummary {
     isDaily: ctx.isDaily,
     dailyDate: ctx.dailyDate,
     score,
+    revivesUsed: s.revivesUsed ?? 0,
+    contractsCompleted: s.stats.contractsCompleted ?? 0,
   };
 }
 
+function canRevive(ctx: Ctx): boolean {
+  const s = ctx.s;
+  return s.phase === 'gameover' && !s.internal.overEmitted && (s.revivesUsed ?? 0) < ctx.cfg.economy.revive.maxPerRun;
+}
+
+/** PV à 0 : phase gameover, run:lost. run:over n'est émis qu'à l'abandon (giveUp) ou au restart. */
 function gameOver(ctx: Ctx): void {
   const s = ctx.s;
   s.phase = 'gameover';
   s.advanceProgress = 0;
+  s.internal.overEmitted = false;
+  emit(ctx, { type: 'run:lost', canRevive: canRevive(ctx), wave: s.wave, depth: s.depth });
+}
+
+/**
+ * Seconde chance : PV = max(1, ceil(maxHp × hpRatio)), blocs et drops des `clearRows` rangées du bas
+ * du plateau (au-dessus de la ligne du joueur) supprimés, boss compris ; retour en visée.
+ */
+export function revive(ctx: Ctx): boolean {
+  if (!canRevive(ctx)) return false;
+  const s = ctx.s;
+  const r = ctx.cfg.economy.revive;
+  const rows = ctx.cfg.blocks.board.rows;
+  s.revivesUsed = (s.revivesUsed ?? 0) + 1;
+  s.hp = Math.min(s.maxHp, Math.max(1, Math.ceil(s.maxHp * r.hpRatio)));
+  const minRow = rows - 1 - Math.max(0, r.clearRows);
+  for (let i = s.blocks.length - 1; i >= 0; i--) if ((s.blocks[i] as { row: number }).row >= minRow) releaseBlock(ctx, i);
+  for (let i = s.drops.length - 1; i >= 0; i--) if ((s.drops[i] as { pos: { y: number } }).pos.y >= minRow) releaseDrop(ctx, i);
+  ctx.gridDirty = true;
+  s.phase = 'aiming';
+  s.advanceProgress = 0;
+  emit(ctx, { type: 'run:revived', hpLeft: s.hp, revivesUsed: s.revivesUsed });
+  // plateau vidé et plus de rangée à venir : la vague est nettoyée tout de suite (pas de tir dans le vide)
+  if (waveCleared(ctx)) clearWave(ctx);
+  return true;
+}
+
+/** Abandon après run:lost : émet run:over une seule fois. */
+export function giveUp(ctx: Ctx): void {
+  const s = ctx.s;
+  if (s.phase !== 'gameover' || s.internal.overEmitted) return;
+  s.internal.overEmitted = true;
   const summary = buildSummary(ctx);
   s.stats.fragmentsEarned = summary.stats.fragmentsEarned;
   emit(ctx, { type: 'run:over', summary });

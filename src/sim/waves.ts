@@ -5,6 +5,7 @@ import { emit, isBreakable } from './ctx';
 import { acquireBlock, releaseBlock } from './pools';
 import { collectGroundDrops, shiftDrops } from './drops';
 import { spawnBoss } from './boss';
+import { contractOnDamage, offerContract } from './contracts';
 
 export function rowsForWave(ctx: Ctx, wave: number): number {
   const w = ctx.cfg.waves;
@@ -137,16 +138,18 @@ export function startWave(ctx: Ctx): void {
   const s = ctx.s;
   s.shotInWave = 0;
   s.internal.damagedThisWave = false;
+  s.internal.bossKilledThisWave = false;
   if (s.internal.thawedIds) s.internal.thawedIds.length = 0;
   if (s.internal.embers) s.internal.embers.length = 0;
   s.rowsLeftInWave = rowsForWave(ctx, s.wave);
   if (isBossWave(ctx, s.wave)) {
     spawnBoss(ctx);
     s.rowsLeftInWave = 0;
-    return;
+  } else {
+    const n = Math.min(ctx.startRows, s.rowsLeftInWave, ctx.cfg.blocks.board.rows - 2);
+    for (let r = n - 1; r >= 0; r--) generateRow(ctx, r);
   }
-  const n = Math.min(ctx.startRows, s.rowsLeftInWave, ctx.cfg.blocks.board.rows - 2);
-  for (let r = n - 1; r >= 0; r--) generateRow(ctx, r);
+  offerContract(ctx);
 }
 
 /** Descente d'une rangée : blocs non gelés (si la place est libre), dégel, franchissement. */
@@ -198,6 +201,7 @@ function shiftOnce(ctx: Ctx): void {
         s.hp = Math.max(0, s.hp - dmg);
         s.internal.damagedThisWave = true;
         emit(ctx, { type: 'player:damaged', amount: dmg, hpLeft: s.hp });
+        contractOnDamage(ctx);
       }
     }
     releaseBlock(ctx, i);

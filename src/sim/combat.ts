@@ -7,14 +7,16 @@ import { bossDamage } from './boss';
 import { maybeDrop } from './drops';
 import { heal } from './rewards';
 import { acquireBall } from './pools';
+import { contractMax, contractOnKill } from './contracts';
 
-/** Dégâts d'impact d'une balle : base × tierMult^(tier-1) × (1 + k × combo) ; plomb : × mult, sans combo. */
+/** Dégâts d'impact d'une balle : base × tierMult^(tier-1) × (1 + k × combo) ; plomb : × mult, sans combo ; dorée : × lastBallMultiplier. */
 export function ballDamage(ctx: Ctx, b: Ball): number {
   const bc = ctx.cfg.balls;
   const r = ctx.relic;
   let d = ballDef(ctx, b.element).baseDamage * Math.pow(bc.tierDamageMultiplier, b.tier - 1);
   if (b.tier >= 2 && r.catalyst > 0) d *= 1 + r.catalyst;
   if (r.berserk > 0) d *= 1 + r.berserk * Math.max(0, ctx.s.maxHp - ctx.s.hp);
+  if (b.golden) d *= bc.lastBallMultiplier;
   if (b.element === 'lead') return d * bc.lead.damageMultiplier;
   // plafond doux : au-delà de comboSoftCap, chaque rebond n'ajoute plus que comboDamagePerBounceAfterCap
   const cap = bc.comboSoftCap;
@@ -51,6 +53,7 @@ export function damageBlock(ctx: Ctx, bi: number, amount: number, element: BallE
   emit(ctx, {
     type: 'block:hit',
     blockId: blk.id,
+    ballId: ctx.curBallId,
     pos: { x: centerX(blk), y: centerY(blk) },
     damage: amount,
     combo,
@@ -69,7 +72,9 @@ function destroyBlock(ctx: Ctx, bi: number, element: BallElement): void {
   ctx.blocksDied = true;
   s.stats.blocksDestroyed++;
   emit(ctx, { type: 'block:destroyed', blockId: blk.id, kind: blk.kind, pos: { x, y }, width: blk.width, element });
+  contractOnKill(ctx, element);
   if (blk.kind === 'boss') {
+    s.internal.bossKilledThisWave = true;
     s.stats.bossesKilled++;
     emit(ctx, { type: 'boss:killed', bossId: blk.bossId ?? '', pos: { x, y } });
   }
@@ -183,6 +188,7 @@ export function bumpCombo(ctx: Ctx, b: Ball, n = 1): void {
     }
   }
   if (b.combo > ctx.s.currentShotCombo) ctx.s.currentShotCombo = b.combo;
+  contractMax(ctx, 'reachCombo', b.combo);
 }
 
 function split(ctx: Ctx, b: Ball): void {
@@ -212,6 +218,7 @@ function split(ctx: Ctx, b: Ball): void {
       nb.tier = b.tier;
       nb.combo = b.combo;
       nb.triggered = true;
+      nb.golden = false; // les filles d'une balle dorée ne sont pas dorées
       nb.radius = b.radius;
       nb.pos.x = b.pos.x;
       nb.pos.y = b.pos.y;
@@ -239,6 +246,8 @@ export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, 
   if (!blk) return;
   const isPeg = blk.kind === 'peg';
   const dmg = ballDamage(ctx, b);
+  ctx.curBallId = b.id; // dégâts directs et indirects (explosion, foudre, enclume) attribués à cette balle
+  ctx.curGolden = b.golden; // casses de cet impact (et de ses effets) attribuées à la dorée
   if (!isPeg) {
     const crit = b.combo >= ctx.cfg.balls.comboMilestones[0];
     let amount = dmg;
@@ -294,4 +303,6 @@ export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, 
       combo: b.combo,
     });
   }
+  ctx.curGolden = false;
+  ctx.curBallId = -1;
 }

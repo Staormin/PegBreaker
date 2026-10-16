@@ -55,8 +55,8 @@ function hasOption(list: readonly RewardOption[], o: RewardOption): boolean {
   return false;
 }
 
-/** Relique tirée parmi les débloquées, non possédées, absentes de `exclude`. */
-function pickRelic(ctx: Ctx, exclude: readonly RewardOption[]): RewardOption | null {
+/** Relique tirée parmi les débloquées, non possédées, absentes de `exclude` (option : rares et épiques seulement). */
+function pickRelic(ctx: Ctx, exclude: readonly RewardOption[], rareOrBetter = false): RewardOption | null {
   const rw = ctx.cfg.relics.rarityWeights;
   let total = 0;
   // une relique d'élément n'est proposée que si la volée contient cet élément
@@ -66,6 +66,7 @@ function pickRelic(ctx: Ctx, exclude: readonly RewardOption[]): RewardOption | n
     return !el || ctx.s.volley.some((v) => v.element === el);
   };
   const ok = (id: string): boolean =>
+    (!rareOrBetter || relicDef(ctx, id)?.rarity !== 'common') &&
     ctx.meta.unlockedRelics.includes(id) &&
     elementOk(id) &&
     !ctx.s.relics.includes(id) &&
@@ -131,6 +132,27 @@ export function makeOptions(ctx: Ctx, count: number, allowCoins: boolean, fuse: 
   if (fuse !== 'never' && out.length > 0) {
     const f = fuseOption(ctx);
     if (f && (fuse === 'always' || ctx.rng.chance(eco.reward.fuseChance))) insertFuse(out, f);
+  }
+  return out;
+}
+
+/**
+ * Offre après un boss tué : `count` reliques rares/épiques distinctes si possible, sinon reliques
+ * communes, sinon pièces puis soin. Jamais de balle ni de fusion.
+ */
+export function makeBossOptions(ctx: Ctx, count: number): RewardOption[] {
+  const out: RewardOption[] = [];
+  const eco = ctx.cfg.economy;
+  for (let i = 0; i < count; i++) {
+    const o = pickRelic(ctx, out, true) ?? pickRelic(ctx, out, false);
+    if (o) {
+      out.push(o);
+      continue;
+    }
+    const coins: RewardOption = { kind: 'coins', amount: eco.reward.skipCoins };
+    const heal: RewardOption = { kind: 'heal', amount: eco.shop.healAmount };
+    if (!hasOption(out, coins)) out.push(coins);
+    else if (!hasOption(out, heal)) out.push(heal);
   }
   return out;
 }

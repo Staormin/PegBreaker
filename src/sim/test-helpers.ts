@@ -7,8 +7,23 @@ import type { SimState } from './state';
 
 export const FRAME = 1000 / 60;
 
+let neutralFun = false;
+
+/**
+ * Tests de formules antérieurs au lot 1 : balle dorée neutre (×1) et aucun contrat, pour que les
+ * dégâts attendus et le flux d'événements restent ceux d'origine. À appeler en tête de fichier.
+ */
+export function useNeutralFun(): void {
+  neutralFun = true;
+}
+
 export function config(): GameConfig {
-  return structuredClone(loadConfig());
+  const c = structuredClone(loadConfig());
+  if (neutralFun) {
+    c.balls.lastBallMultiplier = 1;
+    c.contracts.chance = 0;
+  }
+  return c;
 }
 
 export function meta(cfg: GameConfig, over: Partial<MetaModifiers> = {}): MetaModifiers {

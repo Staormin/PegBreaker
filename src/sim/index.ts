@@ -6,7 +6,8 @@ import { createRng } from '../core/rng';
 import { createCtx } from './ctx';
 import { createInternal, type SimState } from './state';
 import { SUBSTEP_MS, STEP_EPS } from './constants';
-import { chooseReward, fire, leaveShop, recall, skipReward, startRun, tick } from './machine';
+import { chooseReward, fire, giveUp, leaveShop, recall, revive, skipReward, startRun, tick } from './machine';
+import { contractSeed } from './contracts';
 import { buy, reroll } from './shop';
 import { clampAim, preview } from './aim';
 import { refreshRelics } from './relics';
@@ -48,6 +49,17 @@ export function createSim(config: GameConfig, options: SimOptions): Sim {
   if (options.snapshot) {
     const s = structuredClone(options.snapshot) as SimState;
     if (!s.internal) s.internal = createInternal(maxId(s) + 1);
+    // snapshots antérieurs au lot 1 : champs ajoutés
+    const defaults = createInternal(0);
+    for (const k of Object.keys(defaults) as (keyof typeof defaults)[]) {
+      if (s.internal[k] === undefined) (s.internal as unknown as Record<string, unknown>)[k] = defaults[k];
+    }
+    if (s.internal.contractRng === defaults.contractRng && s.contract === undefined) s.internal.contractRng = contractSeed(s.seed);
+    s.aimSpread ??= 0;
+    s.contract ??= null;
+    s.revivesUsed ??= 0;
+    s.stats.contractsCompleted ??= 0;
+    for (const b of s.balls) b.golden ??= false;
     ctx.s = s;
     rng.setState(s.rngState);
     refreshRelics(ctx);
@@ -83,9 +95,10 @@ export function createSim(config: GameConfig, options: SimOptions): Sim {
       returned = events.length;
       return events;
     },
-    aim(dir: Vec2): void {
+    aim(dir: Vec2, spread?: number): void {
       if (ctx.s.phase === 'gameover') return;
       ctx.s.aimDir = clampAim(ctx, dir);
+      if (spread !== undefined && Number.isFinite(spread)) ctx.s.aimSpread = Math.min(1, Math.max(0, spread));
     },
     cancelAim(): void {
       ctx.s.aimDir = null;
@@ -117,7 +130,16 @@ export function createSim(config: GameConfig, options: SimOptions): Sim {
       leaveShop(ctx);
       sync();
     },
+    revive(): boolean {
+      const ok = revive(ctx);
+      sync();
+      return ok;
+    },
+    giveUp(): void {
+      giveUp(ctx);
+    },
     restart(seed?: string): void {
+      giveUp(ctx); // depuis gameover : run:over d'abord (si pas déjà émis) pour que la méta crédite la run
       const restarts = ctx.s.internal.restarts + 1;
       const next = seed ?? `${ctx.s.seed}#${restarts}`;
       startRun(ctx, next, restarts);

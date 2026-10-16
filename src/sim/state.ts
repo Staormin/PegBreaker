@@ -46,6 +46,18 @@ export interface SimInternal {
   radarUsed: number[];
   /** glace : blocs gelés pendant le tir en cours */
   frozenThisShot: number;
+  /** éventail : directions de départ (x0, y0, x1, y1, ...) dans l'ordre de launchQueue */
+  launchDirs: number[];
+  /** état du flux aléatoire dédié aux contrats (n'altère pas le flux principal) */
+  contractRng: number;
+  /** id du dernier contrat proposé (jamais deux fois le même d'affilée) */
+  lastContractId: string | null;
+  /** blocs cassés pendant le tir en cours (contrat destroyInOneShot) */
+  shotKills: number;
+  /** un boss a été tué pendant la vague courante (reward:offered source 'boss') */
+  bossKilledThisWave: boolean;
+  /** run:over déjà émis pour cette run (giveUp / restart) */
+  overEmitted: boolean;
 }
 
 export interface SimState extends RunState {
@@ -77,6 +89,12 @@ export function createInternal(nextId: number): SimInternal {
     embers: [],
     radarUsed: [],
     frozenThisShot: 0,
+    launchDirs: [],
+    contractRng: 1,
+    lastContractId: null,
+    shotKills: 0,
+    bossKilledThisWave: false,
+    overEmitted: false,
   };
 }
 
@@ -92,6 +110,7 @@ export function createStats(): RunStats {
     fusions: 0,
     bossesKilled: 0,
     perfectWaves: 0,
+    contractsCompleted: 0,
     durationMs: 0,
   };
 }

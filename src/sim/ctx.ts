@@ -12,7 +12,7 @@ import type {
   MetaModifiers,
   VolleyBall,
 } from '../core/types';
-import type { Rng } from '../core/rng';
+import { createRng, type Rng } from '../core/rng';
 import type { SimState } from './state';
 import { DEFAULT_SPLIT_ANGLE_DEG, DEFAULT_START_ROWS } from './constants';
 
@@ -85,6 +85,12 @@ export interface Ctx {
   readonly elementOrder: Partial<Record<BallElement, number>>;
   readonly blockDefs: Partial<Record<BlockKind, BlockDef>>;
   readonly relic: RelicFlags;
+  /** flux aléatoire dédié aux contrats (état persisté dans internal.contractRng) */
+  readonly crng: Rng;
+  /** l'impact en cours de résolution vient de la balle dorée (contrat goldenKill) */
+  curGolden: boolean;
+  /** id de la balle dont l'impact est en cours de résolution (block:hit.ballId), −1 hors impact */
+  curBallId: number;
   readonly sinMinAngle: number;
   readonly cosMinAngle: number;
   readonly splitCos: number;
@@ -164,6 +170,9 @@ export function createCtx(cfg: GameConfig, meta: MetaModifiers, rng: Rng, isDail
       radar: 1,
       berserk: 0,
     },
+    crng: createRng(1),
+    curGolden: false,
+    curBallId: -1,
     sinMinAngle: Math.sin(minA),
     cosMinAngle: Math.cos(minA),
     splitCos: Math.cos(splitA),

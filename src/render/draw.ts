@@ -1,13 +1,13 @@
 // render/draw.ts — dessin d'une frame. AUCUNE allocation ici : pas de new / {} / [] / closures /
 // map / filter / template strings. Tout l'état mutable est pré-alloué dans createFrameDrawer.
 // Le fond (dégradé, panneau du plateau, lumière de puissance) est en CSS : voir backdrop.ts.
-import type { Block, RunState } from '../core/types';
+import type { Ball, Block, RunState } from '../core/types';
 import { easeOutBack, easeOutCubic } from '../core/math';
 import type { Layout } from './layout';
 import type { Sprites } from './sprites';
-import { BALL_EXTENT, ballVisualRadius, damageLevel, DMG_LEVELS, DROP_EXTENT, HALO_EXTENT, PEG_RADIUS } from './sprites';
+import { BALL_EXTENT, ballVisualRadius, damageLevel, DMG_LEVELS, DROP_EXTENT, GOLDEN_EXTENT, HALO_EXTENT, PEG_RADIUS } from './sprites';
 import type { Particles } from './particles';
-import { P_CRYSTAL, P_SPARK, PRIO_LOW } from './particles';
+import { P_CRYSTAL, P_SHARD, P_SPARK, PRIO_LOW, PRIO_NORMAL } from './particles';
 import type { DamageNumbers } from './damageNumbers';
 import { formatNumber } from './damageNumbers';
 import type { BlockFx, Vfx } from './vfx';
@@ -30,6 +30,30 @@ const MANY_BALLS = 20;
 const TRAIL_BASE: readonly number[] = [6, 7, 6, 6, 12, 3, 6];
 const EL_FIRE = ELEMENT_INDEX.fire, EL_LIGHTNING = ELEMENT_INDEX.lightning, EL_ICE = ELEMENT_INDEX.ice;
 const EL_GHOST = ELEMENT_INDEX.ghost, EL_LEAD = ELEMENT_INDEX.lead;
+/** traînée de la balle dorée (plus longue que toutes les autres) */
+const GOLD_TRAIL = 12;
+const GOLD_TRAIL_MANY = 9;
+/** combo affiché sur la balle à partir de ce seuil ; paliers de taille */
+const COMBO_SHOW = 8;
+const COMBO_TIER_1 = 16;
+const COMBO_TIER_2 = 32;
+/** au-delà de MANY_BALLS balles vivantes, combo affiché seulement sur les COMBO_TOP meilleures */
+const COMBO_TOP = 3;
+/** bitmaps de combo mis en cache jusqu'à cette valeur (au-delà : texte direct, rarissime) */
+const COMBO_CACHE_MAX = 512;
+const COMBO_POP = 0.16;
+/** éventail de visée : rayon de l'arc près du point de lancement (unités plateau) */
+const FAN_ARC_R = 1.05;
+/** demi-angle minimal (rad) pour dessiner l'éventail (à 0, les lignes extrêmes = la centrale) */
+const FAN_MIN_RAD = 0.004;
+/** voile de défaite : opacité, montée et levée (s) */
+const VEIL_ALPHA = 0.5;
+const VEIL_IN = 0.4;
+const VEIL_OUT = 0.35;
+/** onde de la seconde chance (s) */
+const REVIVE_WAVE = 0.6;
+const GOLD_RING = 16;
+const BREACH_RING = 32;
 
 interface Trail {
   active: boolean;
@@ -41,9 +65,12 @@ interface Trail {
   count: number;
   /** minuterie d'émission de particules d'ambiance (braises, étincelles, cristaux) */
   emitT: number;
-  /** mode « beaucoup de balles » : élément et nombre de points à tracer cette frame */
+  /** mode « beaucoup de balles » : élément et nombre de points à tracer cette frame (−1 = dorée) */
   el: number;
   n: number;
+  /** palier de taille du combo affiché (−1 = rien) et minuterie de « pop » au changement */
+  comboTier: number;
+  comboPop: number;
 }
 
 /** Résultat d'un raycast (objet unique réutilisé). */
@@ -56,6 +83,16 @@ export interface FrameDrawer {
   clearTrails(): void;
   /** pas de « pop » d'apparition à la prochaine frame (début de run, reprise) */
   suppressSpawnPop(): void;
+  /** balle dorée (ball:launched.golden) : mémorisée par id */
+  markGolden(ballId: number): void;
+  isGolden(b: Readonly<Ball>): boolean;
+  isGoldenId(ballId: number): boolean;
+  /** bloc franchi (block:breached) : sa disparition ne produit pas d'éclats */
+  noteBreached(blockId: number): void;
+  /** run:lost → voile progressif ; run:revived → levée + onde depuis la ligne du joueur */
+  setLost(): void;
+  revive(): void;
+  clearOverlays(): void;
 }
 
 export interface DrawDeps {
@@ -68,6 +105,8 @@ export interface DrawDeps {
   fusions: Fusions;
   colors: Colors;
   ballRadius: number;
+  /** demi-angle max de l'éventail (degrés) quand aimSpread = 1 */
+  maxSpreadDeg: number;
   /** appelé quand le niveau de « lumière » (0..POWER_LEVELS-1) change */
   onPowerLevel(level: number): void;
 }
@@ -79,7 +118,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
 
   const trails: Trail[] = [];
   for (let i = 0; i < MAX_TRAILS; i++) {
-    trails.push({ active: false, id: -1, seen: 0, xs: new Float32Array(TRAIL_CAP), ys: new Float32Array(TRAIL_CAP), head: 0, count: 0, emitT: 0, el: 0, n: 0 });
+    trails.push({ active: false, id: -1, seen: 0, xs: new Float32Array(TRAIL_CAP), ys: new Float32Array(TRAIL_CAP), head: 0, count: 0, emitT: 0, el: 0, n: 0, comboTier: -1, comboPop: 1 });
   }
   const dust = new Float32Array(DUST * 3); // x, y, vitesse
   for (let i = 0; i < DUST; i++) {
@@ -89,6 +128,24 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   }
 
   const hit: RayHit = { t: 0, nx: 0, ny: 0 };
+  const maxSpreadRad = Number.isFinite(d.maxSpreadDeg) ? (d.maxSpreadDeg * Math.PI) / 180 : 0;
+  /** ids des balles dorées récentes (anneau) */
+  const goldIds = new Int32Array(GOLD_RING).fill(-1);
+  let goldIdx = 0;
+  /** blocs franchis récemment (pas d'éclats de disparition) */
+  const breachIds = new Int32Array(BREACH_RING).fill(-1);
+  let breachIdx = 0;
+  /** bitmaps « ×N » du combo sur balle, par valeur (créés à la 1re apparition, vidés au resize) */
+  const comboImgs: (HTMLCanvasElement | undefined)[] = [];
+  const comboFonts: string[] = ['', '', ''];
+  /** voile de défaite : t depuis run:lost (−1 = aucun) ; levée après revive */
+  let lostT = -1;
+  let liftT = -1;
+  let liftFrom = 0;
+  let reviveT = -1;
+  let suppressVanish = true;
+  let curPhase = '';
+  let prevPhase = '';
   /** chaînes « ×N » mises en cache (allocation uniquement à la 1re apparition de N) */
   const countLabels: string[] = [];
   let hpFont = '';
@@ -123,6 +180,10 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     hpFontSmall = `800 ${Math.max(7, Math.round(px * 0.3))}px ${fam}`;
     bossFont = `800 ${Math.max(10, Math.round(px * 0.5))}px ${fam}`;
     smallFont = `700 ${Math.max(8, Math.round(px * 0.28))}px ${fam}`;
+    comboFonts[0] = `800 ${Math.max(8, Math.round(px * 0.2))}px ${fam}`;
+    comboFonts[1] = `800 ${Math.max(9, Math.round(px * 0.245))}px ${fam}`;
+    comboFonts[2] = `900 ${Math.max(10, Math.round(px * 0.3))}px ${fam}`;
+    comboImgs.length = 0;
     powerLevel = -1; // ré-applique le fond CSS
     vfx.invalidateLabels();
   }
@@ -193,11 +254,12 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     if (ln < 1e-9) return;
     dx /= ln; dy /= ln;
     const ox = state.launchPos.x, oy = state.launchPos.y;
+    ctx.lineCap = 'round';
+    drawFan(state, ox, oy, dx, dy);
     raycast(state.blocks, ox, oy, dx, dy, 30);
     const hx = ox + dx * hit.t, hy = oy + dy * hit.t;
     const nx = hit.nx, ny = hit.ny;
 
-    ctx.lineCap = 'round';
     ctx.setLineDash(DASH);
     ctx.lineDashOffset = -time * 0.9;
     ctx.strokeStyle = PALETTE.text;
@@ -224,6 +286,52 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(sx + rx * hit.t, sy + ry * hit.t); ctx.stroke();
       ctx.setLineDash(NO_DASH);
     }
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * F1 — éventail de visée : les deux trajectoires extrêmes (±maxSpreadDeg × aimSpread) en
+   * pointillé fin jusqu'au premier mur/bloc, et un arc discret près du point de lancement.
+   * À spread ≈ 0, rien (les extrêmes se confondent avec la ligne centrale).
+   */
+  function drawFan(state: Readonly<RunState>, ox: number, oy: number, dx: number, dy: number): void {
+    const sp = state.aimSpread;
+    if (!(sp > 0)) return; // undefined / NaN / 0
+    const half = (sp > 1 ? 1 : sp) * maxSpreadRad;
+    if (half < FAN_MIN_RAD) return;
+    const base = Math.atan2(dy, dx);
+    // coin très léger entre les extrêmes, près du lancement
+    ctx.fillStyle = PALETTE.text;
+    ctx.globalAlpha = 0.06;
+    ctx.beginPath(); ctx.moveTo(ox, oy); ctx.arc(ox, oy, FAN_ARC_R, base - half, base + half); ctx.closePath(); ctx.fill();
+    // lignes extrêmes
+    ctx.setLineDash(DASH_FINE);
+    ctx.lineDashOffset = -time * 0.9;
+    ctx.strokeStyle = PALETTE.text;
+    ctx.lineWidth = 0.028;
+    ctx.globalAlpha = 0.32;
+    ctx.beginPath();
+    for (let side = -1; side <= 1; side += 2) {
+      const a = base + side * half;
+      const ex = Math.cos(a), ey = Math.sin(a);
+      raycast(state.blocks, ox, oy, ex, ey, 30);
+      ctx.moveTo(ox + ex * R * 2, oy + ey * R * 2);
+      ctx.lineTo(ox + ex * hit.t, oy + ey * hit.t);
+    }
+    ctx.stroke();
+    ctx.setLineDash(NO_DASH);
+    // arc plein + petites butées aux extrémités
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 0.032;
+    ctx.beginPath();
+    ctx.arc(ox, oy, FAN_ARC_R, base - half, base + half);
+    for (let side = -1; side <= 1; side += 2) {
+      const a = base + side * half;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      ctx.moveTo(ox + ca * (FAN_ARC_R - 0.08), oy + sa * (FAN_ARC_R - 0.08));
+      ctx.lineTo(ox + ca * (FAN_ARC_R + 0.08), oy + sa * (FAN_ARC_R + 0.08));
+    }
+    ctx.stroke();
     ctx.globalAlpha = 1;
   }
 
@@ -401,6 +509,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     }
     const t = free ?? trails[0]!;
     t.active = true; t.id = id; t.head = 0; t.count = 1; t.seen = frame; t.emitT = Math.random() * 0.05;
+    t.comboTier = -1; t.comboPop = 1;
     t.xs[0] = x; t.ys[0] = y;
     return t;
   }
@@ -444,6 +553,25 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       }
       const e = ELEMENT_INDEX[b.element];
       const vr = ballVisualRadius(b.radius, e, b.tier);
+      if (tr.comboPop < 1) tr.comboPop += dt;
+      if (isGolden(b)) {
+        // F3 — traînée dorée plus longue, tracée à part (aussi en mode « beaucoup de balles »)
+        let gl = (many ? GOLD_TRAIL_MANY : GOLD_TRAIL) + boost;
+        if (gl > TRAIL_CAP) gl = TRAIL_CAP;
+        const gn = tr.count < gl ? tr.count : gl;
+        tr.el = -1; tr.n = gn;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = PALETTE.gold;
+        strokeTrail(tr, gn, vr * 1.7, 0.22);
+        strokeTrail(tr, (gn + 1) >> 1, vr * 0.8, 0.5);
+        ctx.globalCompositeOperation = 'source-over';
+        tr.emitT -= dt;
+        if (tr.emitT <= 0) {
+          particles.burst(b.pos.x, b.pos.y, 2, (frame & 1) === 0 ? PALETTE.gold : PALETTE.goldLight, P_SPARK, 0.2, 0.8, 0, Math.PI, 0.2, 0.35, vr * 0.3, vr * 0.5, 0, PRIO_NORMAL);
+          tr.emitT = many ? 0.08 : 0.045;
+        }
+        continue;
+      }
       let len = (TRAIL_BASE[e] ?? 6) + (e === EL_LEAD ? (boost > 2 ? 2 : boost) : boost);
       if (many) len = e === EL_GHOST ? 6 : len > 4 ? 4 : len;
       if (len > TRAIL_CAP) len = TRAIL_CAP;
@@ -508,9 +636,18 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const b = balls[i]!;
       if (!b.alive) continue;
       const e = ELEMENT_INDEX[b.element];
-      const img = sp.ballAt(e * 3 + (b.tier - 1));
+      const idx = e * 3 + (b.tier - 1);
+      if (isGolden(b)) {
+        const gimg = sp.goldenAt(idx);
+        if (gimg) {
+          const gext = (sp.goldenExt[idx] ?? R * GOLDEN_EXTENT) * (b.radius / R);
+          blit(gimg, b.pos.x - gext, b.pos.y - gext, 1);
+          continue;
+        }
+      }
+      const img = sp.ballAt(idx);
       if (!img) continue;
-      const ext = (sp.ballExt[e * 3 + (b.tier - 1)] ?? R * BALL_EXTENT) * (b.radius / R);
+      const ext = (sp.ballExt[idx] ?? R * BALL_EXTENT) * (b.radius / R);
       if (e === EL_GHOST) ctx.globalAlpha = 0.6;
       blit(img, b.pos.x - ext, b.pos.y - ext, 1);
       ctx.globalAlpha = 1;
@@ -521,6 +658,139 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const t = trails[i]!;
       if (t.active && t.seen !== frame) t.active = false;
     }
+  }
+
+  function isGoldenId(id: number): boolean {
+    if (id < 0) return false;
+    for (let i = 0; i < GOLD_RING; i++) if (goldIds[i] === id) return true;
+    return false;
+  }
+  function isGolden(b: Readonly<Ball>): boolean {
+    return b.golden === true || isGoldenId(b.id);
+  }
+
+  /** bitmap « ×N » d'un combo (créé à la 1re apparition de N, puis réutilisé) */
+  function comboImage(v: number): HTMLCanvasElement | undefined {
+    if (v > COMBO_CACHE_MAX) return undefined;
+    const hitImg = comboImgs[v];
+    if (hitImg) return hitImg;
+    const tier = v >= COMBO_TIER_2 ? 2 : v >= COMBO_TIER_1 ? 1 : 0;
+    const label = countLabel(v);
+    const c = document.createElement('canvas');
+    const g = c.getContext('2d');
+    if (!g) return undefined;
+    const font = comboFonts[tier] ?? smallFont;
+    g.font = font;
+    const pad = 3 * l.dpr;
+    const fs = l.scale * l.dpr * (tier === 2 ? 0.3 : tier === 1 ? 0.245 : 0.2);
+    c.width = Math.ceil(g.measureText(label).width + pad * 2);
+    c.height = Math.ceil(fs * 1.3 + pad * 2);
+    g.font = font; // le redimensionnement réinitialise l'état du contexte
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.lineWidth = 3 * l.dpr;
+    g.strokeStyle = PALETTE.outline;
+    g.fillStyle = tier === 0 ? '#ffffff' : PALETTE.accent;
+    g.strokeText(label, c.width / 2, c.height / 2);
+    g.fillText(label, c.width / 2, c.height / 2);
+    comboImgs[v] = c;
+    return c;
+  }
+
+  /**
+   * F7 — combo sur la balle (≥ 8), petit, en haut à droite, taille par paliers 8/16/32.
+   * Au-delà de MANY_BALLS balles vivantes, seulement les COMBO_TOP meilleurs combos.
+   * Contexte en pixels physiques.
+   */
+  function drawBallCombos(state: Readonly<RunState>): void {
+    const balls = state.balls;
+    let alive = 0, shown = 0;
+    // top 3 (indices) sans allocation
+    let i1 = -1, i2 = -1, i3 = -1, c1 = -1, c2 = -1, c3 = -1;
+    for (let i = 0; i < balls.length; i++) {
+      const b = balls[i]!;
+      if (!b.alive) continue;
+      alive++;
+      const c = b.combo;
+      if (c < COMBO_SHOW) continue;
+      shown++;
+      if (c > c1) { i3 = i2; c3 = c2; i2 = i1; c2 = c1; i1 = i; c1 = c; }
+      else if (c > c2) { i3 = i2; c3 = c2; i2 = i; c2 = c; }
+      else if (c > c3) { i3 = i; c3 = c; }
+    }
+    if (shown === 0) return;
+    const topOnly = alive > MANY_BALLS;
+    for (let i = 0; i < balls.length; i++) {
+      const b = balls[i]!;
+      if (!b.alive || b.combo < COMBO_SHOW) continue;
+      if (topOnly && i !== i1 && i !== i2 && i !== i3) continue;
+      const v = b.combo;
+      const tier = v >= COMBO_TIER_2 ? 2 : v >= COMBO_TIER_1 ? 1 : 0;
+      const tr = trailFor(b.id, -1, b.pos.x, b.pos.y);
+      if (tier !== tr.comboTier) { if (tier > tr.comboTier) tr.comboPop = 0; tr.comboTier = tier; }
+      const vr = ballVisualRadius(b.radius, ELEMENT_INDEX[b.element], b.tier);
+      const ax = OX + (b.pos.x + vr * 0.9) * K, ay = OY + (b.pos.y - vr * 0.9) * K;
+      const pop = tr.comboPop < COMBO_POP ? 1 + 0.45 * (1 - tr.comboPop / COMBO_POP) : 1;
+      const img = comboImage(v);
+      if (!img) continue;
+      const w = img.width * pop, h = img.height * pop;
+      // ancré en bas à gauche ; basculé à gauche de la balle contre le mur droit
+      let x = ax - 2 * l.dpr;
+      if (x + w > OX + l.cols * K) x = OX + (b.pos.x - vr * 0.9) * K - w + 2 * l.dpr;
+      const y = ay - h + 2 * l.dpr;
+      if (pop === 1) ctx.drawImage(img, Math.round(x), Math.round(y));
+      else ctx.drawImage(img, x, y, w, h);
+    }
+  }
+
+  /** voile de défaite + onde de seconde chance (pixels physiques, limité au plateau) */
+  function drawOverlays(dt: number): void {
+    let veil = 0;
+    if (lostT >= 0) {
+      lostT += dt;
+      veil = VEIL_ALPHA * (lostT < VEIL_IN ? lostT / VEIL_IN : 1);
+    } else if (liftT >= 0) {
+      liftT += dt;
+      if (liftT >= VEIL_OUT) liftT = -1;
+      else veil = liftFrom * (1 - liftT / VEIL_OUT);
+    }
+    const bx = Math.round(OX), by = Math.round(OY), bw = Math.round(l.cols * K), bh = Math.round(l.rows * K);
+    if (veil > 0) {
+      ctx.globalAlpha = veil;
+      ctx.fillStyle = PALETTE.bg0;
+      ctx.fillRect(bx, by, bw, bh);
+    }
+    if (reviveT >= 0) {
+      reviveT += dt;
+      if (reviveT >= REVIVE_WAVE) reviveT = -1;
+      else {
+        const t = reviveT / REVIVE_WAVE;
+        const top = l.rows - 1;
+        const yb = top - easeOutCubic(t) * top; // monte de la ligne du joueur au plafond
+        const a = 1 - t;
+        const py = Math.round(OY + yb * K);
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.12 * a;
+        ctx.fillRect(bx, py, bw, Math.round(0.9 * K));
+        ctx.globalAlpha = 0.25 * a;
+        ctx.fillRect(bx, py, bw, Math.round(0.3 * K));
+        ctx.globalAlpha = 0.85 * a;
+        ctx.fillRect(bx, py, bw, Math.max(1, Math.round(0.05 * K)));
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** bloc disparu sans événement (rangées effacées par la seconde chance) : éclats */
+  function onVanish(fx: BlockFx): void {
+    if (suppressVanish || curPhase === 'advancing' || prevPhase === 'advancing') return;
+    for (let i = 0; i < BREACH_RING; i++) if (breachIds[i] === fx.id) return;
+    const cx = fx.x + fx.w * 0.5, cy = fx.y + 0.5;
+    const color = d.colors.kind[fx.kind] ?? PALETTE.block;
+    particles.burst(cx, cy, 8 * fx.w, color, P_SHARD, 2, 6, -Math.PI / 2, Math.PI, 0.3, 0.55, 0.06, 0.11, 6, PRIO_NORMAL);
+    particles.burst(cx, cy, 3, '#ffffff', P_SPARK, 2, 5, -Math.PI / 2, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_NORMAL);
+    vfx.flashRect(fx.x + 0.05, fx.y + 0.05, fx.w - 0.1, 0.9, 90, '#ffffff');
   }
 
   function drawLaunch(state: Readonly<RunState>): void {
@@ -612,6 +882,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
 
   function drawFrame(state: Readonly<RunState>, dt: number, frame: number): void {
     time += dt;
+    prevPhase = curPhase;
+    curPhase = state.phase;
     const sp = d.getSprites();
     const dpr = l.dpr;
     const W = ctx.canvas.width, H = ctx.canvas.height;
@@ -677,9 +949,12 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     drawHpLabels(state);
     drawPending(state);
+    drawBallCombos(state);
+    drawOverlays(dt);
     numbers.draw(ctx, l);
 
-    vfx.sweepBlockFx(frame);
+    vfx.sweepBlockFx(frame, onVanish);
+    suppressVanish = false;
   }
 
   rebuildFonts();
@@ -687,6 +962,17 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     draw: drawFrame,
     rebuildFonts,
     clearTrails() { for (let i = 0; i < MAX_TRAILS; i++) trails[i]!.active = false; },
-    suppressSpawnPop() { suppressPop = true; },
+    suppressSpawnPop() { suppressPop = true; suppressVanish = true; },
+    markGolden(id) { goldIds[goldIdx] = id; goldIdx = (goldIdx + 1) % GOLD_RING; },
+    isGolden,
+    isGoldenId,
+    noteBreached(id) { breachIds[breachIdx] = id; breachIdx = (breachIdx + 1) % BREACH_RING; },
+    setLost() { if (lostT < 0) { lostT = 0; liftT = -1; } },
+    revive() {
+      if (lostT >= 0) { liftFrom = VEIL_ALPHA * (lostT < VEIL_IN ? lostT / VEIL_IN : 1); liftT = 0; }
+      lostT = -1;
+      reviveT = 0;
+    },
+    clearOverlays() { lostT = -1; liftT = -1; reviveT = -1; goldIds.fill(-1); breachIds.fill(-1); },
   };
 }

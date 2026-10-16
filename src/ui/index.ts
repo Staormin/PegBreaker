@@ -10,6 +10,9 @@
 // - Tout clic de bouton émet `ui:click` ; tout changement d'écran émet `ui:screen`.
 // - Les écrans suivent les événements (`reward:offered`, `shop:opened`, `run:over`...) et, en
 //   secours (reprise d'une sauvegarde), la phase de `RunState` lue dans `update`.
+// - Lot 1 : `run:lost` → écran « Revanche ? » (id interne 'revive', émis 'gameover' sur le bus,
+//   `#ui[data-screen=revive]`) → `sim.revive()` / `sim.giveUp()` ; `run:over` → fin de run.
+//   Mode défi lu dans `location.search` (`?seed=X&goal=N`).
 // =====================================================================
 import './styles.css';
 import type { EventBus } from '../core/events';
@@ -22,7 +25,9 @@ import { registerServiceWorker } from './pwa';
 import { createGameoverScreen } from './screens/gameover';
 import { createDailyScreen } from './screens/daily';
 import { createRewardScreen } from './screens/reward';
-import type { ScreenEl } from './screens/screen';
+import { createReviveScreen } from './screens/revive';
+import type { ScreenEl, UiLocalScreen } from './screens/screen';
+import { readChallenge } from './share';
 import { createSettingsScreen } from './screens/settings';
 import { createShopScreen } from './screens/shop';
 import { createToasts } from './screens/toasts';
@@ -39,16 +44,16 @@ export interface UiDeps {
   config: GameConfig;
 }
 
-const MODAL_RUN_SCREENS: ReadonlySet<UiScreen> = new Set<UiScreen>(['reward', 'shop', 'gameover']);
+const MODAL_RUN_SCREENS: ReadonlySet<UiLocalScreen> = new Set<UiLocalScreen>(['reward', 'shop', 'gameover', 'revive']);
 /** écrans « hors run » ouverts par-dessus un autre, refermés par « Retour » */
-const SUB_SCREENS: ReadonlySet<UiScreen> = new Set<UiScreen>(['meta', 'daily', 'settings']);
+const SUB_SCREENS: ReadonlySet<UiLocalScreen> = new Set<UiLocalScreen>(['meta', 'daily', 'settings']);
 
 export function createUI(deps: UiDeps): UI {
   const { root, canvas, sim, bus, renderer, audio, meta, config } = deps;
   root.classList.add('pb-ui');
   registerServiceWorker();
 
-  let screen: UiScreen = 'game';
+  let screen: UiLocalScreen = 'game';
   let dragging = false;
   let lastPhase: RunPhase | null = null;
   let lastCoins = -1;
@@ -56,6 +61,11 @@ export function createUI(deps: UiDeps): UI {
 
   // --- HUD + input ---------------------------------------------------------
   const isDaily = new URLSearchParams(location.search).get('daily') === '1';
+  // mode défi (lien partagé) : ?seed=X&goal=N
+  const challenge = readChallenge(location.search);
+  const challengeGoal = challenge.goal;
+  // record de vague AVANT la run (main.ts appelle meta.onRunEnd sur run:over)
+  let bestWaveBefore: number | null = meta ? meta.data.stats.bestWave : null;
   /** modificateurs avec lesquels la sim courante a été créée (la sim ne relit pas la méta) */
   const createdWith = meta ? JSON.stringify(meta.getModifiers()) : '';
   const metaChanged = (): boolean => !!meta && JSON.stringify(meta.getModifiers()) !== createdWith;
@@ -64,8 +74,8 @@ export function createUI(deps: UiDeps): UI {
     meta?.setCurrentRun(null);
     location.reload();
   };
-  const backStack: UiScreen[] = [];
-  function openSub(id: UiScreen): void {
+  const backStack: UiLocalScreen[] = [];
+  function openSub(id: UiLocalScreen): void {
     if (!SUB_SCREENS.has(screen)) backStack.length = 0;
     if (screen !== id) backStack.push(screen);
     show(id);
@@ -91,6 +101,10 @@ export function createUI(deps: UiDeps): UI {
     onWell: meta ? () => openSub('meta') : null,
     onSettings: meta ? () => openSub('settings') : null,
     isDaily,
+    challengeGoal,
+    bestWave: () => bestWaveBefore,
+    onNewRecord: (wave) => toasts.notice('Nouveau record', 'RECORD !', `V${wave}`, 'record'),
+    isGameScreen: () => screen === 'game',
   });
   createInput({
     canvas,
@@ -109,8 +123,8 @@ export function createUI(deps: UiDeps): UI {
   const gameover = createGameoverScreen({
     bus,
     onRestart: () => {
-      if (isDaily) {
-        location.href = './'; // fin du défi : retour en run normale
+      if (isDaily || challengeGoal !== null) {
+        location.href = location.pathname; // fin du quotidien / du défi : retour en run normale
         return;
       }
       if (metaChanged()) {
@@ -122,6 +136,24 @@ export function createUI(deps: UiDeps): UI {
     },
     onWell: meta ? () => openSub('meta') : null,
     onDaily: meta ? () => openSub('daily') : null,
+    config,
+    challengeGoal,
+    onReplayChallenge: () => location.reload(),
+  });
+  const revive = createReviveScreen({
+    bus,
+    config,
+    meta,
+    onRevive: () => {
+      if (sim.state.phase !== 'gameover') return false;
+      const ok = sim.revive();
+      if (ok) show('game');
+      return ok;
+    },
+    onGiveUp: () => {
+      gaveUp = true;
+      sim.giveUp();
+    },
   });
   // premier lancement : logo + fantôme de geste par-dessus le plateau (ne bloque pas le jeu)
   const onboarding = createOnboarding(hud.el, renderer, bus, !!meta && meta.data.onboarded === false);
@@ -144,7 +176,7 @@ export function createUI(deps: UiDeps): UI {
   if (settingsScreen) subScreens.push(settingsScreen);
   const toasts = createToasts(root);
 
-  const screens: ScreenEl[] = [reward, shop, gameover, ...subScreens];
+  const screens: ScreenEl[] = [reward, shop, revive, gameover, ...subScreens];
   for (const s of screens) root.append(s.root);
 
   // focus automatique seulement pour les joueurs au clavier (sinon l'anneau de focus
@@ -153,8 +185,11 @@ export function createUI(deps: UiDeps): UI {
   window.addEventListener('keydown', () => (keyboardUser = true), true);
   window.addEventListener('pointerdown', () => (keyboardUser = false), true);
   /** changement d'écran : fondu court (100 ms, CSS) à l'ouverture, fermeture instantanée */
-  function show(next: UiScreen): void {
+  /** dernier écran annoncé sur le bus ('revive' → 'gameover' n'est pas annoncé deux fois) */
+  let lastPublished: UiScreen = 'game';
+  function show(next: UiLocalScreen): void {
     if (next === screen) return;
+    if (screen === 'revive') revive.stop();
     screen = next;
     if (next === 'title') onboarding.showLogo();
     for (const s of screens) s.root.classList.toggle('visible', s.id === next);
@@ -169,7 +204,10 @@ export function createUI(deps: UiDeps): UI {
       const first = visible.root.querySelector<HTMLElement>('button:not([disabled])') ?? visible.root;
       setTimeout(() => first.focus({ preventScroll: true }), 0);
     }
-    bus.emit({ type: 'ui:screen', screen: next });
+    // 'revive' n'existe pas dans UiScreen (core) : annoncé comme 'gameover'
+    const pub: UiScreen = next === 'revive' ? 'gameover' : next;
+    if (pub !== lastPublished) bus.emit({ type: 'ui:screen', screen: pub });
+    lastPublished = pub;
   }
   root.dataset.screen = screen;
 
@@ -219,8 +257,20 @@ export function createUI(deps: UiDeps): UI {
   function openGameover(summary: RunSummary): void {
     gameoverPending = false;
     clearTimeout(gameoverTimer);
-    gameover.open(summary, bestDepthBefore);
+    gameover.open(summary, bestDepthBefore, bestWaveBefore);
     show('gameover');
+  }
+  // --- seconde chance -------------------------------------------------------
+  let lostPending = false;
+  let lostTimer = 0;
+  /** le joueur (ou le compte à rebours) a abandonné : run:over ouvre la fin sans délai */
+  let gaveUp = false;
+  function openRevive(info: { canRevive: boolean; wave: number; depth: number }): void {
+    lostPending = false;
+    clearTimeout(lostTimer);
+    gaveUp = false;
+    revive.open({ ...info, bestWave: bestWaveBefore });
+    show('revive');
   }
   function scheduleGameover(summary: RunSummary): void {
     gameoverPending = true;
@@ -240,6 +290,8 @@ export function createUI(deps: UiDeps): UI {
       isDaily: false,
       dailyDate: null,
       score: 0,
+      revivesUsed: s.revivesUsed ?? 0,
+      contractsCompleted: s.stats.contractsCompleted ?? 0,
     };
   }
 
@@ -267,12 +319,39 @@ export function createUI(deps: UiDeps): UI {
   bus.on('shop:left', () => {
     if (screen === 'shop') show('game');
   });
-  bus.on('run:over', (e) => scheduleGameover(e.summary));
+  bus.on('run:lost', (e) => {
+    gameoverPending = false;
+    clearTimeout(gameoverTimer);
+    lostPending = true;
+    clearTimeout(lostTimer);
+    // même délai que la fin de run : le feedback de mort se joue d'abord
+    lostTimer = window.setTimeout(() => {
+      if (lostPending) openRevive({ canRevive: e.canRevive, wave: e.wave, depth: e.depth });
+    }, GAMEOVER_DELAY_MS);
+  });
+  bus.on('run:revived', () => {
+    lostPending = false;
+    clearTimeout(lostTimer);
+    gaveUp = false;
+    if (screen === 'revive') show('game');
+  });
+  bus.on('run:over', (e) => {
+    lostPending = false;
+    clearTimeout(lostTimer);
+    // abandon depuis « Revanche ? » : la mort a déjà été vue, pas de second délai
+    if (gaveUp || screen === 'revive') openGameover(e.summary);
+    else scheduleGameover(e.summary);
+    gaveUp = false;
+  });
   bus.on('run:started', () => {
     gameoverPending = false;
     clearTimeout(gameoverTimer);
+    lostPending = false;
+    clearTimeout(lostTimer);
+    gaveUp = false;
     hud.reset();
     bestDepthBefore = meta ? meta.data.stats.bestDepth : null;
+    bestWaveBefore = meta ? meta.data.stats.bestWave : null;
     if (screen !== 'title') show('game');
   });
 
@@ -320,7 +399,11 @@ export function createUI(deps: UiDeps): UI {
       lastPhase = state.phase;
       if (state.phase === 'reward' && screen !== 'reward') openReward(state.rewardOffer);
       else if (state.phase === 'shop' && screen !== 'shop') openShop();
-      else if (state.phase === 'gameover' && screen !== 'gameover' && !gameoverPending) scheduleGameover(summaryFromState(state));
+      else if (state.phase === 'gameover' && screen !== 'gameover' && screen !== 'revive' && !gameoverPending && !lostPending) {
+        // reprise d'une run perdue en attente de décision (snapshot pris après run:lost)
+        const maxRevives = config.economy.revive?.maxPerRun ?? 0;
+        openRevive({ canRevive: (state.revivesUsed ?? 0) < maxRevives, wave: state.wave, depth: state.depth });
+      }
       else if ((state.phase === 'aiming' || state.phase === 'firing') && MODAL_RUN_SCREENS.has(screen)) show('game');
     }
     // écrans méta : reconstruits seulement si meta.data a changé de référence
@@ -338,8 +421,8 @@ export function createUI(deps: UiDeps): UI {
 
   return {
     show,
-    get screen() {
-      return screen;
+    get screen(): UiScreen {
+      return screen === 'revive' ? 'gameover' : screen;
     },
     update,
   };

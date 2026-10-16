@@ -2,14 +2,18 @@
 import type { UiScreen } from '../../core/types';
 import { el } from '../dom';
 
+/** écrans internes à l'UI : `UiScreen` + 'revive' (Seconde chance, absent de core/types.ts :
+ *  émis comme 'gameover' sur le bus, exposé tel quel dans `#ui[data-screen]`). */
+export type UiLocalScreen = UiScreen | 'revive';
+
 export interface ScreenEl {
-  readonly id: UiScreen;
+  readonly id: UiLocalScreen;
   readonly root: HTMLDivElement;
   /** panneau centré (contenu) */
   readonly panel: HTMLDivElement;
 }
 
-export function createScreen(id: UiScreen, title?: string): ScreenEl {
+export function createScreen(id: UiLocalScreen, title?: string): ScreenEl {
   const root = el('div', `screen screen-${id}`);
   root.dataset.screen = id;
   root.setAttribute('role', 'dialog');

@@ -48,6 +48,10 @@ export interface Sprites {
   ballAt(index: number): HTMLCanvasElement | undefined;
   /** demi-étendue de chaque sprite de balle (unités plateau), même index que ballAt */
   ballExt: number[];
+  /** balle dorée (dernière de la volée) : même index que ballAt ; l'élément reste lisible par un anneau */
+  goldenAt(index: number): HTMLCanvasElement | undefined;
+  /** demi-étendue des sprites dorés (unités plateau) */
+  goldenExt: number[];
   coin: HTMLCanvasElement;
   fragment: HTMLCanvasElement;
   heart: HTMLCanvasElement;
@@ -420,6 +424,62 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
   return c;
 }
 
+/** Demi-étendue d'un sprite de balle dorée, en multiples du rayon visuel (halo compris). */
+export const GOLDEN_EXTENT = 2.6;
+
+/**
+ * Balle dorée : disque or avec dégradé et reflet, anneau de la couleur de l'élément, étoile de
+ * reflet et halo doux pré-rendu (le dégradé et le flou sont faits ici, une fois par resize).
+ */
+function makeGoldenBall(element: number, elemColor: string, tier: number, radius: number, cell: number): HTMLCanvasElement {
+  const vr = ballVisualRadius(radius, element, tier);
+  const ext = vr * GOLDEN_EXTENT * cell;
+  const [c, g] = makeCanvas(ext * 2, ext * 2);
+  // un peu plus grosse qu'une balle normale du même rang : on la repère dans la volée
+  const cx = c.width / 2, cy = c.height / 2, r = vr * cell * 1.12;
+  const TAU = Math.PI * 2;
+  // halo doux
+  const halo = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, ext);
+  halo.addColorStop(0, 'rgba(255,194,61,0.55)');
+  halo.addColorStop(0.45, 'rgba(255,194,61,0.2)');
+  halo.addColorStop(1, 'rgba(255,194,61,0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, c.width, c.height);
+  // anneau élément (épais, lisible), légèrement lumineux
+  g.shadowColor = PALETTE.gold;
+  g.shadowBlur = r * 0.9;
+  g.strokeStyle = elemColor;
+  g.lineWidth = Math.max(1.5, r * 0.26);
+  g.beginPath(); g.arc(cx, cy, r * 1.32, 0, TAU); g.stroke();
+  g.shadowBlur = 0;
+  // corps or : dégradé radial décalé (reflet en haut à gauche)
+  const body = g.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.1, cx, cy, r);
+  body.addColorStop(0, PALETTE.goldLight);
+  body.addColorStop(0.45, PALETTE.gold);
+  body.addColorStop(1, PALETTE.goldDark);
+  g.fillStyle = body;
+  g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+  g.strokeStyle = shade(PALETTE.goldDark, -0.3);
+  g.lineWidth = Math.max(1, r * 0.1);
+  g.beginPath(); g.arc(cx, cy, r * 0.95, 0, TAU); g.stroke();
+  // étoile de reflet (4 branches)
+  const sx = cx - r * 0.3, sy = cy - r * 0.32, sl = r * 0.42, sw = r * 0.1;
+  g.fillStyle = 'rgba(255,255,255,0.95)';
+  g.beginPath();
+  g.moveTo(sx, sy - sl); g.lineTo(sx + sw, sy - sw); g.lineTo(sx + sl, sy); g.lineTo(sx + sw, sy + sw);
+  g.lineTo(sx, sy + sl); g.lineTo(sx - sw, sy + sw); g.lineTo(sx - sl, sy); g.lineTo(sx - sw, sy - sw);
+  g.closePath(); g.fill();
+  // rangs : petits points de la couleur de l'élément sur l'anneau
+  if (tier >= 2) {
+    g.fillStyle = '#ffffff';
+    for (let i = 0; i < tier; i++) {
+      const a = -Math.PI / 2 + (i - (tier - 1) / 2) * 0.5;
+      g.beginPath(); g.arc(cx + Math.cos(a) * r * 1.32, cy + Math.sin(a) * r * 1.32, r * 0.12, 0, TAU); g.fill();
+    }
+  }
+  return c;
+}
+
 function makeDrop(kind: 'coin' | 'fragment' | 'heart', cell: number): HTMLCanvasElement {
   const ext = DROP_EXTENT * cell;
   const [c, g] = makeCanvas(ext * 2, ext * 2);
@@ -529,9 +589,23 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
     balls[i] = c;
     return c;
   }
+  const golden: (HTMLCanvasElement | undefined)[] = [];
+  const goldenExt: number[] = [];
+  for (let e = 0; e < ELEMENTS.length; e++) {
+    for (let t = 1; t <= 3; t++) goldenExt.push(ballVisualRadius(radius, e, t) * GOLDEN_EXTENT);
+  }
+  function goldenAt(i: number): HTMLCanvasElement | undefined {
+    const hit = golden[i];
+    if (hit) return hit;
+    if (i < 0 || i >= ELEMENTS.length * 3) return undefined;
+    const e = Math.floor(i / 3), t = (i % 3) + 1;
+    const c = makeGoldenBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell);
+    golden[i] = c;
+    return c;
+  }
 
   return {
-    block, damagedAt, whiteAt, frozenAt, ballAt, ballExt,
+    block, damagedAt, whiteAt, frozenAt, ballAt, ballExt, goldenAt, goldenExt,
     coin: makeDrop('coin', cell), fragment: makeDrop('fragment', cell), heart: makeDrop('heart', cell),
     halo: makeHalo(cell),
   };

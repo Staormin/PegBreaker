@@ -44,6 +44,10 @@ export const ACHIEVEMENT_RULES: Readonly<Record<string, Predicate>> = {
   relic6: (c) => c.summary.relics.length >= 6,
   volley24: (c) => c.summary.volley.length >= 24,
   score20k: (c) => c.stats.bestScore >= 20000,
+  // Lot 1 (FUN.md) : mesures de la run seulement (GlobalStats n'a pas de compteur cumulé).
+  // `?? 0` : résumés antérieurs aux champs revivesUsed / contractsCompleted.
+  contracts3: (c) => (c.summary.contractsCompleted ?? 0) >= 3,
+  phoenix: (c) => (c.summary.revivesUsed ?? 0) >= 1 && c.summary.wave >= 6,
 };
 
 export function isMet(def: AchievementDef, ctx: AchievementContext): boolean {

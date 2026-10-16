@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, MetaNode, RunSummary } from '../core/types';
-import { BACKUP_KEY, SAVE_KEY, createMemoryStorage, createMeta, effectiveFragmentMultiplier, type StorageLike } from './index';
+import { BACKUP_KEY, SAVE_KEY, createMemoryStorage, createMeta, effectiveFragmentMultiplier, reviveCost, type StorageLike } from './index';
 
 const cfg = (): GameConfig => structuredClone(loadConfig());
 const fixedNow = (): Date => new Date(2026, 9, 16, 14, 30); // 16 oct. 2026, heure locale
@@ -16,6 +16,8 @@ function summary(over: Partial<RunSummary> = {}, stats: Partial<RunSummary['stat
     isDaily: false,
     dailyDate: null,
     score: 5000,
+    revivesUsed: 0,
+    contractsCompleted: 0,
     ...over,
     stats: {
       shots: 40,
@@ -28,6 +30,7 @@ function summary(over: Partial<RunSummary> = {}, stats: Partial<RunSummary['stat
       fragmentsEarned: 45,
       fusions: 0,
       bossesKilled: 0,
+      contractsCompleted: 0,
       durationMs: 120000,
       ...stats,
     },
@@ -471,5 +474,87 @@ describe('quotidien', () => {
     expect(m.dailySeed()).toBe('daily-2026-01-05');
     expect(m.dailySeed('2026-10-16')).toBe('daily-2026-10-16');
     expect(m.dailySeed('2026-10-16')).toBe(createMeta(createMemoryStorage(), cfg()).dailySeed('2026-10-16'));
+  });
+});
+
+describe('spendFragments (seconde chance)', () => {
+  it('débite et sauvegarde si suffisant', () => {
+    const st = createMemoryStorage();
+    const m = withFragments(st, cfg(), 40);
+    expect(m.spendFragments(25)).toBe(true);
+    expect(m.data.meta.fragments).toBe(15);
+    expect(JSON.parse(st.getItem(SAVE_KEY) ?? '{}').meta.fragments).toBe(15);
+    expect(m.data.stats.totalFragments).toBe(40); // le cumul gagné ne baisse pas
+    expect(m.spendFragments(15)).toBe(true);
+    expect(m.data.meta.fragments).toBe(0);
+  });
+
+  it('insuffisant, négatif ou NaN → false sans effet', () => {
+    const st = createMemoryStorage();
+    const m = withFragments(st, cfg(), 20);
+    const before = m.data;
+    const saved = st.getItem(SAVE_KEY);
+    expect(m.spendFragments(21)).toBe(false);
+    expect(m.spendFragments(-5)).toBe(false);
+    expect(m.spendFragments(Number.NaN)).toBe(false);
+    expect(m.spendFragments(Number.POSITIVE_INFINITY)).toBe(false);
+    expect(m.data).toBe(before);
+    expect(st.getItem(SAVE_KEY)).toBe(saved);
+  });
+
+  it('zéro → true sans effet, même à 0 fragment', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    const before = m.data;
+    expect(m.spendFragments(0)).toBe(true);
+    expect(m.data).toBe(before);
+    expect(m.data.meta.fragments).toBe(0);
+  });
+
+  it('reviveCost : gratuit pendant la run 1 (si freeOnFirstRun), puis economy.revive.cost', () => {
+    const c = cfg();
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    expect(reviveCost(m, c)).toBe(c.economy.revive.freeOnFirstRun ? 0 : c.economy.revive.cost);
+    m.onRunEnd(summary({ revivesUsed: 1 }));
+    expect(reviveCost(m, c)).toBe(c.economy.revive.cost);
+    c.economy.revive.freeOnFirstRun = false;
+    expect(reviveCost(createMeta(createMemoryStorage(), c, fixedNow), c)).toBe(c.economy.revive.cost);
+  });
+});
+
+describe('succès lot 1 : contrats et seconde chance', () => {
+  it('contracts3 : 3 contrats réussis dans la même run (2 → rien)', () => {
+    const c = cfg();
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    expect(m.onRunEnd(summary({ contractsCompleted: 2 }, { contractsCompleted: 2 }))).toEqual([]);
+    // pas de cumul entre runs : 2 + 2 ne suffit pas
+    expect(m.onRunEnd(summary({ contractsCompleted: 2 }, { contractsCompleted: 2 }))).toEqual([]);
+    const frags = m.data.meta.fragments;
+    expect(m.onRunEnd(summary({ contractsCompleted: 3 }, { contractsCompleted: 3, fragmentsEarned: 0 }))).toEqual(['contracts3']);
+    expect(m.data.meta.fragments).toBe(frags + (c.meta.achievements.find((a) => a.id === 'contracts3')?.rewardFragments ?? NaN));
+    expect(m.onRunEnd(summary({ contractsCompleted: 5 }))).toEqual([]);
+  });
+
+  it('phoenix : vague ≥ 6 après une seconde chance ; sans revanche ou vague 5 → rien', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    expect(m.onRunEnd(summary({ wave: 9, revivesUsed: 0 }))).toEqual([]);
+    expect(m.onRunEnd(summary({ wave: 5, revivesUsed: 1 }))).toEqual([]);
+    expect(m.onRunEnd(summary({ wave: 6, revivesUsed: 1 }))).toEqual(['phoenix']);
+    expect(m.onRunEnd(summary({ wave: 9, revivesUsed: 1 }))).toEqual([]);
+  });
+
+  it('résumé ancien sans revivesUsed / contractsCompleted : aucun succès lot 1, pas de crash', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    const s = summary({ wave: 7 }) as Partial<RunSummary>;
+    delete s.revivesUsed;
+    delete s.contractsCompleted;
+    expect(m.onRunEnd(s as RunSummary)).toEqual([]);
+  });
+
+  it('une run reprise par seconde chance compte comme une seule run', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    m.onRunEnd(summary({ wave: 8, revivesUsed: 1 }, { fragmentsEarned: 30 }));
+    expect(m.data.stats.runs).toBe(1);
+    expect(m.data.stats.bestWave).toBe(8);
+    expect(m.data.currentRun).toBeNull();
   });
 });

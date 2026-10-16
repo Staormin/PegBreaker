@@ -18,6 +18,9 @@ export { PALETTE } from './palette';
 
 /** slot unique pour le libellé « COMBO ×N » (évite l'empilement quand plusieurs balles franchissent un palier) */
 const COMBO_SLOT = -2;
+/** slot du libellé « CONTRAT ✓ » */
+const CONTRACT_SLOT = -3;
+const CONTRACT_LABEL = 'CONTRAT \u2713';
 
 export interface PegRenderer extends Renderer {
   /** désabonne le renderer du bus (démo, hot reload). Hors interface Renderer. */
@@ -167,6 +170,7 @@ export function createRenderer(
     ctx, layout, particles, numbers, vfx, fusions, colors,
     onPowerLevel(level) { backdropLevel = level; applyBackdrop(); },
     ballRadius: board.ballRadius,
+    maxSpreadDeg: board.maxSpreadDeg,
     getSprites: ensureSprites,
   });
 
@@ -204,8 +208,21 @@ export function createRenderer(
     }
   }));
 
+  /** coup d'une balle dorée : id mémorisé depuis ball:launched.golden, sinon Ball.golden de l'état */
+  function hitByGolden(ballId: number): boolean {
+    if (drawer.isGoldenId(ballId)) return true;
+    const st = lastState;
+    if (!st) return false;
+    const balls = st.balls;
+    for (let i = 0; i < balls.length; i++) {
+      const b = balls[i]!;
+      if (b.id === ballId) return b.golden === true;
+    }
+    return false;
+  }
+
   subs.push(bus.on('block:hit', (e) => {
-    numbers.add(e.pos.x, e.pos.y - 0.1, e.damage, e.crit, e.blockId);
+    numbers.add(e.pos.x, e.pos.y - 0.1, e.damage, e.crit, e.blockId, hitByGolden(e.ballId));
     vfx.blockFx(e.blockId).squashT = 0;
     particles.burst(e.pos.x, e.pos.y, 2, elemColor(e.element), P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
   }));
@@ -320,8 +337,38 @@ export function createRenderer(
     vfx.rays(e.pos.x, e.pos.y, 420, PALETTE.accent, 24, 2.4);
   }));
 
-  subs.push(bus.on('block:breached', () => {
+  subs.push(bus.on('block:breached', (e) => {
+    drawer.noteBreached(e.blockId);
     flashPlayerRow(220);
+  }));
+
+  // F3 — balle dorée : mémorisée par id, petit éclat or au point de lancement
+  subs.push(bus.on('ball:launched', (e) => {
+    if (!e.golden) return;
+    drawer.markGolden(e.ballId);
+    vfx.flashCircle(e.pos.x, e.pos.y, 0.32, 140, PALETTE.gold);
+    vfx.ring(e.pos.x, e.pos.y, 0.08, 0.6, 240, PALETTE.gold, 0.05);
+    particles.burst(e.pos.x, e.pos.y, 10, PALETTE.gold, P_SPARK, 2, 5, -Math.PI / 2, 1.2, 0.15, 0.3, 0.03, 0.06, 0, PRIO_HIGH);
+  }));
+
+  // Contrats : réussite = onde verte + gerbe au centre du haut du plateau + « CONTRAT ✓ » 800 ms.
+  // contract:failed : rien ici (l'UI grise le bandeau).
+  subs.push(bus.on('contract:completed', () => {
+    const x = board.cols / 2, y = 1.3;
+    vfx.ring(x, y, 0.15, 2.2, 420, PALETTE.good, 0.1);
+    vfx.ring(x, y, 0.05, 1.2, 300, '#ffffff', 0.04);
+    vfx.flashCircle(x, y, 0.45, 160, PALETTE.good);
+    particles.burst(x, y, 22, PALETTE.good, P_SPARK, 2.5, 7, 0, Math.PI, 0.2, 0.45, 0.04, 0.08, 0, PRIO_HIGH);
+    numbers.addLabel(x, y + 0.2, CONTRACT_LABEL, PALETTE.good, 6, CONTRACT_SLOT, 0.8);
+  }));
+
+  // Seconde chance : voile progressif (sans mouvement) puis levée + onde blanche depuis la ligne du joueur
+  subs.push(bus.on('run:lost', () => {
+    drawer.setLost();
+  }));
+  subs.push(bus.on('run:revived', () => {
+    drawer.revive();
+    vfx.flashRect(0, board.rows - 1, board.cols, 1, 180, PALETTE.textDim);
   }));
 
   subs.push(bus.on('ball:split', (e) => {
@@ -338,7 +385,7 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('run:started', () => {
-    particles.clear(); numbers.clear(); vfx.clear(); fusions.clear(); drawer.clearTrails(); drawer.suppressSpawnPop();
+    particles.clear(); numbers.clear(); vfx.clear(); fusions.clear(); drawer.clearTrails(); drawer.suppressSpawnPop(); drawer.clearOverlays();
   }));
   // mesure par volée + bascule préventive (avant la 1re balle : la rafale part ~60 ms après)
   subs.push(bus.on('volley:start', (e) => {

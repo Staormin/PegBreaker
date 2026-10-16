@@ -9,5 +9,5 @@
   "reward": { "skipCoins": 15, "optionCount": 3, "relicChance": 0.4, "fuseChance": 0.5 },
   "score": { "perDepth": 100, "perBlock": 10, "perDamage": 0.1, "perBoss": 1000 },
   "fragments": { "perWave": 3, "perBoss": 10, "perDepth": 0.5 },
-  "revive": { "cost": 25, "freeOnFirstRun": true, "maxPerRun": 1, "hpRatio": 0.5, "clearRows": 3 }
+  "revive": { "cost": 30, "freeOnFirstRun": true, "maxPerRun": 1, "hpRatio": 0.5, "clearRows": 3 }
 }

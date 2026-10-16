@@ -6,6 +6,7 @@ import { acquireDrop, releaseDrop } from './pools';
 import { heal, pickBallElement, pickDropKind } from './rewards';
 import { addVolleyBall } from './volley';
 import { DROP_RADIUS } from './constants';
+import { contractAdd } from './contracts';
 
 /** Tirage d'un drop à la casse d'un bloc (appelé après l'incrément de blocksDestroyed). */
 export function maybeDrop(ctx: Ctx, x: number, y: number): void {
@@ -35,6 +36,7 @@ export function collectDrop(ctx: Ctx, i: number): void {
       value = Math.round(d.value * ctx.meta.coinMultiplier * ctx.relic.coinMult);
       s.coins += value;
       s.stats.coinsEarned += value;
+      contractAdd(ctx, 'collectCoins', value);
       if (ctx.relic.piggy > 0) {
         s.internal.piggyCoins += value;
         while (s.internal.piggyCoins >= ctx.relic.piggy) {
@@ -46,6 +48,7 @@ export function collectDrop(ctx: Ctx, i: number): void {
     }
     case 'ball':
       addVolleyBall(ctx, d.element ?? 'stone', 1);
+      contractAdd(ctx, 'collectBalls', 1);
       break;
     case 'fragment':
       s.stats.fragmentsEarned += d.value;

@@ -50,7 +50,12 @@ export interface Vfx {
   blockFx(id: number): BlockFx;
   peekBlockFx(id: number): BlockFx | undefined;
   releaseBlockFx(id: number): void;
-  sweepBlockFx(frame: number): void;
+  /**
+   * Libère les états de blocs non vus depuis 2 frames. `onVanish` (callback créé une fois, pas par
+   * frame) est appelé pour chaque bloc déjà dessiné qui disparaît à cette frame sans événement
+   * (rangées effacées par la seconde chance, restart…).
+   */
+  sweepBlockFx(frame: number, onVanish?: (fx: BlockFx) => void): void;
   /** force le re-rendu des libellés (resize) */
   invalidateLabels(): void;
   squashScale(fx: BlockFx): number;
@@ -143,12 +148,14 @@ export function createVfx(): Vfx {
       fx.inUse = false;
       fxMap.delete(id);
     },
-    sweepBlockFx(frame) {
+    sweepBlockFx(frame, onVanish) {
       // blocs disparus sans événement (restart, reprise) : libérés après 2 frames non vus
       lastFrame = frame;
       for (let i = 0; i < fxPool.length; i++) {
         const f = fxPool[i]!;
-        if (f.inUse && frame - f.seenFrame > 2) { f.inUse = false; fxMap.delete(f.id); }
+        if (!f.inUse) continue;
+        if (onVanish && f.seenFrame === frame - 1 && !Number.isNaN(f.hp)) onVanish(f);
+        if (frame - f.seenFrame > 2) { f.inUse = false; fxMap.delete(f.id); }
       }
     },
     invalidateLabels() {

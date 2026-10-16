@@ -7,16 +7,32 @@ import type { GameConfig, RunSummary } from '../core/types';
 import { createRng } from '../core/rng';
 import { createSim } from '../sim/index';
 import { FRAME, lowestBlockDir, settle } from '../sim/test-helpers';
-import { createMemoryStorage, createMeta, nextCost } from './index';
+import { createMemoryStorage, createMeta, nextCost, reviveCost } from './index';
 
-function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMeta>): RunSummary {
+/**
+ * Joue une run complète. Le bot ignore les contrats (il vise toujours le bloc le plus bas) mais
+ * en touche les récompenses quand il les remplit par hasard. À la mort (phase gameover après
+ * run:lost) : `onLost()` décide de la revanche (true → sim.revive()), sinon giveUp() → run:over.
+ */
+function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMeta>, onLost: () => boolean = () => false): RunSummary {
   const sim = createSim(cfg, { seed, meta: meta.getModifiers() });
   const rng = createRng(seed);
   let lastWave = 0;
   let sinceWave = 0;
-  for (let shots = 0; shots < 800; shots++) {
+  for (let shots = 0; shots < 1200; shots++) {
     settle(sim);
-    if (sim.state.phase === 'gameover') break;
+    if (sim.state.phase === 'gameover') {
+      // onLost (qui paie) n'est consulté que si la sim accepte encore une revanche.
+      const canRevive = sim.state.revivesUsed < cfg.economy.revive.maxPerRun;
+      if (canRevive && onLost()) {
+        if (!sim.revive()) throw new Error(`run ${seed} : revive refusé`);
+        sim.step(0); // purge run:revived
+        continue;
+      }
+      sim.giveUp();
+      for (const e of sim.step(0)) if (e.type === 'run:over') return e.summary;
+      throw new Error(`run ${seed} : giveUp sans run:over`);
+    }
     if (sim.state.wave !== lastWave) {
       lastWave = sim.state.wave;
       sinceWave = 0;
@@ -95,5 +111,57 @@ describe('économie méta', () => {
     const avgFull = full.reduce((a, b) => a + b, 0) / full.length;
     expect(avgFull).toBeGreaterThanOrEqual(26);
     expect(avgFull).toBeLessThanOrEqual(34);
+  }, 120_000);
+});
+
+// Seconde chance (FUN.md F4, economy.revive). Cible : un joueur moyen peut se payer une
+// revanche environ une run sur deux sans ralentir sensiblement le Puits.
+// Mesure lot 1 (sim avec contrats, balle dorée et revive ; bot « plus bas » qui ignore les
+// contrats, 5 joueurs) : ~63 ◆/run sans revanche (min 26), ~68 ◆/run en se payant une
+// revanche une run sur deux (les vagues rejouées rapportent ~+11 ◆ par run reprise).
+// revive.cost 25 → 30 : à 25 (0,37 run) la revanche était presque autofinancée (payée 70 %
+// du temps, arbre inchangé) ; à 30 (0,44 run) elle est payée ~63 % du temps, arbre en 26-32
+// runs (25-30 sans revanche). Au-delà de 35, moins d'une revanche voulue sur deux est payable.
+describe('économie : seconde chance', () => {
+  it('revive.cost ≈ 0,35-0,55 run moyenne ; revanche une run sur deux → arbre complet ≤ 36 runs', () => {
+    const cfg = structuredClone(loadConfig());
+    const full: number[] = [];
+    const perRun: number[] = [];
+    let taken = 0;
+    let wanted = 0;
+    for (let p = 0; p < 5; p++) {
+      const meta = createMeta(createMemoryStorage(), cfg, () => new Date(2026, 9, 16));
+      let runs = 0;
+      while (!complete(cfg, meta) && runs < 60) {
+        // Revanche une run sur deux (runs 1, 3, 5…) ; payée en fin de run (même solde :
+        // les ◆ de la run ne sont crédités qu'au run:over, après la revanche).
+        // Revanche une run sur deux (runs 1, 3, 5…), payée au moment de la mort avec le
+        // solde courant (les ◆ de la run ne sont crédités qu'au run:over).
+        const wantsRevive = runs % 2 === 0;
+        let paid = false;
+        const s = playRun(cfg, `eco-${p}-${runs}`, meta, () => {
+          if (!wantsRevive) return false;
+          wanted++;
+          paid = meta.spendFragments(reviveCost(meta, cfg));
+          if (paid) taken++;
+          return paid;
+        });
+        runs++;
+        perRun.push(s.stats.fragmentsEarned);
+        expect(s.revivesUsed).toBe(paid ? 1 : 0);
+        meta.onRunEnd(s);
+        buyGreedy(cfg, meta);
+      }
+      full.push(runs);
+    }
+    const mean = perRun.reduce((a, b) => a + b, 0) / perRun.length;
+    const ratio = cfg.economy.revive.cost / mean;
+    console.log(`[economy revive] cost ${cfg.economy.revive.cost} = ${ratio.toFixed(2)} run moyenne (${mean.toFixed(1)} ◆) | revanches payées ${taken}/${wanted} | arbre complet: ${full.join(',')} runs`);
+    expect(ratio).toBeGreaterThanOrEqual(0.35);
+    expect(ratio).toBeLessThanOrEqual(0.55);
+    for (const r of full) expect(r).toBeLessThanOrEqual(36);
+    // le joueur glouton doit quand même pouvoir se payer la majorité des revanches voulues
+    expect(taken / wanted).toBeGreaterThanOrEqual(0.5);
+    expect(taken / wanted).toBeLessThanOrEqual(0.8); // pas automatique
   }, 120_000);
 });

@@ -4,9 +4,9 @@
   "growthPerShot": 0.1,
   "hpByWave": [
     { "wave": 1, "baseHp": 25 },
-    { "wave": 2, "baseHp": 60 },
-    { "wave": 3, "baseHp": 110 },
-    { "wave": 4, "baseHp": 370 },
+    { "wave": 2, "baseHp": 70 },
+    { "wave": 3, "baseHp": 130 },
+    { "wave": 4, "baseHp": 450 },
     { "wave": 5, "baseHp": 300 },
     { "wave": 6, "baseHp": 450 },
     { "wave": 8, "baseHp": 550 },

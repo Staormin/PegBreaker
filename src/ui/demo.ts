@@ -44,6 +44,9 @@ function freshState(launch: Vec2): RunState {
     relics: [],
     launchPos: { ...launch },
     aimDir: null,
+    aimSpread: 0,
+    contract: null,
+    revivesUsed: 0,
     currentShotDamage: 0,
     currentShotCombo: 0,
     rewardOffer: null,
@@ -61,6 +64,7 @@ function freshState(launch: Vec2): RunState {
       fragmentsEarned: 0,
       fusions: 0,
       bossesKilled: 0,
+      contractsCompleted: 0,
       durationMs: 0,
     },
     rngState: 1,
@@ -137,9 +141,10 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     step() {
       return [];
     },
-    aim(dir) {
+    aim(dir, spread) {
       const l = Math.hypot(dir.x, dir.y) || 1;
       state.aimDir = { x: dir.x / l, y: Math.min(dir.y / l, -0.1) };
+      if (spread !== undefined) state.aimSpread = Math.max(0, Math.min(1, spread));
     },
     cancelAim() {
       log('cancelAim');
@@ -156,7 +161,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       firingMs = 0;
       volleyMs = 2600;
       milestones = 0;
-      bus.emit({ type: 'volley:start', count: state.volley.length, from: { ...state.launchPos }, dir: { ...state.aimDir } });
+      bus.emit({ type: 'volley:start', count: state.volley.length, from: { ...state.launchPos }, dir: { ...state.aimDir }, spread: state.aimSpread });
     },
     recall() {
       if (state.phase !== 'firing') return;
@@ -221,6 +226,21 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       const lp = state.launchPos;
       state = freshState(lp);
       bus.emit({ type: 'run:started', seed: seed ?? 'demo' });
+    },
+    revive() {
+      const max = config.economy.revive.maxPerRun;
+      if (state.phase !== 'gameover' || state.revivesUsed >= max) return false;
+      log('revive');
+      state.revivesUsed++;
+      state.hp = Math.max(1, Math.ceil(state.maxHp * config.economy.revive.hpRatio));
+      state.phase = 'aiming';
+      bus.emit({ type: 'run:revived', hpLeft: state.hp, revivesUsed: state.revivesUsed });
+      return true;
+    },
+    giveUp() {
+      if (state.phase !== 'gameover') return;
+      log('giveUp');
+      endRun();
     },
     preview(dir) {
       return [{ ...state.launchPos }, { x: state.launchPos.x + dir.x * 400, y: state.launchPos.y + dir.y * 400 }];
@@ -298,10 +318,14 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     if (state.aimDir && state.phase === 'aiming') {
       ctx.strokeStyle = '#ffe95c';
       ctx.setLineDash([6, 8]);
-      ctx.beginPath();
-      ctx.moveTo(lp.x, lp.y);
-      ctx.lineTo(lp.x + state.aimDir.x * 1000, lp.y + state.aimDir.y * 1000);
-      ctx.stroke();
+      const base = Math.atan2(state.aimDir.y, state.aimDir.x);
+      const half = (state.aimSpread * config.blocks.board.maxSpreadDeg * Math.PI) / 180;
+      for (const a of half > 0 ? [base - half, base, base + half] : [base]) {
+        ctx.beginPath();
+        ctx.moveTo(lp.x, lp.y);
+        ctx.lineTo(lp.x + Math.cos(a) * 1000, lp.y + Math.sin(a) * 1000);
+        ctx.stroke();
+      }
       ctx.setLineDash([]);
     }
     ctx.fillStyle = '#cfd6e6';
@@ -342,7 +366,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     const options = [randomOption(0), randomOption(1), randomOption(2)];
     state.phase = 'reward';
     state.rewardOffer = options;
-    bus.emit({ type: 'reward:offered', options });
+    bus.emit({ type: 'reward:offered', options, source: 'wave' });
   });
   add('shop:opened', () => {
     state.coins += 40;
@@ -350,10 +374,52 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     state.shop = { items: makeShopItems(), rerollCost: config.economy.shop.rerollBase, rerollsUsed: 0 };
     bus.emit({ type: 'shop:opened', shop: state.shop });
   });
+  add('run:lost', () => {
+    state.phase = 'gameover';
+    state.hp = 0;
+    bus.emit({
+      type: 'run:lost',
+      canRevive: state.revivesUsed < config.economy.revive.maxPerRun,
+      wave: state.wave,
+      depth: state.depth,
+    });
+  });
   add('run:over', () => {
     state.phase = 'gameover';
-    state.stats.fragmentsEarned += 37;
-    const summary: RunSummary = {
+    endRun();
+  });
+  add('contrat', () => {
+    const defs = config.contracts.defs;
+    const def = defs[(state.wave + state.stats.shots) % defs.length];
+    if (!def) return;
+    state.contract = { id: def.id, progress: 0, target: def.target, status: 'active' };
+    bus.emit({ type: 'contract:offered', contract: { ...state.contract }, def });
+  });
+  add('contrat +1', () => {
+    const c = state.contract;
+    if (!c || c.status !== 'active') return;
+    c.progress = Math.min(c.target, c.progress + 1);
+    bus.emit({ type: 'contract:progress', progress: c.progress, target: c.target });
+    if (c.progress >= c.target) {
+      const def = config.contracts.defs.find((d) => d.id === c.id);
+      c.status = 'done';
+      state.stats.contractsCompleted++;
+      if (def) bus.emit({ type: 'contract:completed', def, reward: def.reward });
+    }
+  });
+  add('contrat raté', () => {
+    const c = state.contract;
+    if (!c || c.status !== 'active') return;
+    c.status = 'failed';
+    const def = config.contracts.defs.find((d) => d.id === c.id);
+    if (def) bus.emit({ type: 'contract:failed', def });
+  });
+  add('record V3 (méta)', () => {
+    meta.onRunEnd({ ...summaryOf(), seed: 'demo-record', depth: 5, wave: 3, isDaily: false, dailyDate: null });
+    sim.restart();
+  });
+  function summaryOf(): RunSummary {
+    return {
       seed: state.seed,
       depth: state.depth,
       wave: state.wave,
@@ -363,11 +429,17 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       isDaily: false,
       dailyDate: null,
       score: 1234,
+      revivesUsed: state.revivesUsed,
+      contractsCompleted: state.stats.contractsCompleted,
     };
+  }
+  function endRun(): void {
+    state.stats.fragmentsEarned += 37;
+    const summary = summaryOf();
     bus.emit({ type: 'run:over', summary });
     // comme main.ts : crédite la méta puis annonce les succès
     for (const id of meta.onRunEnd(summary)) bus.emit({ type: 'achievement:unlocked', achievementId: id });
-  });
+  }
   add('−1 PV', () => {
     state.hp = Math.max(0, state.hp - 1);
     bus.emit({ type: 'player:damaged', amount: 1, hpLeft: state.hp });
@@ -416,6 +488,8 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       isDaily: false,
       dailyDate: null,
       score: 0,
+      revivesUsed: 0,
+      contractsCompleted: 0,
     });
   });
   add('toast succès', () => {
@@ -424,7 +498,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
   });
   add('résultat quotidien', () => {
     const st = freshState({ x: 0, y: 0 }).stats;
-    meta.onRunEnd({ seed: 'daily', depth: 7, wave: 3, stats: st, relics: [], volley: [], isDaily: true, dailyDate: meta.todayKey(), score: 1234 });
+    meta.onRunEnd({ seed: 'daily', depth: 7, wave: 3, stats: st, relics: [], volley: [], isDaily: true, dailyDate: meta.todayKey(), score: 1234, revivesUsed: 0, contractsCompleted: 0 });
   });
   add('Puits', () => ui.show('meta'));
   add('Réglages', () => ui.show('settings'));

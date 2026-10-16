@@ -31,10 +31,10 @@ interface DamageNumber {
 }
 
 export interface DamageNumbers {
-  /** id de bloc −1 = pas de fusion par bloc (étiquettes de combo) */
-  add(x: number, y: number, value: number, crit: boolean, blockId: number): void;
-  /** slot < −1 : un seul libellé vivant par slot (remplacé plutôt qu'empilé) */
-  addLabel(x: number, y: number, label: string, color: string, bucket: number, slot?: number): void;
+  /** id de bloc −1 = pas de fusion par bloc (étiquettes de combo) ; gold = coup de la balle dorée */
+  add(x: number, y: number, value: number, crit: boolean, blockId: number, gold?: boolean): void;
+  /** slot < −1 : un seul libellé vivant par slot (remplacé plutôt qu'empilé) ; life en s (défaut 0,6) */
+  addLabel(x: number, y: number, label: string, color: string, bucket: number, slot?: number, life?: number): void;
   update(dt: number): void;
   /** contexte en pixels physiques (transform = dpr) ; l = layout courant */
   draw(ctx: CanvasRenderingContext2D, l: Layout): void;
@@ -82,7 +82,7 @@ export function createDamageNumbers(): DamageNumbers {
         fonts.push(`800 ${Math.max(8, Math.round(base * (0.24 + 0.05 * i)))}px system-ui, -apple-system, "Segoe UI", sans-serif`);
       }
     },
-    add(x, y, value, crit, blockId) {
+    add(x, y, value, crit, blockId, gold = false) {
       // cumul
       for (const n of pool) {
         if (!n.active || n.sinceHit > MERGE_WINDOW || n.age > MAX_MERGE_AGE || n.blockId < -1) continue;
@@ -92,9 +92,10 @@ export function createDamageNumbers(): DamageNumbers {
           n.label = formatNumber(n.value);
           n.sinceHit = 0;
           n.life = Math.max(n.life, n.age + LIFE);
-          const b = bucketFor(n.value, crit);
+          const b = bucketFor(n.value, crit) + (gold ? 1 : 0);
           if (b > n.bucket) n.bucket = b;
-          if (crit) n.color = PALETTE.accent;
+          if (gold) n.color = PALETTE.gold;
+          else if (crit && n.color !== PALETTE.gold) n.color = PALETTE.accent;
           return;
         }
       }
@@ -103,18 +104,18 @@ export function createDamageNumbers(): DamageNumbers {
       n.x = x + (Math.random() - 0.5) * 0.3; n.y = y < MIN_Y + RISE ? MIN_Y + RISE : y;
       n.value = value; n.label = formatNumber(value);
       n.age = 0; n.life = LIFE; n.sinceHit = 0;
-      n.bucket = bucketFor(value, crit);
-      n.color = crit ? PALETTE.accent : PALETTE.text;
+      n.bucket = bucketFor(value, crit) + (gold ? 1 : 0);
+      n.color = gold ? PALETTE.gold : crit ? PALETTE.accent : PALETTE.text;
       n.blockId = blockId;
     },
-    addLabel(x, y, label, color, bucket, slot = -1) {
+    addLabel(x, y, label, color, bucket, slot = -1, life = LIFE) {
       const b0 = bucket < 0 ? 0 : bucket > FONT_BUCKETS - 1 ? FONT_BUCKETS - 1 : bucket;
       if (slot < -1) {
         // un seul libellé vivant par slot (ex. combo) : on le remplace au lieu d'empiler
         for (let i = 0; i < MAX_NUMBERS; i++) {
           const m = pool[i]!;
           if (!m.active || m.blockId !== slot) continue;
-          m.label = label; m.color = color; m.age = 0; m.life = LIFE; m.sinceHit = 0;
+          m.label = label; m.color = color; m.age = 0; m.life = life; m.sinceHit = 0;
           if (b0 > m.bucket) m.bucket = b0;
           return;
         }
@@ -122,7 +123,7 @@ export function createDamageNumbers(): DamageNumbers {
       const n = acquire();
       n.active = true;
       n.x = x; n.y = y < MIN_Y + RISE ? MIN_Y + RISE : y; n.value = 0; n.label = label;
-      n.age = 0; n.life = LIFE; n.sinceHit = 1;
+      n.age = 0; n.life = life; n.sinceHit = 1;
       n.bucket = b0;
       n.color = color; n.blockId = slot < -1 ? slot : -1;
     },

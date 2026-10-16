@@ -20,6 +20,16 @@ export { createMemoryStorage } from './storage';
 export { SAVE_KEY, BACKUP_KEY } from './save';
 export { effectiveFragmentMultiplier, availableRunMods, nextCost } from './meta';
 
+/**
+ * Coût de la seconde chance pour l'UI (à débiter via spendFragments avant sim.revive()).
+ * Gratuit pendant la toute première run si economy.revive.freeOnFirstRun : stats.runs
+ * n'est incrémenté qu'en fin de run, donc la run 1 reste « première » même après revanche.
+ */
+export function reviveCost(meta: Pick<MetaSystem, 'data'>, config: GameConfig): number {
+  const r = config.economy.revive;
+  return r.freeOnFirstRun && meta.data.stats.runs === 0 ? 0 : r.cost;
+}
+
 /** Crée le système méta et charge immédiatement la sauvegarde (load() reste rappelable). */
 export function createMeta(storage: StorageLike, config: GameConfig, now: () => Date = () => new Date()): MetaSystem {
   let d: Readonly<SaveData> = freezeSave(withNormalizedMeta(defaultSave()));
@@ -76,6 +86,16 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     commit({ ...d, meta: { ...d.meta, activeRunMods: active } });
   }
 
+  function spendFragments(amount: number): boolean {
+    if (!Number.isFinite(amount) || amount < 0 || d.meta.fragments < amount) return false;
+    if (amount === 0) return true; // rien à débiter : pas d'écriture, référence `data` inchangée
+    commit({ ...d, meta: { ...d.meta, fragments: d.meta.fragments - amount } });
+    return true;
+  }
+
+  // Une run reprise par seconde chance reste UNE run : la sim n'émet 'run:over' (donc
+  // l'UI n'appelle onRunEnd) qu'une fois, après giveUp ou la mort définitive ; 'run:lost'
+  // et 'run:revived' ne touchent pas aux stats. summary.revivesUsed sert aux succès.
   function onRunEnd(summary: RunSummary): string[] {
     const earned = Math.max(0, Math.round(summary.stats.fragmentsEarned));
     const stats = applyRunStats(d.stats, summary);
@@ -139,6 +159,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     getModifiers,
     onRunEnd,
     buyNode,
+    spendFragments,
     canBuyNode,
     toggleRunMod,
     setCurrentRun,

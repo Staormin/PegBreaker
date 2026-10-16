@@ -8,6 +8,8 @@ export const PALETTE = {
   stone: '#cfd6e6', fire: '#ff7a3d', lightning: '#ffe95c', ice: '#7fe4ff', ghost: '#c08cff', lead: '#6b7280', split: '#5cff9d',
   block: '#4f7cff', peg: '#e8ecf5', explosive: '#ff5e5e', heart: '#ff7ab8', armored: '#8a94a8', boss: '#b23cff',
   outline: '#0b0f1a', fragment: '#7fe4ff', coin: '#ffe95c',
+  /** balle dorée (lot 1, F3) : or plus chaud que l'accent jaune des critiques */
+  gold: '#ffc23d', goldLight: '#fff2b8', goldDark: '#a86b00',
 } as const;
 
 export const ELEMENTS: readonly BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];

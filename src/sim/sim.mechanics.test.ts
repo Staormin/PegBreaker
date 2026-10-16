@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Block } from '../core/types';
 import { block, config, createRng, lowestBlockDir, mut, newSim, ofType, randomDir, settle, setup, shoot } from './test-helpers';
+import { useNeutralFun } from './test-helpers';
+
+useNeutralFun();
+
 
 const UP = { x: 0, y: -1 };
 const hpOf = (blocks: readonly Block[], id: number): number | undefined => blocks.find((b) => b.id === id)?.hp;
@@ -369,7 +373,11 @@ describe('avancée, franchissement, game over', () => {
     s.blocks.push(block(sim, 'normal', 0, 8, 1000));
     const evs2 = shoot(sim, UP);
     expect(sim.state.phase).toBe('gameover');
-    const over = ofType(evs2, 'run:over');
+    // F4 : la mort émet run:lost (seconde chance possible), run:over seulement à l'abandon
+    expect(ofType(evs2, 'run:over')).toHaveLength(0);
+    expect(ofType(evs2, 'run:lost')).toEqual([{ type: 'run:lost', canRevive: true, wave: 1, depth: 2 }]);
+    sim.giveUp();
+    const over = ofType(sim.step(0), 'run:over');
     expect(over).toHaveLength(1);
     const sum = over[0]!.summary;
     expect(sum.wave).toBe(1);

@@ -1,8 +1,12 @@
 // ui/hud.ts — HUD superposé au canvas : PV, vague, pièces, fragments, volée, dégâts du tir,
 // bouton Rappel, indice d'onboarding. `update` est appelé chaque frame mais ne touche le DOM
 // que si une valeur affichée a changé (valeurs mises en cache).
+// Lot 1 : record « Record V<n> » dans la pastille de vague (F5), bande sous la barre du haut
+// (badges Quotidien / Défi + bandeau contrat, F2/F6), jauge « rafale ⟷ éventail » sous le
+// point de lancement pendant la visée (F1).
 import type { EventBus } from '../core/events';
 import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, VolleyBall } from '../core/types';
+import { createContractBanner } from './contract';
 import { coinIcon, el, fmt } from './dom';
 import { ballColor, ballName } from './options';
 
@@ -24,6 +28,14 @@ export interface HudDeps {
   onSettings?: (() => void) | null;
   /** run du défi quotidien : badge « Quotidien » */
   isDaily?: boolean;
+  /** mode défi (?goal=N) : badge « Défi : battre P<N> » ; null = absent */
+  challengeGoal?: number | null;
+  /** meilleure vague AVANT la run (null ou 0 = pas de record affiché) */
+  bestWave?: () => number | null;
+  /** appelé une seule fois par run quand la vague dépasse le record */
+  onNewRecord?: (wave: number) => void;
+  /** la jauge d'éventail n'apparaît que sur l'écran de jeu */
+  isGameScreen?: () => boolean;
 }
 
 export interface Hud {
@@ -44,8 +56,12 @@ export function createHud(deps: HudDeps): Hud {
   const top = el('div', 'hud-top');
   const hpBox = el('div', 'hud-hp');
   hpBox.setAttribute('role', 'img');
-  const waveBox = el('div', 'hud-wave', 'V1');
-  waveBox.setAttribute('aria-label', 'Vague');
+  const waveBox = el('div', 'hud-wave');
+  const waveNum = el('span', 'num hud-wave-num', 'V1');
+  waveNum.setAttribute('aria-label', 'Vague');
+  const recordEl = el('span', 'hud-record');
+  recordEl.hidden = true;
+  waveBox.append(waveNum, recordEl);
   const right = el('div', 'hud-right');
   const coinBox = el('div', 'hud-stat hud-coins');
   const coinVal = el('span', 'num', '0');
@@ -108,11 +124,34 @@ export function createHud(deps: HudDeps): Hud {
     deps.onSettings();
   });
 
-  frame.append(top, shot, comboHint, volleyBox, recall, gear);
+  // --- bande sous la barre du haut : badges + contrat --------------------
+  const band = el('div', 'hud-band');
   if (deps.isDaily) {
-    const badge = el('div', 'hud-daily', '📅 Quotidien');
-    frame.append(badge);
+    const badge = el('div', 'hud-badge hud-daily', '📅 Quotidien');
+    band.append(badge);
   }
+  const goal = deps.challengeGoal ?? null;
+  if (goal !== null) {
+    const badge = el('div', 'hud-badge hud-challenge');
+    badge.append(el('span', 'hb-long', `Défi : battre P${goal}`), el('span', 'hb-short', `Défi P${goal}`));
+    badge.setAttribute('aria-label', `Défi : battre la profondeur ${goal}`);
+    badge.title = `Défi : battre la profondeur ${goal}`;
+    band.append(badge);
+  }
+  const contract = createContractBanner(config, bus, () => layout());
+  band.append(contract.el);
+
+  // --- jauge d'éventail (visée seulement) --------------------------------
+  const spreadBox = el('div', 'hud-spread');
+  spreadBox.setAttribute('role', 'img');
+  const spreadTrack = el('span', 'hs-track');
+  const spreadFill = el('span', 'hs-fill');
+  const spreadKnob = el('span', 'hs-knob');
+  spreadTrack.append(spreadFill, spreadKnob);
+  spreadTrack.setAttribute('aria-hidden', 'true');
+  spreadBox.append(el('span', 'hs-label hs-min', 'rafale'), spreadTrack, el('span', 'hs-label hs-max', 'éventail'));
+
+  frame.append(top, band, shot, comboHint, spreadBox, volleyBox, recall, gear);
   root.append(frame);
 
   // --- cache des valeurs affichées --------------------------------------
@@ -131,6 +170,13 @@ export function createHud(deps: HudDeps): Hud {
   let comboHintTimer = 0;
   let shotHideAt = 0;
   let shotLingering = false;
+  let cRecord = '';
+  let recordToastDone = false;
+  let cSpread = -1;
+  let spreadVisible = false;
+  let cLaunchX = NaN;
+  let cLaunchY = NaN;
+  let frameW = 0;
 
   function setVisible(e: HTMLElement, v: boolean): void {
     e.classList.toggle('on', v);
@@ -248,15 +294,20 @@ export function createHud(deps: HudDeps): Hud {
     let boardTop = frameH * 0.1;
     const bt = deps.renderer?.boardToScreen({ x: 0, y: 0 }).y;
     if (bt !== undefined && Number.isFinite(bt) && bt > 0) boardTop = bt;
-    const band = boardTop - barBottom;
-    const inBar = band < cap + 4;
+    const bandH = boardTop - barBottom;
+    // bande : badges + contrat, hauteur ≤ 28 px, sans toucher le plateau
+    const h = Math.max(18, Math.min(28, bandH - 4));
+    band.style.top = `${barBottom + Math.max(1, (bandH - h) / 2)}px`;
+    frame.style.setProperty('--band-h', `${h}px`);
+    // le contrat occupe la bande : le compteur de dégâts passe dans la barre (à la place de V<n>)
+    const inBar = bandH < cap + 4 || contract.busy;
     if (inBar) {
       // pas la place : remplace temporairement V<wave> dans la barre du haut
       cap = Math.min(cap, Math.max(20, tb.height - 4));
       const wb = waveBox.getBoundingClientRect();
       shot.style.top = `${wb.top - frameTop + wb.height / 2 - cap / 2}px`;
     } else {
-      shot.style.top = `${barBottom + (band - cap) / 2}px`;
+      shot.style.top = `${barBottom + (bandH - cap) / 2}px`;
     }
     shot.style.setProperty('--shot-size', `${cap}px`);
     frame.classList.toggle('shot-in-bar', inBar);
@@ -276,7 +327,10 @@ export function createHud(deps: HudDeps): Hud {
     frame.style.top = `${r.top - p.top}px`;
     frame.style.width = `${r.width}px`;
     frame.style.height = `${r.height}px`;
+    frameW = r.width;
+    frame.classList.toggle('compact', r.width < 480);
     layoutShot(r.width, r.height, r.top);
+    cLaunchX = NaN; // la jauge d'éventail se recale
     volleyDirty = true; // la largeur disponible a pu changer
 
   }
@@ -289,8 +343,11 @@ export function createHud(deps: HudDeps): Hud {
     }
     if (s.wave !== cWave) {
       cWave = s.wave;
-      waveBox.textContent = `V${s.wave}`;
+      waveNum.textContent = `V${s.wave}`;
     }
+    updateRecord(s.wave);
+    contract.update(s);
+    updateSpread(s);
     if (s.coins !== cCoins) {
       cCoins = s.coins;
       coinVal.textContent = fmt(s.coins);
@@ -338,9 +395,71 @@ export function createHud(deps: HudDeps): Hud {
     }
   }
 
+  /** « Record V7 » / « = record » / « RECORD ! » (+ toast une fois par run) */
+  function updateRecord(wave: number): void {
+    const best = deps.bestWave?.() ?? null;
+    let txt = '';
+    let st = '';
+    if (best !== null && best > 0) {
+      if (wave > best) {
+        txt = 'RECORD !';
+        st = 'beyond';
+      } else if (wave === best) {
+        txt = '= record';
+        st = 'equal';
+      } else {
+        txt = `Record V${best}`;
+        st = 'below';
+      }
+    }
+    const key = `${st}|${txt}`;
+    if (key !== cRecord) {
+      cRecord = key;
+      recordEl.hidden = txt === '';
+      recordEl.textContent = txt;
+      recordEl.dataset.state = st;
+      if (txt) recordEl.setAttribute('aria-label', st === 'below' ? `Record : vague ${best ?? 0}` : txt);
+    }
+    if (st === 'beyond' && !recordToastDone) {
+      recordToastDone = true;
+      deps.onNewRecord?.(wave);
+    }
+  }
+
+  /** jauge rafale ⟷ éventail sous le point de lancement, pendant la visée seulement */
+  function updateSpread(s: Readonly<RunState>): void {
+    const want = s.phase === 'aiming' && s.aimDir !== null && (deps.isGameScreen?.() ?? true);
+    if (want !== spreadVisible) {
+      spreadVisible = want;
+      setVisible(spreadBox, want);
+    }
+    if (!want) return;
+    const lp = s.launchPos;
+    if (lp.x !== cLaunchX || lp.y !== cLaunchY) {
+      cLaunchX = lp.x;
+      cLaunchY = lp.y;
+      const p = deps.renderer?.boardToScreen(lp);
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+        const half = spreadBox.offsetWidth / 2 || 84;
+        const x = Math.max(half + 4, Math.min((frameW || half * 2 + 8) - half - 4, p.x));
+        spreadBox.style.left = `${x}px`;
+        spreadBox.style.top = `${p.y + 10}px`;
+      }
+    }
+    const v = Number.isFinite(s.aimSpread) ? Math.max(0, Math.min(1, s.aimSpread)) : 0;
+    if (v !== cSpread) {
+      cSpread = v;
+      spreadBox.style.setProperty('--sp', String(v));
+      spreadBox.setAttribute('aria-label', `Ouverture de la volée : ${Math.round(v * 100)} %`);
+    }
+  }
+
   function showComboHint(combo: number): void {
     comboHint.textContent = `↻ ×${combo}`;
-    comboHint.style.top = `calc(${shot.style.top || '0px'} + var(--shot-size, 28px) + 6px)`;
+    // sous le bandeau contrat s'il occupe la bande, sinon sous le compteur de dégâts
+    comboHint.style.top = contract.busy
+      ? `calc(${band.style.top || '44px'} + var(--band-h) + 6px)`
+      : `calc(${shot.style.top || '0px'} + var(--shot-size, 28px) + 6px)`;
     setVisible(comboHint, true);
     clearTimeout(comboHintTimer);
     comboHintTimer = window.setTimeout(() => setVisible(comboHint, false), 2000);
@@ -351,6 +470,9 @@ export function createHud(deps: HudDeps): Hud {
     volleyDirty = true;
     shotLingering = false;
     shot.dataset.level = '0';
+    cRecord = '';
+    recordToastDone = false;
+    contract.reset();
   }
 
   return { el: frame, update, layout, reset, comboHint: showComboHint };

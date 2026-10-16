@@ -16,12 +16,14 @@ export function acquireBall(ctx: Ctx): Ball {
       combo: 0,
       alive: false,
       triggered: false,
+      golden: false,
     } satisfies Ball);
   b.id = newId(ctx);
   b.radius = ctx.cfg.blocks.board.ballRadius;
   b.combo = 0;
   b.alive = true;
   b.triggered = false;
+  b.golden = false;
   ctx.s.balls.push(b);
   return b;
 }

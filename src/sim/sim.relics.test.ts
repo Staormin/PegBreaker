@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Block, Sim, VolleyBall } from '../core/types';
 import { block, config, mut, newSim, ofType, setup, shoot } from './test-helpers';
+import { useNeutralFun } from './test-helpers';
+
+useNeutralFun();
+
 
 const UP = { x: 0, y: -1 };
 const hpOf = (sim: Sim, id: number): number | undefined => sim.state.blocks.find((b) => b.id === id)?.hp;

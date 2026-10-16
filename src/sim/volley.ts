@@ -3,6 +3,7 @@ import type { BallElement, BallTier, VolleyBall } from '../core/types';
 import type { Ctx } from './ctx';
 import { emit } from './ctx';
 import { acquireBall } from './pools';
+import { contractMax } from './contracts';
 
 const MAX_TIER = 3;
 
@@ -79,21 +80,29 @@ export function addVolleyBall(ctx: Ctx, element: BallElement, tier: BallTier): b
   return true;
 }
 
-/** Lance la prochaine balle de la rafale. */
+/**
+ * Lance la prochaine balle de la rafale (launchQueue est déjà dans l'ordre de départ, launchDirs aligné).
+ * La dernière balle lancée est dorée.
+ */
 export function launchNext(ctx: Ctx): void {
   const s = ctx.s;
   const it = s.internal;
-  const q = it.launchQueue[it.launchQueue.length - s.pendingLaunches];
+  const k = it.launchQueue.length - s.pendingLaunches;
+  const q = it.launchQueue[k];
   s.pendingLaunches--;
   if (!q) return;
+  const dirs = it.launchDirs;
+  const dx = dirs && dirs.length >= 2 * k + 2 ? (dirs[2 * k] as number) : it.dirX;
+  const dy = dirs && dirs.length >= 2 * k + 2 ? (dirs[2 * k + 1] as number) : it.dirY;
   const board = ctx.cfg.blocks.board;
   const b = acquireBall(ctx);
   b.element = q.element;
   b.tier = q.tier;
   b.pos.x = it.originX;
   b.pos.y = board.rows - b.radius;
-  b.vel.x = it.dirX * board.ballSpeed;
-  b.vel.y = it.dirY * board.ballSpeed;
+  b.vel.x = dx * board.ballSpeed;
+  b.vel.y = dy * board.ballSpeed;
+  b.golden = s.pendingLaunches === 0;
   if (b.element !== 'lead') {
     b.combo = ctx.relic.bouncy;
     if (it.inheritCombo > 0) {
@@ -102,5 +111,6 @@ export function launchNext(ctx: Ctx): void {
     }
   }
   if (b.combo > s.currentShotCombo) s.currentShotCombo = b.combo;
-  emit(ctx, { type: 'ball:launched', ballId: b.id, element: b.element, tier: b.tier, pos: { x: b.pos.x, y: b.pos.y } });
+  contractMax(ctx, 'reachCombo', b.combo);
+  emit(ctx, { type: 'ball:launched', ballId: b.id, element: b.element, tier: b.tier, pos: { x: b.pos.x, y: b.pos.y }, golden: b.golden });
 }
