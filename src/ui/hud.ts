@@ -370,7 +370,10 @@ export function createHud(deps: HudDeps): Hud {
     const menus = s.phase === 'aiming';
     const gearOn = (menus || firing) && !!deps.onSettings;
     if (gearOn !== gear.classList.contains('on')) setVisible(gear, gearOn);
-    if (firing !== frame.classList.contains('firing')) frame.classList.toggle('firing', firing);
+    if (firing !== frame.classList.contains('firing')) {
+      frame.classList.toggle('firing', firing);
+      volleyDirty = true; // la place disponible pour la volée change (⚙ à côté de ⏩)
+    }
     if (menus !== menuVisible) {
       menuVisible = menus;
       fragBox.disabled = !(menus && deps.onWell);

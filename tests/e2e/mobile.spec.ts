@@ -118,16 +118,12 @@ for (const vp of [
       expect(m.consoleErrors).toEqual([]);
     });
 
-    test('BUG J4-01 connu : bouton ◆ du Puits ≥ 48 px', async ({ page }) => {
-      // échec attendu tant que .hud-frags mesure 38×26 px ; retirer test.fail quand il sera corrigé
-      test.fail(true, 'J4-01 : cible tactile du bouton ◆ trop petite');
+    test('J4-01 corrigé : bouton ◆ du Puits ≥ 48 px', async ({ page }) => {
       const m = await measure(page, vp, false);
       expect(m.small.filter((x) => x.includes('hud-frags'))).toEqual([]);
     });
 
-    test(`HUD hors plateau pendant la volée${vp.width === 360 ? ' — BUG J4-02 connu' : ''}`, async ({ page }) => {
-      // 360×640 : pendant la volée, ⚙ glisse vers le haut (transition) et recouvre le bas du plateau
-      test.fail(vp.width === 360, 'J4-02 : ⚙ chevauche le plateau pendant la volée en 360×640');
+    test('HUD hors plateau pendant la volée (J4-02 corrigé : ⚙ à côté de ⏩)', async ({ page }) => {
       const m = await measure(page, vp, false);
       expect(m.firingOverlaps).toEqual([]);
     });
