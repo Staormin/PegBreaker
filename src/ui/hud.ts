@@ -222,6 +222,29 @@ export function createHud(deps: HudDeps): Hud {
       if (keys[i] === pendingPulse) retrigger(pill, 'pulse');
     }
     pendingPulse = -1;
+    fitVolley(counts);
+  }
+
+  /** une seule rangée : les groupes qui dépassent sont résumés en « +k » (jamais sur le plateau) */
+  function fitVolley(counts: number[]): void {
+    const box = volleyBox.getBoundingClientRect();
+    if (box.width < 1) return;
+    const pills = volleyBox.children;
+    const fits = (): boolean => {
+      const last = volleyBox.lastElementChild;
+      return !last || last.getBoundingClientRect().right <= box.right + 0.5;
+    };
+    if (fits()) return;
+    const more = el('div', 'pill pill-more');
+    let hidden = 0;
+    volleyBox.append(more);
+    while (pills.length > 2 && !fits()) {
+      const victim = pills[pills.length - 2] as HTMLElement;
+      hidden += counts[pills.length - 2] ?? 1;
+      victim.remove();
+      more.textContent = `+${hidden}`;
+      more.setAttribute('aria-label', `${hidden} balles de plus`);
+    }
   }
 
   // --- événements -------------------------------------------------------
@@ -294,6 +317,8 @@ export function createHud(deps: HudDeps): Hud {
     frame.style.width = `${r.width}px`;
     frame.style.height = `${r.height}px`;
     layoutShot(r.width, r.height, r.top);
+    volleyDirty = true; // la largeur disponible a pu changer
+
   }
 
   function update(s: Readonly<RunState>): void {

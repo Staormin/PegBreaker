@@ -18,6 +18,7 @@ import { createHud } from './hud';
 import { createHints } from './hints';
 import { createInput } from './input';
 import { createOnboarding } from './onboarding';
+import { registerServiceWorker } from './pwa';
 import { createGameoverScreen } from './screens/gameover';
 import { createDailyScreen } from './screens/daily';
 import { createRewardScreen } from './screens/reward';
@@ -45,6 +46,7 @@ const SUB_SCREENS: ReadonlySet<UiScreen> = new Set<UiScreen>(['meta', 'daily', '
 export function createUI(deps: UiDeps): UI {
   const { root, canvas, sim, bus, renderer, audio, meta, config } = deps;
   root.classList.add('pb-ui');
+  registerServiceWorker();
 
   let screen: UiScreen = 'game';
   let dragging = false;
@@ -295,7 +297,7 @@ export function createUI(deps: UiDeps): UI {
   });
   bus.on('achievement:unlocked', (e) => {
     const def = config.meta.achievements.find((a) => a.id === e.achievementId);
-    toasts.push(def?.name ?? e.achievementId, `+${def?.rewardFragments ?? 0} ◆`);
+    toasts.achievement(def?.name ?? e.achievementId, def?.rewardFragments ?? 0);
   });
 
   // --- premier geste de la session : déverrouille l'audio -------------------

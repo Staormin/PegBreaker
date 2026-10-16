@@ -19,7 +19,7 @@ Enchaîne les combos, fusionne tes balles, choisis tes améliorations… et desc
 - Chaque bloc affiche ses PV ; chaque touche lui retire les dégâts de la balle. À 0, il éclate et peut lâcher pièces, balles ou fragments.
 - Après chaque tir, tous les blocs descendent d'une rangée et une nouvelle rangée apparaît.
 - Un bloc qui franchit ta ligne te fait perdre des PV ; à 0 PV, la descente est terminée.
-- Chaque rebond sans toucher le sol augmente le combo de la balle, et donc ses dégâts. Les paliers 5, 10 et 20 déclenchent un effet.
+- Chaque rebond sans toucher le sol augmente le combo de la balle, et donc ses dégâts. Les paliers 3, 8 et 16 déclenchent un effet.
 - Vague nettoyée : choisis 1 carte parmi 3 (balle, relique, fusion…) ou prends des pièces. Une boutique apparaît régulièrement, et un boss toutes les quelques vagues.
 - La volée part du dernier point d'impact au sol de la volée précédente.
 
@@ -54,7 +54,26 @@ npm test             # tests unitaires (Vitest)
 npm run test:e2e     # tests de bout en bout (Playwright, sur le build servi par preview)
 ```
 
-Le dossier `dist/` est entièrement statique et jouable hors ligne : sers-le avec n'importe quel serveur statique (par exemple `npx vite preview`, ou `python3 -m http.server` dans `dist/`) puis ouvre `index.html`. L'ouverture directe en `file://` n'est pas prise en charge par les navigateurs pour les modules JavaScript.
+Le dossier `dist/` est entièrement statique : sers-le avec n'importe quel serveur statique (par exemple `npx vite preview`, ou `python3 -m http.server` dans `dist/`) puis ouvre `index.html`. Les navigateurs ne prennent pas en charge l'ouverture directe en `file://` pour les modules JavaScript.
+
+## Jouer hors ligne / installer
+
+Pegbreaker est une PWA : un service worker (`public/sw.js`) met le jeu en cache dès la première visite. Ensuite, il se recharge et se joue **sans réseau**.
+
+- **Installer** : depuis le navigateur, « Ajouter à l'écran d'accueil » (Android, iOS) ou l'icône d'installation de la barre d'adresse (Chrome, Edge). Le jeu s'ouvre alors en plein écran, en portrait.
+- **Mises à jour** : la page est toujours redemandée au réseau quand il est disponible ; le cache ne sert qu'en secours.
+- Le service worker n'est actif que sur le build de production servi ailleurs que sur `localhost`, pour ne gêner ni le développement ni les tests. Pour l'essayer en local, ouvre `npx vite preview` via `http://127.0.0.1:4173`.
+
+## Tests
+
+- **Unitaires** (Vitest, `npm test`) : 97 tests sur la simulation (déterminisme, robustesse sur des milliers de tirs, une mécanique par test), l'économie et la sauvegarde.
+- **Bout en bout** (Playwright, `npm run test:e2e`) : un bot joue de vraies parties sur le build, à la souris et au tactile. La suite comprend un smoke test, des invariants, des métriques de rythme et des tests de persistance.
+- **Rapports QA** : dans [`docs/qa/`](docs/qa/), avec les métriques et les captures de chaque jalon.
+
+## Documentation
+
+- [`docs/DESIGN.md`](docs/DESIGN.md) : design du jeu (boucles, récompenses, difficulté, méta).
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) : architecture technique, modules, événements, format de sauvegarde.
 
 ## Assets et licence
 
