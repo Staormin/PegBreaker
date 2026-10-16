@@ -35,7 +35,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
   let d: Readonly<SaveData> = freezeSave(withNormalizedMeta(defaultSave()));
 
   function withNormalizedMeta(s: SaveData): SaveData {
-    return { ...s, meta: normalizeMeta(s.meta, config) };
+    return { ...s, meta: normalizeMeta(s.meta, config, s.achievements) };
   }
 
   function commit(next: SaveData, persist = true): void {
@@ -63,7 +63,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
   }
 
   function getModifiers(): MetaModifiers {
-    return computeModifiers(d.meta, config);
+    return computeModifiers(d.meta, config, d.achievements);
   }
 
   function canBuyNode(nodeId: string): boolean {
@@ -75,7 +75,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     if (!node || !canBuy(d.meta, config, nodeId)) return false;
     const lvl = nodeLevel(d.meta, nodeId);
     const cost = nextCost(node, lvl) ?? 0;
-    const meta = normalizeMeta({ ...d.meta, fragments: d.meta.fragments - cost, nodes: { ...d.meta.nodes, [nodeId]: lvl + 1 } }, config);
+    const meta = normalizeMeta({ ...d.meta, fragments: d.meta.fragments - cost, nodes: { ...d.meta.nodes, [nodeId]: lvl + 1 } }, config, d.achievements);
     commit({ ...d, meta });
     return true;
   }
@@ -115,11 +115,14 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     let bonus = 0;
     for (const id of unlocked) bonus += config.meta.achievements.find((a) => a.id === id)?.rewardFragments ?? 0;
     stats.totalFragments += earned + bonus;
+    // Succès `unlocksElement` (nova, comet, lucky) : l'élément entre dans unlockedElements
+    // via normalizeMeta (source = liste des succès).
+    const achievements = [...d.achievements, ...unlocked];
     commit({
       ...d,
-      meta: { ...d.meta, fragments: d.meta.fragments + earned + bonus },
+      meta: normalizeMeta({ ...d.meta, fragments: d.meta.fragments + earned + bonus }, config, achievements),
       stats,
-      achievements: [...d.achievements, ...unlocked],
+      achievements,
       daily,
       currentRun: null,
     });

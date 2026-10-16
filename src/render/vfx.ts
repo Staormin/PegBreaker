@@ -3,6 +3,10 @@
 // - anneaux (explosions), éclairs en zigzag, gerbes de rayons, flashs locaux (blocs, rangée, lancement)
 // - état visuel par bloc (squash, flash, cache de la chaîne de PV), alimenté par les événements.
 
+import { easeOutBack, easeOutCubic } from '../core/math';
+import { heartPath } from './sprites';
+import { PALETTE } from './palette';
+
 const SQUASH_DUR = 0.12; // s
 const MAX_RINGS = 24;
 const MAX_BOLTS = 16;
@@ -10,10 +14,12 @@ const MAX_FLASHES = 48;
 const BOLT_POINTS = 9;
 const MAX_RAYS = 3;
 const RAY_COUNT = 24;
+const MAX_HEARTS = 8;
 
 interface Ring { active: boolean; x: number; y: number; r0: number; r1: number; t: number; dur: number; color: string; width: number; }
 interface Bolt { active: boolean; pts: Float32Array; t: number; dur: number; color: string; }
 interface Rays { active: boolean; x: number; y: number; t: number; dur: number; color: string; n: number; len: number; ang: Float32Array; }
+interface Heart { active: boolean; x: number; y: number; t: number; dur: number; color: string; s: number; }
 interface LocalFlash { active: boolean; x: number; y: number; w: number; h: number; t: number; dur: number; color: string; circle: boolean; }
 
 /** État visuel d'un bloc, indexé par blockId. */
@@ -36,6 +42,11 @@ export interface BlockFx {
   /** dernière géométrie dessinée (pour les effets de destruction) */
   x: number; y: number; w: number; kind: number;
   seenFrame: number;
+  /** dernière rangée vue (NaN = jamais) : une baisse hors 'advancing' = bloc repoussé (choc) */
+  lastRow: number;
+  /** glissement vers le haut : temps écoulé (s) et amplitude (rangées) */
+  slideT: number;
+  slideFrom: number;
 }
 
 export interface Vfx {
@@ -45,6 +56,8 @@ export interface Vfx {
   flashCircle(x: number, y: number, r: number, ms: number, color: string): void;
   /** gerbe de rayons qui partent de (x, y) : palier de combo fort */
   rays(x: number, y: number, ms: number, color: string, count: number, length: number): void;
+  /** petit cœur qui « pop » puis monte et s'efface (soin du vampire) ; s = demi-largeur (unités) */
+  heart(x: number, y: number, ms: number, color: string, s: number): void;
 
   /** état visuel par bloc */
   blockFx(id: number): BlockFx;
@@ -77,11 +90,14 @@ export function createVfx(): Vfx {
   const rays: Rays[] = [];
   for (let i = 0; i < MAX_RAYS; i++) rays.push({ active: false, x: 0, y: 0, t: 0, dur: 1, color: '#fff', n: 0, len: 1, ang: new Float32Array(RAY_COUNT) });
 
+  const hearts: Heart[] = [];
+  for (let i = 0; i < MAX_HEARTS; i++) hearts.push({ active: false, x: 0, y: 0, t: 0, dur: 1, color: '#fff', s: 0.1 });
+
   const fxPool: BlockFx[] = [];
   const fxMap = new Map<number, BlockFx>();
   let lastFrame = 0;
   function newFx(): BlockFx {
-    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, spawnT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0 };
+    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, spawnT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0, lastRow: Number.NaN, slideT: 1, slideFrom: 0 };
   }
   for (let i = 0; i < 128; i++) fxPool.push(newFx());
 
@@ -132,12 +148,18 @@ export function createVfx(): Vfx {
       for (let i = 0; i < r.n; i++) r.ang[i] = off + (i / r.n) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
     },
 
+    heart(x, y, ms, color, sz) {
+      const h = freeSlot(hearts);
+      h.active = true; h.x = x; h.y = y; h.t = 0; h.dur = ms / 1000; h.color = color; h.s = sz;
+    },
+
     blockFx(id) {
       let fx = fxMap.get(id);
       if (fx) return fx;
       for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (!f.inUse) { fx = f; break; } }
       if (!fx) { fx = newFx(); fxPool.push(fx); } // rare : plus de 128 blocs vivants
       fx.inUse = true; fx.id = id; fx.squashT = SQUASH_DUR; fx.popT = 1; fx.spawnT = 1; fx.hp = Number.NaN; fx.label = ''; fx.labelDirty = true; fx.seenFrame = lastFrame;
+      fx.lastRow = Number.NaN; fx.slideT = 1; fx.slideFrom = 0;
       fxMap.set(id, fx);
       return fx;
     },
@@ -174,8 +196,9 @@ export function createVfx(): Vfx {
       for (let i = 0; i < MAX_RINGS; i++) { const r = rings[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
       for (let i = 0; i < MAX_BOLTS; i++) { const b = bolts[i]!; if (b.active && (b.t += dt) >= b.dur) b.active = false; }
       for (let i = 0; i < MAX_FLASHES; i++) { const f = flashes[i]!; if (f.active && (f.t += dt) >= f.dur) f.active = false; }
-      for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse) { if (f.squashT < SQUASH_DUR) f.squashT += dt; if (f.popT < 1) f.popT += dt; if (f.spawnT < 1) f.spawnT += dt; } }
+      for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse) { if (f.squashT < SQUASH_DUR) f.squashT += dt; if (f.popT < 1) f.popT += dt; if (f.spawnT < 1) f.spawnT += dt; if (f.slideT < 1) f.slideT += dt; } }
       for (let i = 0; i < MAX_RAYS; i++) { const r = rays[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
+      for (let i = 0; i < MAX_HEARTS; i++) { const h = hearts[i]!; if (h.active && (h.t += dt) >= h.dur) h.active = false; }
     },
 
     drawWorld(ctx, k, ox, oy) {
@@ -245,6 +268,20 @@ export function createVfx(): Vfx {
           ctx.stroke();
         }
       }
+      for (let j = 0; j < MAX_HEARTS; j++) {
+        const h = hearts[j]!;
+        if (!h.active) continue;
+        const t = h.t / h.dur;
+        // pop easeOutBack sur 25 %, puis montée de 0,5 u et fondu linéaire
+        const p = t < 0.25 ? easeOutBack(t / 0.25) : 1;
+        const y = h.y - 0.5 * easeOutCubic(t);
+        const sz = h.s * (p < 0.05 ? 0.05 : p);
+        ctx.globalAlpha = t < 0.5 ? 1 : 1 - (t - 0.5) * 2;
+        ctx.fillStyle = PALETTE.outline;
+        heartPath(ctx, h.x, y + sz * 0.15, sz * 1.18); ctx.fill();
+        ctx.fillStyle = h.color;
+        heartPath(ctx, h.x, y, sz); ctx.fill();
+      }
       ctx.globalAlpha = 1;
     },
 
@@ -253,6 +290,7 @@ export function createVfx(): Vfx {
       for (const b of bolts) b.active = false;
       for (const f of flashes) f.active = false;
       for (const r of rays) r.active = false;
+      for (const h of hearts) h.active = false;
     },
   };
   return api;

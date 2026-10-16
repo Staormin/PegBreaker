@@ -5,8 +5,9 @@
 // Modules : engine (contexte, déverrouillage, graphe master + compresseur/limiteur),
 //           sfx (recettes), music (générateur), mixer (limiteur de polyphonie).
 import type { EventBus, EventType, Handler } from '../core/events';
-import type { AudioSystem, MusicTrackId, Settings } from '../core/types';
+import type { AudioSystem, BallElement, MusicTrackId, Settings } from '../core/types';
 import { createEngine, type EngineStats } from './engine';
+import { explodeKindFrom } from './hits';
 import { createMixer, type MixerStats, type Priority } from './mixer';
 import { createMusic, type MusicMode, type MusicStats } from './music';
 import { createSfx, type Sfx } from './sfx';
@@ -22,6 +23,13 @@ const MUSIC_INTRO_FADE_S = 3;
 const REVIVE_MUSIC_FADE_S = 1;
 /** run:over juste après run:lost : l'accord de mort suffit, pas de descente chromatique en plus */
 const LOST_THEN_OVER_MS = 1500;
+/** lightning:chain (prisme en rafale) : au plus 1 son par fenêtre (ms) */
+const CHAIN_MIN_MS = 50;
+/**
+ * Un événement de contexte (block:destroyed…) est considéré « lié » à l'événement courant s'il a été
+ * émis au plus N événements avant (destroyBlock émet contract/boss/drop entre les deux).
+ */
+const LINKED_WITHIN_EVENTS = 6;
 
 export interface AudioDebug {
   readonly engine: EngineStats;
@@ -73,6 +81,17 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   /** vrai dès qu'un block:hit porte un ballId (évolution de core) : le ping doré passe alors par le hit */
   let hitCarriesBallId = false;
   const unsubs: (() => void)[] = [];
+  // --- contexte pour les sons des nouvelles balles (les événements ne portent pas leur source) ---
+  /** numéro d'ordre de l'événement courant (incrémenté par onAny, après les handlers typés) */
+  let seq = 0;
+  /** élément de chaque balle en vol (ball:launched, block:hit) */
+  const ballElements = new Map<number, BallElement>();
+  /** élément de la dernière balle active (block:hit / ball:bounce) */
+  let lastBallElement: BallElement | null = null;
+  let explosiveSeq = -Infinity;
+  let vampireKillSeq = -Infinity;
+  let lastChainAt = -Infinity;
+  const linked = (at: number): boolean => seq - at <= LINKED_WITHIN_EVENTS;
 
   /** déclenche une recette si le contexte tourne, le volume n'est pas nul et le limiteur l'admet */
   const fire = (priority: Priority, play: () => void): void => {
@@ -97,14 +116,23 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     music.start(Math.max(0, MUSIC_INTRO_SILENCE_S - since), fadeInS ?? MUSIC_INTRO_FADE_S);
   }
 
+  unsubs.push(
+    bus.onAny(() => {
+      seq++;
+    }),
+  );
+
   // --- SFX ---------------------------------------------------------------------------
   on('ball:bounce', (e) => {
+    lastBallElement = ballElements.get(e.ballId) ?? lastBallElement;
     fire(0, () => (e.surface === 'wall' ? sfx.bounceWall() : sfx.bounceBlock(e.combo, e.surface === 'peg')));
     // block:hit ne porte pas (encore) de ballId : la sim émet le hit juste avant le rebond bloc/peg
     // de la même balle, on attache donc le ping doré à ce rebond.
     if (e.surface !== 'wall' && !hitCarriesBallId && golden.has(e.ballId)) fire(1, () => sfx.goldenPing(e.combo));
   });
   on('block:hit', (e) => {
+    lastBallElement = e.element;
+    ballElements.set(e.ballId, e.element);
     fire(1, () => sfx.blockHit(e.element, e.crit));
     const id = hitBallId(e);
     if (id !== null) {
@@ -113,29 +141,59 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     }
   });
   on('ball:launched', (e) => {
+    ballElements.set(e.ballId, e.element);
     if (!e.golden) return;
     golden.add(e.ballId);
     fire(2, () => sfx.goldenLaunch());
   });
   on('ball:grounded', (e) => {
     golden.delete(e.ballId);
+    ballElements.delete(e.ballId);
   });
-  on('lightning:chain', () => fire(1, () => sfx.lightningChain()));
+  on('lightning:chain', (e) => {
+    // le prisme frappe toute une rangée d'un coup : une rafale = un seul son
+    const t = nowMs();
+    if (t - lastChainAt < CHAIN_MIN_MS) return;
+    lastChainAt = t;
+    // champ core en priorité, sinon déduction par la dernière balle active
+    const prism = (e.element ?? lastBallElement) === 'prism';
+    fire(1, () => sfx.lightningChain(prism));
+  });
   on('drop:collected', (e) => fire(1, () => sfx.dropCollected(e.kind)));
-  on('block:destroyed', (e) => fire(2, () => sfx.blockDestroyed(e.kind, e.width)));
-  on('block:explode', () => fire(2, () => sfx.blockExplode()));
+  on('block:destroyed', (e) => {
+    if (e.kind === 'explosive') explosiveSeq = seq;
+    if (e.element === 'vampire' && e.kind !== 'heart') vampireKillSeq = seq;
+    fire(2, () => sfx.blockDestroyed(e.kind, e.width));
+  });
+  on('block:explode', (e) => {
+    const fromBlock = linked(explosiveSeq);
+    explosiveSeq = -Infinity;
+    const kind = explodeKindFrom(e.element, e.radius, fromBlock);
+    fire(2, () => sfx.blockExplode(kind));
+  });
   on('block:frozen', () => fire(2, () => sfx.blockFrozen()));
   on('block:breached', () => fire(2, () => sfx.blockBreached()));
-  on('ball:split', () => fire(2, () => sfx.ballSplit()));
+  on('ball:split', (e) => {
+    // champ core en priorité, sinon dernière balle active
+    const crystal = (e.element ?? lastBallElement) === 'crystal';
+    fire(2, () => sfx.ballSplit(crystal));
+  });
   on('combo:milestone', (e) => fire(2, () => sfx.comboMilestone(e.level)));
   on('volley:start', (e) => fire(2, () => sfx.volleyStart(e.count, e.spread)));
   on('volley:end', (e) => {
     golden.clear();
+    ballElements.clear();
+    lastBallElement = null;
     fire(2, () => sfx.volleyEnd(e.bestCombo));
   });
   on('volley:fusion', () => fire(2, () => sfx.volleyFusion()));
   on('player:damaged', () => fire(2, () => sfx.playerDamaged()));
-  on('player:healed', () => fire(2, () => sfx.playerHealed()));
+  on('player:healed', (e) => {
+    // champ core en priorité, sinon bloc détruit par le vampire juste avant
+    const vampire = e.source !== undefined ? e.source === 'vampire' : linked(vampireKillSeq);
+    vampireKillSeq = -Infinity;
+    fire(2, () => sfx.playerHealed(vampire));
+  });
   on('reward:offered', (e) => fire(2, () => sfx.rewardOffered(e.source)));
   on('reward:chosen', (e) => fire(2, () => sfx.rewardChosen(e.option.kind === 'fuse')));
   on('reward:skipped', () => fire(2, () => sfx.rewardSkipped()));
@@ -184,6 +242,8 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     bossAlive = false;
     lostAt = -Infinity;
     golden.clear();
+    ballElements.clear();
+    lastBallElement = null;
     music.stop(0.3);
     music.setWave(1);
     music.setTension(false);

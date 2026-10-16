@@ -63,21 +63,50 @@ function lockableRelics(config: GameConfig): Set<string> {
 }
 
 /**
+ * Éléments verrouillables : référencés par un nœud `unlockElement:<id>` ou par un succès
+ * `unlocksElement`. Pour eux, seule la source (nœud acheté / succès obtenu) fait foi.
+ */
+function lockableElements(config: GameConfig): Set<BallElement> {
+  const s = new Set<BallElement>();
+  for (const n of config.meta.nodes) {
+    const e = parseEffect(n.effect, config);
+    if (e.kind === 'element') s.add(e.id);
+  }
+  for (const a of config.meta.achievements) if (a.unlocksElement) s.add(a.unlocksElement);
+  return s;
+}
+
+/** Éléments débloqués par les succès possédés (`AchievementDef.unlocksElement`). */
+export function achievementElements(config: GameConfig, achievements: readonly string[]): BallElement[] {
+  const out: BallElement[] = [];
+  for (const a of config.meta.achievements) {
+    const el = a.unlocksElement;
+    if (el && achievements.includes(a.id) && config.balls.defs.some((d) => d.id === el)) out.push(el);
+  }
+  return out;
+}
+
+/**
  * Normalise un MetaState (nouvel objet) :
  * - nœuds de coût 0 sans prérequis achetés d'office (niveau 1) — ex. el_fire, el_lightning ;
  * - niveaux plafonnés à costs.length ;
- * - listes de déblocage = union(stocké, effets des nœuds achetés), 'stone' toujours présent,
- *   reliques non verrouillables toujours présentes ;
+ * - éléments = 'stone' + nœuds achetés + succès obtenus (`achievements`) ; un élément
+ *   verrouillable stocké sans sa source est retiré (sauvegarde trafiquée / nœud supprimé) ;
+ *   un élément non verrouillable stocké est conservé. Réparation : un succès déjà obtenu
+ *   avec `unlocksElement` garantit l'élément ;
+ * - reliques = union(stocké, nœuds achetés), reliques non verrouillables toujours présentes ;
  * - activeRunMods restreint aux mods disponibles.
  */
-export function normalizeMeta(meta: MetaState, config: GameConfig): MetaState {
+export function normalizeMeta(meta: MetaState, config: GameConfig, achievements: readonly string[]): MetaState {
   const nodes = { ...meta.nodes };
   for (const n of config.meta.nodes) {
     const lvl = nodes[n.id] ?? 0;
     if (lvl === 0 && n.costs[0] === 0 && n.requires.length === 0) nodes[n.id] = 1;
     else if (lvl > n.costs.length) nodes[n.id] = n.costs.length;
   }
-  const elements = new Set<BallElement>(['stone', ...meta.unlockedElements]);
+  const lockEl = lockableElements(config);
+  const elements = new Set<BallElement>(['stone', ...achievementElements(config, achievements)]);
+  for (const e of meta.unlockedElements) if (!lockEl.has(e)) elements.add(e);
   const lockable = lockableRelics(config);
   const relics = new Set<string>(meta.unlockedRelics);
   for (const r of config.relics.defs) if (!lockable.has(r.id)) relics.add(r.id);
@@ -118,7 +147,7 @@ export function availableRunMods(meta: MetaState, config: GameConfig): string[] 
  * × Π runMods[id].fragmentMultiplier). Les replier ici les appliquerait deux fois.
  * Pour l'affichage, utiliser `effectiveFragmentMultiplier`.
  */
-export function computeModifiers(meta: MetaState, config: GameConfig): MetaModifiers {
+export function computeModifiers(meta: MetaState, config: GameConfig, achievements: readonly string[]): MetaModifiers {
   const sums: Record<NumericKey, number> = { bonusHp: 0, bonusStartBalls: 0, coinMultiplier: 0, fragmentMultiplier: 0, freeRerolls: 0 };
   for (const n of config.meta.nodes) {
     const lvl = Math.min(nodeLevel(meta, n.id), n.costs.length);
@@ -126,7 +155,7 @@ export function computeModifiers(meta: MetaState, config: GameConfig): MetaModif
     const e = parseEffect(n.effect, config);
     if (e.kind === 'stat') sums[e.key] += lvl * n.valuePerLevel;
   }
-  const norm = normalizeMeta(meta, config);
+  const norm = normalizeMeta(meta, config, achievements);
   const r = (v: number): number => Math.round(v * 1e6) / 1e6; // évite 1.2000000000000002
   return {
     bonusHp: sums.bonusHp,

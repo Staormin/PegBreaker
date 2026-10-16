@@ -5,6 +5,8 @@
 export const SUBSTEP_MS = 1000 / 240;
 /** Tolérance de l'accumulateur de pas (évite de perdre un sous-pas sur l'arrondi flottant). */
 export const STEP_EPS = 1e-6;
+/** Micro-pas anti-tunneling : déplacement max par micro-pas = fraction du rayon de la balle. */
+export const MICROSTEP_RADIUS_FRACTION = 0.9;
 /** Rayon d'une cheville (peg), en cellules. */
 export const PEG_RADIUS = 0.3;
 /** Rayon d'un drop, en cellules. */

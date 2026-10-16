@@ -4,6 +4,7 @@
 // Les recettes sont inertes (no-op) si le contexte n'est pas prêt.
 import type { BallElement, BlockKind, DropKind } from '../core/types';
 import type { Engine } from './engine';
+import { FAMILY_HIT, HIT_VOICES, type ExplodeKind } from './hits';
 
 const FLOOR = 0.0001;
 /** demi-tons max pour le pitch des rebonds */
@@ -53,11 +54,14 @@ export interface Sfx {
   bounceBlock(combo: number, peg: boolean): void;
   blockHit(element: BallElement, crit: boolean): void;
   blockDestroyed(kind: BlockKind, width: number): void;
-  blockExplode(): void;
+  /** 'bomb' : plus grave et long ; 'nova' : court et scintillant */
+  blockExplode(kind?: ExplodeKind): void;
   blockFrozen(): void;
   blockBreached(): void;
-  lightningChain(): void;
-  ballSplit(): void;
+  /** prism : rayon horizontal (balayage scintillant) au lieu de l'arc électrique */
+  lightningChain(prism?: boolean): void;
+  /** crystal : éclats cristallins au lieu du « pop » de scission */
+  ballSplit(crystal?: boolean): void;
   comboMilestone(level: 1 | 2 | 3): void;
   dropCollected(kind: DropKind): void;
   /** spread 0..1 : le whoosh s'ouvre (filtre) et s'élargit (stéréo alternée) */
@@ -65,7 +69,8 @@ export interface Sfx {
   volleyEnd(bestCombo: number): void;
   volleyFusion(): void;
   playerDamaged(): void;
-  playerHealed(): void;
+  /** vampire : couche grave « battement » en plus */
+  playerHealed(vampire?: boolean): void;
   /** source 'boss' : fanfare plus riche */
   rewardOffered(source?: 'wave' | 'boss'): void;
   rewardChosen(fuse: boolean): void;
@@ -183,49 +188,147 @@ export function createSfx(e: Engine): Sfx {
 
     blockHit(element, crit) {
       const t = now();
-      switch (element) {
-        case 'fire':
-          // grave et soufflé : bruit passe-bas qui s'ouvre lentement + corps grave
-          noise({ filter: 'lowpass', f0: vary(700), f1: 180, q: 0.8, dur: 0.11, gain: 0.22, at: t, attack: 0.012 });
-          tone({ type: 'sine', f0: vary(150), f1: 85, dur: 0.09, gain: 0.18, at: t });
-          break;
-        case 'lightning':
-          // crépitement : trois éclats aigus irréguliers
-          for (let i = 0; i < 3; i++) {
-            const dt = i * (0.009 + Math.random() * 0.01);
-            noise({ filter: 'highpass', f0: vary(3200, 0.2), q: 1, dur: 0.012, gain: 0.16, at: t + dt });
+      const v = HIT_VOICES[element];
+      const fam = FAMILY_HIT[v.family];
+      switch (v.family) {
+        case 'elemental':
+          if (v.mode === 'crackle') {
+            // crépitant : trois éclats passe-haut irréguliers + clic aigu
+            for (let i = 0; i < 3; i++) {
+              const dt = i * (0.009 + Math.random() * 0.01);
+              noise({ filter: 'highpass', f0: vary(v.filterHz, 0.2), q: 1, dur: 0.012, gain: 0.16, at: t + dt });
+            }
+            click(t, 0.05, v.hz);
+          } else {
+            // soufflé : passe-bas qui se referme lentement + corps grave
+            noise({ filter: 'lowpass', f0: vary(v.filterHz), f1: v.filterHz * 0.26, q: 0.8, dur: fam.dur, gain: 0.22, at: t, attack: 0.012 });
+            tone({ type: 'sine', f0: vary(v.hz), f1: v.hz * 0.57, dur: fam.dur * 0.8, gain: 0.18, at: t });
           }
-          click(t, 0.05, 2400);
+          if (v.layer === 'chime') {
+            tone({ type: 'sine', f0: vary(v.hz), dur: 0.12, gain: 0.07, at: t });
+            tone({ type: 'sine', f0: vary(v.hz * 1.498), dur: 0.08, gain: 0.04, at: t + 0.005 });
+          } else if (v.layer === 'bubble') {
+            tone({ type: 'sine', f0: vary(500), f1: 900, dur: 0.03, gain: 0.07, at: t + 0.03 });
+            tone({ type: 'sine', f0: vary(700), f1: 1300, dur: 0.025, gain: 0.06, at: t + 0.058 });
+          } else if (v.layer === 'trail') {
+            noise({ filter: 'bandpass', f0: 800, f1: 4200, q: 2, dur: 0.07, gain: 0.08, at: t + 0.01, attack: 0.02 });
+          }
           break;
-        case 'ice':
-          // cristallin : deux sinus aigus non harmoniques + grain très aigu
-          tone({ type: 'sine', f0: vary(2637), dur: 0.12, gain: 0.07, at: t });
-          tone({ type: 'sine', f0: vary(3951), dur: 0.08, gain: 0.04, at: t + 0.005 });
-          noise({ filter: 'bandpass', f0: 6000, q: 4, dur: 0.02, gain: 0.08, at: t });
+
+        case 'heavy': {
+          // sourd et gros : sub + bruit très étouffé, aucun clic
+          const long = v.layer === 'boom' ? 1.9 : 1;
+          const at = v.layer === 'fuse' ? t + 0.02 : t;
+          if (v.layer === 'fuse') noise({ filter: 'highpass', f0: 5000, q: 0.7, dur: 0.02, gain: 0.06, at: t });
+          noise({ filter: 'lowpass', f0: v.filterHz, q: 1, dur: 0.06 * long, gain: 0.28, at });
+          tone({ type: 'sine', f0: vary(v.hz), f1: v.hz * 0.8, dur: fam.dur * long, gain: 0.27, at });
+          if (v.layer === 'boom') tone({ type: 'triangle', f0: v.hz * 2, f1: v.hz * 1.5, dur: 0.12, gain: 0.12, at });
+          else if (v.layer === 'buzz') {
+            const lp = e.filter('lowpass', 600, 1);
+            if (lp && e.sfxOut) {
+              lp.connect(e.sfxOut);
+              tone({ type: 'sawtooth', f0: vary(v.hz * 2), f1: v.hz * 1.6, dur: 0.06, gain: 0.1, at, dest: lp });
+            }
+          }
           break;
-        case 'ghost':
-          // éthéré : deux sinus détunés, attaque douce, pas de transitoire
-          tone({ type: 'sine', f0: vary(660), f1: 720, dur: 0.18, gain: 0.07, at: t, attack: 0.03 });
-          tone({ type: 'sine', f0: vary(667), f1: 600, dur: 0.18, gain: 0.05, at: t, attack: 0.04 });
+        }
+
+        case 'tricky': {
+          // deux sinus détunés, attaque douce, brefs
+          const [p0 = 1, p1 = 1.012] = fam.partials;
+          const f = vary(v.hz);
+          const dur = fam.dur;
+          let r0 = 1.09; // divergence par défaut (ghost)
+          let r1 = 0.91;
+          let attack = 0.025;
+          if (v.layer === 'zip') {
+            r0 = r1 = 0.5;
+            attack = 0.003;
+          } else if (v.layer === 'glide') {
+            r0 = r1 = 1.12;
+            attack = 0.012;
+          } else if (v.layer === 'swing') {
+            r0 = r1 = 1.26;
+            attack = 0.01;
+          }
+          const sweep = v.layer === 'zip' ? 0.05 : v.layer === 'swing' ? 0.05 : dur;
+          tone({ type: 'sine', f0: f * p0, f1: f * p0 * r0, sweep, dur, gain: 0.07, at: t, attack });
+          tone({ type: 'sine', f0: f * p1, f1: f * p1 * r1, sweep, dur, gain: 0.05, at: t, attack: attack * 1.3 });
+          if (v.layer === 'swing') {
+            // retour : redescend sous la note de départ
+            tone({ type: 'sine', f0: f * 1.26, f1: f * 0.9, dur: 0.07, gain: 0.05, at: t + 0.06, attack: 0.008 });
+          } else if (v.layer === 'repeat') {
+            tone({ type: 'sine', f0: f * p0, dur: dur * 0.8, gain: 0.03, at: t + 0.07, attack });
+            tone({ type: 'sine', f0: f * p1, dur: dur * 0.8, gain: 0.02, at: t + 0.07, attack });
+          }
           break;
-        case 'lead':
-          // sourd : bruit très filtré + sub, pas de clic
-          noise({ filter: 'lowpass', f0: 320, q: 1, dur: 0.06, gain: 0.28, at: t });
-          tone({ type: 'sine', f0: vary(72), dur: 0.08, gain: 0.25, at: t });
+        }
+
+        case 'swarm': {
+          // double clic rapide
+          const gap = v.layer === 'third' ? 0.018 : v.layer === 'stereo' ? 0.025 : 0.035;
+          const second = v.layer === 'stereo' ? v.filterHz : v.filterHz * 1.22;
+          const pan = v.layer === 'stereo' ? 0.6 : 0;
+          noise({ filter: 'bandpass', f0: vary(v.filterHz), q: 2, dur: fam.dur, gain: 0.14, at: t, pan: -pan });
+          click(t, 0.07, v.hz);
+          noise({ filter: 'bandpass', f0: vary(second), q: 2, dur: fam.dur, gain: 0.12, at: t + gap, pan });
+          click(t + gap, 0.06, v.hz * 1.2);
+          if (v.layer === 'third') {
+            noise({ filter: 'bandpass', f0: vary(v.filterHz * 1.4), q: 2, dur: fam.dur * 0.8, gain: 0.1, at: t + gap * 2 });
+          }
           break;
-        case 'split':
-          // double clic
-          noise({ filter: 'bandpass', f0: vary(1800), q: 2, dur: 0.025, gain: 0.14, at: t });
-          click(t, 0.07);
-          noise({ filter: 'bandpass', f0: vary(2200), q: 2, dur: 0.025, gain: 0.12, at: t + 0.035 });
-          click(t + 0.035, 0.06, 1200);
+        }
+
+        case 'greed': {
+          // « ding » métallique : fondamentale + partiel inharmonique + clic
+          const [, ratio = 2.76] = fam.partials;
+          let dest: AudioNode | null | undefined;
+          if (v.filterHz > 0) {
+            const lp = e.filter('lowpass', v.filterHz, 0.7);
+            if (lp && e.sfxOut) {
+              lp.connect(e.sfxOut);
+              dest = lp;
+            }
+          }
+          const f = vary(v.hz, 0.01);
+          tone({ type: 'sine', f0: f, dur: fam.dur, gain: 0.09, at: t, attack: 0.001, dest });
+          tone({ type: 'sine', f0: f * ratio, dur: fam.dur * 0.45, gain: 0.03, at: t, attack: 0.001, dest });
+          click(t, 0.04, 3000);
+          if (v.layer === 'sparkle') {
+            tone({ type: 'sine', f0: f * 1.498, dur: 0.1, gain: 0.06, at: t + 0.045, attack: 0.001 });
+          } else if (v.layer === 'hum') {
+            tone({ type: 'triangle', f0: v.hz / 10, f1: v.hz / 9, dur: 0.09, gain: 0.12, at: t, attack: 0.008 });
+          } else if (v.layer === 'warm') {
+            tone({ type: 'sine', f0: v.hz / 4, dur: 0.12, gain: 0.1, at: t, attack: 0.01 });
+          }
           break;
-        case 'stone':
-        default:
-          // neutre : recette de base (passe-bande 1 200 Hz Q 2, 40 ms + clic square 2 ms)
-          noise({ filter: 'bandpass', f0: vary(1200), q: 2, dur: 0.04, gain: 0.18, at: t });
-          click(t, 0.06);
+        }
+
+        case 'arcane':
+        default: {
+          if (v.layer === 'neutral') {
+            // stone : recette de base (passe-bande 1 200 Hz Q 2, 40 ms + clic square 2 ms)
+            noise({ filter: 'bandpass', f0: vary(v.filterHz), q: 2, dur: 0.04, gain: 0.18, at: t });
+            click(t, 0.06);
+            break;
+          }
+          // cristallin filtré : triangle dans un passe-bande résonant
+          const bp = e.filter(fam.filter === 'none' ? 'bandpass' : fam.filter, v.filterHz, v.layer === 'suck' ? 1.5 : 6);
+          if (!bp || !e.sfxOut) break;
+          bp.connect(e.sfxOut);
+          const f = vary(v.hz, 0.015);
+          const dur = v.layer === 'ring' ? 0.25 : fam.dur;
+          if (v.layer === 'suck') {
+            bp.frequency.setValueAtTime(v.filterHz, t);
+            bp.frequency.exponentialRampToValueAtTime(v.filterHz * 0.4, t + dur);
+          }
+          tone({ type: 'triangle', f0: f, f1: v.layer === 'suck' ? f * 0.5 : undefined, dur, gain: 0.22, at: t, attack: 0.002, dest: bp });
+          tone({ type: 'sine', f0: f * 2, dur: dur * 0.4, gain: v.layer === 'ring' ? 0.04 : 0.02, at: t, attack: 0.001 });
+          if (v.layer === 'fifth') tone({ type: 'triangle', f0: f * 1.498, dur: dur * 0.8, gain: 0.18, at: t + 0.012, attack: 0.002, dest: bp });
+          else if (v.layer === 'burst') noise({ filter: 'highpass', f0: 6000, q: 0.7, dur: 0.03, gain: 0.08, at: t });
+          else if (v.layer === 'grain') noise({ filter: 'bandpass', f0: vary(2500), q: 0.8, dur: 0.05, gain: 0.1, at: t });
           break;
+        }
       }
       if (crit) tone({ type: 'sine', f0: vary(1568), dur: 0.09, gain: 0.08, at: t + 0.01 });
     },
@@ -238,8 +341,24 @@ export function createSfx(e: Engine): Sfx {
       if (kind === 'heart') tone({ type: 'triangle', f0: 880, f1: 1320, dur: 0.15, gain: 0.08, at: t + 0.03 });
     },
 
-    blockExplode() {
+    blockExplode(kind = 'normal') {
       const t = now();
+      if (kind === 'bomb') {
+        // bombe : plus grave et plus long, en deux temps, sub qui retombe
+        noise({ filter: 'lowpass', f0: 1400, f1: 40, q: 0.7, dur: 0.6, gain: 0.55, at: t });
+        noise({ filter: 'lowpass', f0: 700, f1: 40, q: 0.7, dur: 0.45, gain: 0.3, at: t + 0.12 });
+        tone({ type: 'sine', f0: 44, f1: 26, dur: 0.6, gain: 0.5, at: t });
+        return;
+      }
+      if (kind === 'nova') {
+        // nova : souffle court + scintillement (4 partiels aigus échelonnés)
+        noise({ filter: 'lowpass', f0: 3000, f1: 200, q: 0.7, dur: 0.2, gain: 0.3, at: t });
+        noise({ filter: 'highpass', f0: 5000, f1: 9000, q: 0.7, dur: 0.18, gain: 0.06, at: t + 0.02 });
+        [1760, 2217.5, 2637, 3520].forEach((f, i) =>
+          tone({ type: 'sine', f0: vary(f, 0.01), dur: 0.25, gain: 0.045, at: t + 0.02 + i * 0.025, attack: 0.002 }),
+        );
+        return;
+      }
       noise({ filter: 'lowpass', f0: 2000, f1: 60, q: 0.7, dur: 0.35, gain: 0.5, at: t });
       tone({ type: 'sine', f0: 50, f1: 38, dur: 0.3, gain: 0.45, at: t });
     },
@@ -258,14 +377,29 @@ export function createSfx(e: Engine): Sfx {
       tone({ type: 'triangle', f0: 330, f1: 165, dur: 0.2, gain: 0.14, at: t + 0.04 });
     },
 
-    lightningChain() {
+    lightningChain(prism = false) {
       const t = now();
+      if (prism) {
+        // rayon de prisme : balayage montant + quinte, grain très aigu
+        tone({ type: 'sine', f0: vary(1200, 0.05), f1: 2400, dur: 0.09, gain: 0.06, at: t, attack: 0.004 });
+        tone({ type: 'triangle', f0: vary(1800, 0.05), f1: 3600, dur: 0.08, gain: 0.04, at: t + 0.01, attack: 0.004 });
+        noise({ filter: 'highpass', f0: 6000, q: 0.7, dur: 0.05, gain: 0.05, at: t });
+        return;
+      }
       tone({ type: 'sawtooth', f0: vary(1800, 0.1), f1: 300, dur: 0.07, gain: 0.06, at: t });
       noise({ filter: 'highpass', f0: 2500, q: 0.7, dur: 0.03, gain: 0.12, at: t });
     },
 
-    ballSplit() {
+    ballSplit(crystal = false) {
       const t = now();
+      if (crystal) {
+        // éclatement du cristal : éclats sinus aigus échelonnés + grésil
+        noise({ filter: 'highpass', f0: 5000, q: 0.7, dur: 0.06, gain: 0.08, at: t });
+        [3136, 4186, 3729, 5274].forEach((f, i) =>
+          tone({ type: 'sine', f0: vary(f, 0.02), dur: 0.12, gain: 0.04, at: t + i * (0.012 + Math.random() * 0.01), attack: 0.001 }),
+        );
+        return;
+      }
       tone({ type: 'sine', f0: vary(900), f1: 1300, dur: 0.07, gain: 0.08, at: t });
       tone({ type: 'sine', f0: vary(900), f1: 650, dur: 0.07, gain: 0.08, at: t });
     },
@@ -353,10 +487,15 @@ export function createSfx(e: Engine): Sfx {
       tone({ type: 'sawtooth', f0: 110, dur: 0.25, gain: 0.25, at: t, detune: 14, dest: sh });
     },
 
-    playerHealed() {
+    playerHealed(vampire = false) {
       const t = now();
       tone({ type: 'triangle', f0: 330, f1: 495, dur: 0.2, gain: 0.1, at: t, attack: 0.02 });
       tone({ type: 'sine', f0: 990, dur: 0.18, gain: 0.04, at: t + 0.08 });
+      if (vampire) {
+        // battement grave (deux pulsations) : la vie aspirée
+        tone({ type: 'sine', f0: 98, dur: 0.07, gain: 0.14, at: t, attack: 0.008 });
+        tone({ type: 'sine', f0: 92, dur: 0.09, gain: 0.11, at: t + 0.13, attack: 0.008 });
+      }
     },
 
     rewardOffered(source = 'wave') {

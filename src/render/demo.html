@@ -12,12 +12,22 @@
     </style>
   </head>
   <body>
-    <!-- Page de dev uniquement : `npm run dev` puis /src/render/demo.html -->
+    <!-- Page de dev uniquement : `npm run dev` puis /src/render/demo.html (?balls=30, ?gallery=1) -->
     <div id="app"><canvas id="game"></canvas></div>
     <script type="module">
-      import { mountRenderDemo } from './demo.ts';
-      const n = Number(new URLSearchParams(location.search).get('balls')) || undefined;
-      window.__stopRenderDemo = mountRenderDemo(document.getElementById('game'), { balls: n, debug: (api) => { window.__renderDemoApi = api; } });
+      import { mountRenderDemo, mountBallGallery } from './demo.ts';
+      const q = new URLSearchParams(location.search);
+      if (q.get('gallery') === '1') {
+        // planche des 27 balles : page défilante
+        for (const el of [document.documentElement, document.body]) { el.style.overflow = 'auto'; el.style.height = 'auto'; }
+        const app = document.getElementById('app');
+        app.style.position = 'static';
+        window.__stopRenderDemo = mountBallGallery(document.getElementById('game'));
+        window.__galleryReady = true;
+      } else {
+        const n = Number(q.get('balls')) || undefined;
+        window.__stopRenderDemo = mountRenderDemo(document.getElementById('game'), { balls: n, debug: (api) => { window.__renderDemoApi = api; } });
+      }
     </script>
   </body>
 </html>

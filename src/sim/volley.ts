@@ -5,6 +5,8 @@ import { emit } from './ctx';
 import { acquireBall } from './pools';
 import { contractMax } from './contracts';
 import { modElement } from './mods';
+import type { BallFx } from './state';
+import { elementHooks } from './elements/index';
 
 const MAX_TIER = 3;
 
@@ -97,14 +99,24 @@ export function launchNext(ctx: Ctx): void {
   const dy = dirs && dirs.length >= 2 * k + 2 ? (dirs[2 * k + 1] as number) : it.dirY;
   const board = ctx.cfg.blocks.board;
   const b = acquireBall(ctx);
+  const fx = it.bfx[s.balls.length - 1] as BallFx;
   b.element = q.element;
   b.tier = q.tier;
+  fx.dirX = dx;
+  fx.dirY = dy;
+  const H = elementHooks(b.element);
+  if (H.modifyBall) H.modifyBall(ctx, b, fx); // géante, comète : rayon / vitesse
   b.pos.x = it.originX;
   b.pos.y = board.rows - b.radius;
-  b.vel.x = dx * ctx.ballSpeed;
-  b.vel.y = dy * ctx.ballSpeed;
+  if (fx.speedMult === 1) {
+    b.vel.x = dx * ctx.ballSpeed;
+    b.vel.y = dy * ctx.ballSpeed;
+  } else {
+    b.vel.x = dx * ctx.ballSpeed * fx.speedMult;
+    b.vel.y = dy * ctx.ballSpeed * fx.speedMult;
+  }
   b.golden = s.pendingLaunches === 0;
-  if (b.element !== 'lead') {
+  if (!H.noCombo) {
     b.combo = ctx.relic.bouncy;
     if (it.inheritCombo > 0) {
       b.combo += it.inheritCombo;
@@ -114,4 +126,5 @@ export function launchNext(ctx: Ctx): void {
   if (b.combo > s.currentShotCombo) s.currentShotCombo = b.combo;
   contractMax(ctx, 'reachCombo', b.combo);
   emit(ctx, { type: 'ball:launched', ballId: b.id, element: b.element, tier: b.tier, pos: { x: b.pos.x, y: b.pos.y }, golden: b.golden });
+  if (H.onLaunch) H.onLaunch(ctx, b, fx); // jumelle : balles supplémentaires ; perforante, boomerang : compteurs
 }

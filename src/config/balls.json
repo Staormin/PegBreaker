@@ -102,7 +102,7 @@
       "description": "Ronge le bloc pendant 3 tirs.",
       "family": "elemental",
       "baseDamage": 10,
-      "weight": 5,
+      "weight": 4,
       "color": "#9dff3d",
       "params": {
         "pctPerTurn": [
@@ -143,8 +143,8 @@
       "name": "Perforante",
       "description": "Traverse le premier bloc touché.",
       "family": "tricky",
-      "baseDamage": 10,
-      "weight": 5,
+      "baseDamage": 6,
+      "weight": 3,
       "color": "#ffffff",
       "params": {
         "pierces": [
@@ -245,6 +245,16 @@
           0.3,
           0.3,
           0.3
+        ],
+        "radiusMult": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "spreadDeg": [
+          30,
+          30,
+          30
         ]
       }
     },
@@ -261,6 +271,11 @@
           1,
           2,
           3
+        ],
+        "healAmount": [
+          1,
+          1,
+          1
         ]
       }
     },
@@ -279,9 +294,9 @@
           3
         ],
         "damageMult": [
-          0.7,
-          0.7,
-          0.7
+          0.85,
+          0.85,
+          0.85
         ]
       }
     },
@@ -291,13 +306,13 @@
       "description": "Rayon sur toute la rangée à chaque mur.",
       "family": "arcane",
       "baseDamage": 10,
-      "weight": 4,
+      "weight": 5,
       "color": "#9af0ff",
       "params": {
         "rowRatio": [
-          0.3,
-          0.45,
-          0.6
+          0.4,
+          0.55,
+          0.7
         ]
       }
     },
@@ -323,7 +338,7 @@
       "description": "Repart du sol une fois.",
       "family": "tricky",
       "baseDamage": 10,
-      "weight": 4,
+      "weight": 3,
       "color": "#7fffd4",
       "params": {
         "ratio": [
@@ -339,7 +354,7 @@
       "description": "Revient vers toi en frappant.",
       "family": "tricky",
       "baseDamage": 10,
-      "weight": 4,
+      "weight": 5,
       "color": "#ffb347",
       "params": {
         "returns": [
@@ -360,13 +375,13 @@
       "description": "Plus fort à chaque rebond, puis éclate.",
       "family": "arcane",
       "baseDamage": 10,
-      "weight": 4,
+      "weight": 5,
       "color": "#e0f7ff",
       "params": {
         "perBouncePct": [
-          20,
-          20,
-          20
+          30,
+          30,
+          30
         ],
         "bounces": [
           8,
@@ -379,9 +394,19 @@
           4
         ],
         "shardMult": [
-          0.25,
-          0.25,
-          0.25
+          0.4,
+          0.4,
+          0.4
+        ],
+        "shardRadiusMult": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "shardSpreadDeg": [
+          40,
+          40,
+          40
         ]
       }
     },
@@ -503,6 +528,11 @@
           3,
           3,
           3
+        ],
+        "dropMult": [
+          2,
+          2,
+          2
         ]
       }
     }

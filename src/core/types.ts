@@ -273,7 +273,7 @@ export type GameEvent =
   | { type: 'shop:rerolled'; cost: number }
   | { type: 'shop:left' }
   | { type: 'player:damaged'; amount: number; hpLeft: number }
-  | { type: 'player:healed'; amount: number; hpLeft: number; pos?: Vec2; source?: 'heart' | 'drop' | 'relic' | 'contract' | 'vampire' | 'shop' | 'revive' }
+  | { type: 'player:healed'; amount: number; hpLeft: number; pos?: Vec2; source?: 'heart' | 'drop' | 'relic' | 'contract' | 'reward' | 'vampire' | 'shop' | 'revive' }
   | { type: 'meta:unlocked'; nodeId: string }
   | { type: 'achievement:unlocked'; achievementId: string }
   | { type: 'ui:click' }

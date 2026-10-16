@@ -3,13 +3,15 @@
 // (dispatch + limiteur + recettes). `npm run dev` puis /src/audio/preview.html
 import { createEventBus } from '../core/events';
 import type { BallElement, ContractDef, ContractState, GameEvent, RewardOption } from '../core/types';
+import { HIT_ELEMENTS, HIT_VOICES } from './hits';
 import { createAudio, type AudioSystemDev } from './index';
 import { exportWav } from './render';
 import { TRACK_IDS, TRACKS } from './tracks';
 
 const P = { x: 4, y: 6 };
 const N = { x: 0, y: -1 };
-const ELEMENTS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
+const ELEMENTS: readonly BallElement[] = HIT_ELEMENTS;
+const FAMILY_ORDER = ['elemental', 'heavy', 'tricky', 'swarm', 'greed', 'arcane'] as const;
 const FUSE: RewardOption = { kind: 'fuse', element: 'fire', tier: 2 };
 const BALL: RewardOption = { kind: 'ball', element: 'ice', tier: 1 };
 const COINS: RewardOption = { kind: 'coins', amount: 15 };
@@ -22,6 +24,8 @@ const GOLDEN_ID = 99;
 
 interface Entry {
   label: string;
+  /** infobulle (identité du son) */
+  title?: string;
   events: () => GameEvent[];
 }
 
@@ -41,11 +45,20 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
       })),
     ],
   },
+  // grille des 27 sons de hit : une ligne par famille (le survol du bouton affiche l'identité)
+  ...FAMILY_ORDER.map((fam) => ({
+    title: `block:hit — ${fam}`,
+    entries: ELEMENTS.filter((el) => HIT_VOICES[el].family === fam).map((el) => ({
+      label: el,
+      title: HIT_VOICES[el].note,
+      events: (): GameEvent[] => [hit(el)],
+    })),
+  })),
   {
-    title: 'block:hit par élément',
+    title: 'block:hit critique',
     entries: [
-      ...ELEMENTS.map((el) => ({ label: el, events: (): GameEvent[] => [hit(el)] })),
       { label: 'stone crit', events: () => [hit('stone', true)] },
+      { label: 'lucky crit', events: () => [hit('lucky', true)] },
     ],
   },
   {
@@ -53,11 +66,33 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
     entries: [
       { label: 'destroyed', events: () => [{ type: 'block:destroyed', blockId: 1, kind: 'normal', pos: P, width: 1, element: 'stone' }] },
       { label: 'destroyed heart', events: () => [{ type: 'block:destroyed', blockId: 1, kind: 'heart', pos: P, width: 1, element: 'stone' }] },
-      { label: 'explode', events: () => [{ type: 'block:explode', pos: P, radius: 1.5, damage: 20 }] },
+      { label: 'explode (feu 1,1)', events: () => [{ type: 'block:explode', pos: P, radius: 1.1, damage: 20 }] },
+      { label: 'explode bombe (1,4)', events: () => [{ type: 'block:explode', pos: P, radius: 1.4, damage: 30 }] },
+      { label: 'explode bombe III (2,2)', events: () => [{ type: 'block:explode', pos: P, radius: 2.2, damage: 60 }] },
+      { label: 'explode nova (1,2)', events: () => [{ type: 'block:explode', pos: P, radius: 1.2, damage: 24 }] },
+      {
+        label: 'explode bloc explosif (1,2)',
+        events: () => [
+          { type: 'block:destroyed', blockId: 3, kind: 'explosive', pos: P, width: 1, element: 'stone' },
+          { type: 'block:explode', pos: P, radius: 1.2, damage: 10 },
+        ],
+      },
       { label: 'frozen', events: () => [{ type: 'block:frozen', blockId: 1, pos: P }] },
       { label: 'breached', events: () => [{ type: 'block:breached', blockId: 1, kind: 'normal', damage: 1 }] },
-      { label: 'lightning:chain', events: () => [{ type: 'lightning:chain', from: P, to: P, damage: 5 }] },
-      { label: 'ball:split', events: () => [{ type: 'ball:split', pos: P }] },
+      { label: 'lightning:chain', events: () => [hit('lightning'), { type: 'lightning:chain', from: P, to: P, damage: 5 }] },
+      {
+        label: 'prisme : rafale ×8 (1 son)',
+        events: () => [
+          { type: 'ball:launched', ballId: 7, element: 'prism', tier: 1, pos: P, golden: false },
+          { type: 'ball:bounce', ballId: 7, pos: P, normal: N, surface: 'wall', combo: 2 },
+          ...Array.from({ length: 8 }, (_, i): GameEvent => ({ type: 'lightning:chain', from: P, to: { x: i, y: P.y }, damage: 3 })),
+        ],
+      },
+      { label: 'ball:split', events: () => [hit('split'), { type: 'ball:split', pos: P }] },
+      { label: 'explode element:bomb', events: () => [{ type: 'block:explode', pos: P, radius: 1.1, damage: 30, element: 'bomb' }] },
+      { label: 'chain element:prism', events: () => [{ type: 'lightning:chain', from: P, to: P, damage: 3, element: 'prism' }] },
+      { label: 'split element:crystal', events: () => [{ type: 'ball:split', pos: P, element: 'crystal' }] },
+      { label: 'ball:split cristal', events: () => [hit('crystal'), { type: 'ball:split', pos: P }] },
     ],
   },
   {
@@ -100,6 +135,14 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
     entries: [
       { label: 'player:damaged', events: () => [{ type: 'player:damaged', amount: 1, hpLeft: 2 }] },
       { label: 'player:healed', events: () => [{ type: 'player:healed', amount: 1, hpLeft: 3 }] },
+      { label: 'healed source:vampire', events: () => [{ type: 'player:healed', amount: 1, hpLeft: 3, source: 'vampire' }] },
+      {
+        label: 'player:healed vampire',
+        events: () => [
+          { type: 'block:destroyed', blockId: 4, kind: 'normal', pos: P, width: 1, element: 'vampire' },
+          { type: 'player:healed', amount: 1, hpLeft: 3 },
+        ],
+      },
       { label: 'reward:offered', events: () => [{ type: 'reward:offered', options: [BALL, FUSE], source: 'wave' }] },
       { label: 'reward:offered boss', events: () => [{ type: 'reward:offered', options: [BALL, FUSE], source: 'boss' }] },
       { label: 'reward:chosen', events: () => [{ type: 'reward:chosen', option: BALL }] },
@@ -198,9 +241,10 @@ export function mountAudioPreview(root: HTMLElement): AudioSystemDev {
   const unlockOnce = (): void => audio.unlock();
   root.addEventListener('pointerdown', unlockOnce, true);
 
-  const btn = (label: string, onClick: () => void, parent: HTMLElement): void => {
+  const btn = (label: string, onClick: () => void, parent: HTMLElement, title?: string): void => {
     const b = document.createElement('button');
     b.textContent = label;
+    if (title) b.title = title;
     b.style.cssText =
       'margin:3px;padding:8px 10px;background:#22304f;color:#e6ecff;border:1px solid #3a4c78;border-radius:6px;cursor:pointer;font:inherit';
     b.addEventListener('click', () => {
@@ -245,6 +289,7 @@ export function mountAudioPreview(root: HTMLElement): AudioSystemDev {
           for (const ev of en.events()) bus.emit(ev);
         },
         sec,
+        en.title,
       );
     }
     root.appendChild(sec);

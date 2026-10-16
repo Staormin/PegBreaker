@@ -62,6 +62,80 @@ export interface SimInternal {
   shotDamageMult: number;
   /** multiplicateur de la balle dorée, figé au tir selon le nombre de balles lancées */
   goldenMult: number;
+  /** effets par balle en vol, ALIGNÉ sur RunState.balls (même index, swap-remove miroir dans pools.ts) */
+  bfx: BallFx[];
+  /** acide : charges par bloc, triplets à plat [blockId, pct, toursRestants, ...] */
+  acid: number[];
+  /** rouille : ids des blocs déjà rouillés (une fois par bloc) */
+  rusted: number[];
+  /** choc : paires à plat [blockId, reculs ce tir, ...], remis à zéro à chaque tir */
+  shocked: number[];
+}
+
+/**
+ * Effets d'une balle en vol (JSON pur). Contournement local : `Ball` (core/types.ts) n'a pas ces champs.
+ * Une mini-balle (`mini`) n'a aucun hook d'élément, n'est jamais dorée et compte dans balls.maxLiveBalls.
+ */
+export interface BallFx {
+  mini: boolean;
+  /** multiplicateur de dégâts propre à la balle (jumelle, mini-balles, écho) */
+  dmgMult: number;
+  /** multiplicateur de vitesse (géante, comète) appliqué à ctx.ballSpeed */
+  speedMult: number;
+  /** traverse les blocs comme un fantôme (copie d'écho, boomerang au retour) */
+  pass: boolean;
+  /** rebonds comptés (cristal) */
+  bounces: number;
+  /** perforante : traversées restantes, bloc en cours de traversée (−1 = aucun) */
+  pierceLeft: number;
+  piercingId: number;
+  /** boomerang : ms de vol de l'aller courant, retour en cours, allers-retours restants */
+  flightMs: number;
+  returning: boolean;
+  returnsLeft: number;
+  /** direction de départ (boomerang : repart dans cette direction) */
+  dirX: number;
+  dirY: number;
+  /** essaim : mini-balles libérées par cette balle */
+  spawned: number;
+  /** vampire : soins déjà rendus par cette balle */
+  heals: number;
+}
+
+export function createFx(): BallFx {
+  return {
+    mini: false,
+    dmgMult: 1,
+    speedMult: 1,
+    pass: false,
+    bounces: 0,
+    pierceLeft: 0,
+    piercingId: -1,
+    flightMs: 0,
+    returning: false,
+    returnsLeft: 0,
+    dirX: 0,
+    dirY: -1,
+    spawned: 0,
+    heals: 0,
+  };
+}
+
+export function resetFx(f: BallFx): void {
+  f.mini = false;
+  f.dmgMult = 1;
+  f.speedMult = 1;
+  f.pass = false;
+  f.bounces = 0;
+  f.pierceLeft = 0;
+  f.piercingId = -1;
+  f.flightMs = 0;
+  f.returning = false;
+  f.returnsLeft = 0;
+  f.dirX = 0;
+  f.dirY = -1;
+  f.spawned = 0;
+  f.heals = 0;
 }
 
 export interface SimState extends RunState {
@@ -101,6 +175,10 @@ export function createInternal(nextId: number): SimInternal {
     overEmitted: false,
     shotDamageMult: 1,
     goldenMult: 1,
+    bfx: [],
+    acid: [],
+    rusted: [],
+    shocked: [],
   };
 }
 

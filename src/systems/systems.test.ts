@@ -703,3 +703,126 @@ describe('F8 : quotidien muté et série', () => {
     expect(Object.isFrozen(back.data.daily[dayKey(39)]?.mods)).toBe(true);
   });
 });
+
+describe('balles du Puits et des succès (BALLS.md)', () => {
+  const elementOf = (effect: string): string | null => (effect.startsWith('unlockElement:') ? effect.slice('unlockElement:'.length) : null);
+  const ballIds = (c: GameConfig): string[] => c.balls.defs.map((d) => d.id);
+
+  it('nœuds valides : éléments existants dans balls.json, prérequis existants, pas de cycle, chaîne ≤ 3', () => {
+    const c = cfg();
+    const ids = new Set(c.meta.nodes.map((n) => n.id));
+    expect(ids.size).toBe(c.meta.nodes.length); // ids uniques
+    for (const n of c.meta.nodes) {
+      const el = elementOf(n.effect);
+      if (el !== null) expect(ballIds(c), `${n.id} → ${el}`).toContain(el);
+      for (const r of n.requires) expect(ids.has(r), `${n.id} requiert ${r}`).toBe(true);
+    }
+    const byId = new Map(c.meta.nodes.map((n) => [n.id, n]));
+    const depth = (id: string, seen: string[] = []): number => {
+      if (seen.includes(id)) throw new Error(`cycle : ${[...seen, id].join(' → ')}`);
+      const reqs = byId.get(id)?.requires ?? [];
+      return 1 + Math.max(0, ...reqs.map((r) => depth(r, [...seen, id])));
+    };
+    for (const n of c.meta.nodes) if (elementOf(n.effect) !== null) expect(depth(n.id), n.id).toBeLessThanOrEqual(3);
+  });
+
+  it('17 nœuds de balles dans arsenal (nom et description de la balle) ; nova/comet/lucky uniquement par succès', () => {
+    const c = cfg();
+    const original = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
+    const fromNodes = c.meta.nodes.filter((n) => {
+      const el = elementOf(n.effect);
+      return el !== null && !original.includes(el);
+    });
+    expect(fromNodes).toHaveLength(17);
+    for (const n of fromNodes) {
+      const def = c.balls.defs.find((d) => d.id === elementOf(n.effect));
+      expect(n.branch).toBe('arsenal');
+      expect(n.id).toBe(`el_${def?.id}`);
+      expect(n.name).toBe(def?.name);
+      expect(n.description).toBe(def?.description);
+      expect(n.costs).toHaveLength(1);
+      expect(n.costs[0]).toBeGreaterThan(0);
+    }
+    const byAch = Object.fromEntries(c.meta.achievements.filter((a) => a.unlocksElement).map((a) => [a.id, a.unlocksElement]));
+    expect(byAch).toEqual({ combo15: 'nova', wave5: 'comet', shot5000: 'lucky' });
+    for (const el of ['nova', 'comet', 'lucky']) expect(c.meta.nodes.some((n) => elementOf(n.effect) === el)).toBe(false);
+    // Chaque balle hors pierre a exactement une source de déblocage.
+    const sources = [...c.meta.nodes.map((n) => elementOf(n.effect)).filter((e) => e !== null), ...Object.values(byAch)];
+    expect([...sources].sort()).toEqual(ballIds(c).filter((id) => id !== 'stone').sort());
+  });
+
+  it('prérequis par famille : acid ← el_fire, prism ← el_lightning', () => {
+    const c = cfg();
+    expect(c.meta.nodes.find((n) => n.id === 'el_acid')?.requires).toEqual(['el_fire']);
+    expect(c.meta.nodes.find((n) => n.id === 'el_prism')?.requires).toEqual(['el_lightning']);
+  });
+
+  it('achat d un nœud de balle → élément dans getModifiers().unlockedElements', () => {
+    const c = cfg();
+    const m = withFragments(createMemoryStorage(), c, 10_000);
+    expect(m.getModifiers().unlockedElements).not.toContain('acid');
+    expect(m.buyNode('el_acid')).toBe(true);
+    expect(m.getModifiers().unlockedElements).toContain('acid');
+    expect(m.canBuyNode('el_void')).toBe(false); // requiert el_rust
+    expect(m.buyNode('el_rust')).toBe(true);
+    expect(m.buyNode('el_void')).toBe(true);
+    expect(m.getModifiers().unlockedElements).toEqual(expect.arrayContaining(['acid', 'rust', 'void']));
+  });
+
+  it('succès combo15 / wave5 / shot5000 → nova / comet / lucky débloqués et sauvegardés', () => {
+    const c = cfg();
+    const st = createMemoryStorage();
+    const m = createMeta(st, c, fixedNow);
+    const before = m.getModifiers().unlockedElements;
+    for (const el of ['nova', 'comet', 'lucky'] as const) expect(before).not.toContain(el);
+
+    expect(m.onRunEnd(summary({}, { bestCombo: 15 }))).toEqual(['combo15']);
+    expect(m.getModifiers().unlockedElements).toContain('nova');
+    expect(m.data.meta.unlockedElements).toContain('nova');
+    expect(m.getModifiers().unlockedElements).not.toContain('comet');
+
+    expect(m.onRunEnd(summary({}, { bossesKilled: 1, bestShotDamage: 5000 }))).toEqual(['wave5', 'shot5000']);
+    expect(m.getModifiers().unlockedElements).toEqual(expect.arrayContaining(['nova', 'comet', 'lucky']));
+
+    const reloaded = createMeta(st, c, fixedNow);
+    expect(reloaded.getModifiers().unlockedElements).toEqual(m.getModifiers().unlockedElements);
+    // ordre stable = ordre de balls.json
+    const order = ballIds(c);
+    const got = reloaded.getModifiers().unlockedElements;
+    expect([...got].sort((a, b) => order.indexOf(a) - order.indexOf(b))).toEqual(got);
+  });
+
+  it('load() répare : succès déjà obtenu sans l élément → élément débloqué ; élément verrouillé sans source → retiré', () => {
+    const c = cfg();
+    const st = createMemoryStorage();
+    st.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        meta: { fragments: 0, nodes: {}, unlockedElements: ['stone', 'void', 'pierce'], unlockedRelics: [], activeRunMods: [] },
+        achievements: ['combo15', 'shot5000'],
+      }),
+    );
+    const m = createMeta(st, c, fixedNow);
+    const els = m.getModifiers().unlockedElements;
+    expect(els).toEqual(expect.arrayContaining(['stone', 'fire', 'lightning', 'nova', 'lucky']));
+    expect(els).not.toContain('comet'); // wave5 non obtenu
+    expect(els).not.toContain('void'); // ni nœud ni succès
+    expect(els).not.toContain('pierce');
+    expect(m.data.meta.unlockedElements).toEqual(els);
+    // idempotent : save → load ne change rien
+    m.save();
+    m.load();
+    expect(m.getModifiers().unlockedElements).toEqual(els);
+  });
+
+  it('élément non verrouillable (aucun nœud ni succès ne le référence) : conservé s il est stocké', () => {
+    const c = cfg();
+    c.meta.nodes = c.meta.nodes.filter((n) => n.id !== 'el_magnet' && n.id !== 'el_gold');
+    const st = createMemoryStorage();
+    st.setItem(SAVE_KEY, JSON.stringify({ version: 1, meta: { unlockedElements: ['magnet', 'void'] } }));
+    const els = createMeta(st, c, fixedNow).getModifiers().unlockedElements;
+    expect(els).toContain('magnet');
+    expect(els).not.toContain('void');
+  });
+});

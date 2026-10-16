@@ -11,6 +11,8 @@ import { contractSeed } from './contracts';
 import { buy, reroll } from './shop';
 import { clampAim, preview } from './aim';
 import { refreshRelics } from './relics';
+import { syncFx } from './pools';
+import { validateElementParams } from './elements/index';
 
 export { fuseVolley } from './volley';
 
@@ -37,6 +39,7 @@ export function defaultMeta(config: GameConfig): MetaModifiers {
 }
 
 export function createSim(config: GameConfig, options: SimOptions): Sim {
+  validateElementParams(config); // erreur explicite si un paramètre de mécanique manque dans balls.json
   const rng = createRng(options.seed);
   const ctx = createCtx(config, options.meta, rng, options.isDaily ?? false, options.dailyDate ?? null);
   const events = ctx.events;
@@ -61,6 +64,7 @@ export function createSim(config: GameConfig, options: SimOptions): Sim {
     s.stats.contractsCompleted ??= 0;
     for (const b of s.balls) b.golden ??= false;
     ctx.s = s;
+    syncFx(ctx); // snapshot antérieur aux 27 balles : effets neutres
     rng.setState(s.rngState);
     refreshRelics(ctx);
     ctx.gridDirty = true;

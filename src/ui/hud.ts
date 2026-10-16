@@ -9,13 +9,12 @@ import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, Volley
 import { createContractBanner } from './contract';
 import { modChip, type ModView } from './dailyInfo';
 import { coinIcon, el, fmt } from './dom';
-import { ballColor, ballName } from './options';
+import { elementTable } from './elements';
 import { SPREAD_ICONS, SPREAD_LABELS, type SpreadControl, type SpreadLevel } from './spread';
 
 const MAX_HEARTS = 10;
 /** délai d'affichage des dégâts du tir après volley:end (ms) */
 const SHOT_LINGER_MS = 600;
-const ELEMENT_INDEX: Record<BallElement, number> = { stone: 0, fire: 1, lightning: 2, ice: 3, ghost: 4, lead: 5, split: 6 };
 
 export interface HudDeps {
   root: HTMLElement;
@@ -58,6 +57,8 @@ export interface Hud {
 
 export function createHud(deps: HudDeps): Hud {
   const { root, canvas, sim, bus, config } = deps;
+  // index / nom / couleur / famille par élément, dérivés de config.balls.defs (ordre du JSON)
+  const elements = elementTable(config);
 
   const frame = el('div', 'hud');
   // --- haut -------------------------------------------------------------
@@ -100,6 +101,12 @@ export function createHud(deps: HudDeps): Hud {
   // --- bas : volée ------------------------------------------------------
   const volleyBox = el('div', 'hud-volley');
   volleyBox.setAttribute('aria-label', 'Volée');
+  // survol (souris) : les pastilles reçoivent le pointeur pour afficher leur titre ; un appui
+  // y est relayé au canvas pour que la visée puisse démarrer depuis la bande de la volée.
+  volleyBox.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    canvas.dispatchEvent(new PointerEvent('pointerdown', e));
+  });
 
   // --- bouton Rappel (pointerdown : réactivité maximale) ---------------
   const recall = el('button', 'hud-recall', '⏩');
@@ -238,7 +245,7 @@ export function createHud(deps: HudDeps): Hud {
     let h = 17;
     for (let i = 0; i < v.length; i++) {
       const b = v[i]!;
-      h = (Math.imul(h, 31) + ELEMENT_INDEX[b.element] * 4 + b.tier) | 0;
+      h = (Math.imul(h, 31) + elements.index(b.element) * 4 + b.tier) | 0;
     }
     return h;
   }
@@ -249,7 +256,7 @@ export function createHud(deps: HudDeps): Hud {
     const counts: number[] = [];
     const items: { element: BallElement; tier: BallTier }[] = [];
     for (const b of v) {
-      const k = ELEMENT_INDEX[b.element] * 4 + b.tier;
+      const k = elements.index(b.element) * 4 + b.tier;
       const idx = keys.indexOf(k);
       if (idx === -1) {
         keys.push(k);
@@ -263,10 +270,13 @@ export function createHud(deps: HudDeps): Hud {
       const n = counts[i] ?? 1;
       const pill = el('div', 'pill');
       pill.dataset.tier = String(it.tier);
+      const info = elements.get(it.element);
       pill.dataset.element = it.element;
-      pill.style.setProperty('--c', ballColor(config, it.element));
-      pill.setAttribute('aria-label', `${ballName(config, it.element)} rang ${it.tier} ×${n}`);
-      pill.title = `${ballName(config, it.element)} · rang ${it.tier}`;
+      pill.dataset.family = info.family;
+      pill.style.setProperty('--c', info.color);
+      pill.setAttribute('role', 'img');
+      pill.setAttribute('aria-label', `${info.name} rang ${it.tier} ×${n}`);
+      pill.title = `${info.name} · rang ${it.tier} ×${n}`;
       // rang écrit dans la balle (II / III) : le rang ne repose pas que sur les anneaux
       pill.append(el('span', 'ball', it.tier === 1 ? '' : it.tier === 2 ? 'II' : 'III'), el('span', 'num cnt', `×${n}`));
       volleyBox.append(pill);

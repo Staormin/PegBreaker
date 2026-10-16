@@ -55,3 +55,6 @@ Verdict par mécanisme : F1 éventail (sélecteur explicite 3 positions, pénali
 Décisions prises en route : l'ouverture par longueur du geste a été abandonnée (61-93 % d'ouvertures involontaires) au profit d'un sélecteur ; Brasier et Vélocité rapportent ×1 fragment car ils facilitent la run.
 
 Pistes suivantes : garantir une épique au coffre même pour un débutant (F9-02) ; adoucir le mur de la vague 6 ; contrat dorée à 14 % de réussite ; progression méta encore en paliers ; F10 défis de déblocage ; mesurer le taux de partage avec de vrais joueurs.
+
+## Règle d'équité (2026-10-17)
+Les runs **quotidiennes** et de **défi par lien** jouent un pool standard : les 27 balles et toutes les reliques disponibles, aucun bonus de méta (PV, balles, pièces, rerolls), aucun mod personnel (le quotidien applique ses deux mutateurs du jour). Deux joueurs sur la même graine jouent donc la même partie ; c'est aussi une vitrine des balles pas encore débloquées. Les fragments gagnés sont crédités normalement.

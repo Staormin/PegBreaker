@@ -3,16 +3,16 @@
 // ni au temps : pas de hit-stop, pas de slow-mo, pas de secousse, pas de flash plein écran
 // (choix produit : tout le feedback reste local, à l'endroit de l'événement).
 import type { EventBus, Unsubscribe } from '../core/events';
-import type { GameConfig, Renderer, RunState, Vec2 } from '../core/types';
+import type { BallElement, GameConfig, Renderer, RunState, Vec2 } from '../core/types';
 import { boardToScreen, computeLayout, createLayout, MAX_DPR, screenToBoard } from './layout';
 import { buildSprites, type Sprites } from './sprites';
-import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK, PRIO_HIGH, PRIO_LOW } from './particles';
+import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK, PRIO_HIGH, PRIO_LOW, PRIO_NORMAL } from './particles';
 import { createDamageNumbers, formatNumber, FONT_BUCKETS } from './damageNumbers';
 import { createVfx } from './vfx';
 import { createFrameDrawer } from './draw';
 import { createFusions } from './fusion';
 import { buildBackdrops } from './backdrop';
-import { buildColors, ELEMENT_INDEX, KIND_INDEX, PALETTE } from './palette';
+import { buildColors, ELEMENT_INDEX, ELEMENTS, KIND_INDEX, PALETTE } from './palette';
 
 export { PALETTE } from './palette';
 
@@ -180,6 +180,11 @@ export function createRenderer(
   const kindColor = (k: number): string => colors.kind[k] ?? PALETTE.block;
   const elemColor = (e: keyof typeof ELEMENT_INDEX): string => colors.element[ELEMENT_INDEX[e]] ?? PALETTE.stone;
   const subs: Unsubscribe[] = [];
+  const EL_BOMB = ELEMENT_INDEX.bomb, EL_NOVA = ELEMENT_INDEX.nova, EL_VAMPIRE = ELEMENT_INDEX.vampire;
+  const EL_ECHO = ELEMENT_INDEX.echo, EL_BOOMERANG = ELEMENT_INDEX.boomerang;
+  /** dernière destruction par le vampire / l'or (position + frame) : relie healed / drop:spawned à un point */
+  let vampX = 0, vampY = 0, vampFrame = -100;
+  let goldX = 0, goldY = 0, goldFrame = -100;
   /** flash rouge local de la rangée du joueur (brèche, dégâts) */
   const flashPlayerRow = (ms: number): void => {
     vfx.flashRect(0, board.rows - 1, board.cols, 1, ms, PALETTE.danger);
@@ -223,8 +228,38 @@ export function createRenderer(
 
   subs.push(bus.on('block:hit', (e) => {
     numbers.add(e.pos.x, e.pos.y - 0.1, e.damage, e.crit, e.blockId, hitByGolden(e.ballId));
-    vfx.blockFx(e.blockId).squashT = 0;
-    particles.burst(e.pos.x, e.pos.y, 2, elemColor(e.element), P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
+    const fx = vfx.blockFx(e.blockId);
+    fx.squashT = 0;
+    const c = elemColor(e.element);
+    particles.burst(e.pos.x, e.pos.y, 2, c, P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
+    // signatures d'impact des nouvelles balles (locales, ≤ 300 ms)
+    switch (e.element) {
+      case 'acid': {
+        // teinte verte sur le bloc + gouttes qui coulent par le bas (les charges restantes ne sont
+        // pas dans l'état public : pas de teinte persistante, cf. rapport)
+        const bx = Number.isNaN(fx.hp) ? Math.floor(e.pos.x) : fx.x, by = Number.isNaN(fx.hp) ? Math.floor(e.pos.y) : fx.y;
+        vfx.flashRect(bx + 0.05, by + 0.05, fx.w - 0.1, 0.9, 260, c);
+        particles.burst(bx + fx.w * 0.5, by + 0.95, 6, c, P_SHARD, 0.2, 1.2, Math.PI / 2, 0.5, 0.35, 0.55, 0.04, 0.07, 7, PRIO_NORMAL);
+        break;
+      }
+      case 'shock':
+        vfx.ring(e.pos.x, e.pos.y, 0.05, 0.45, 160, c, 0.05);
+        break;
+      case 'void':
+        // implosion : anneau qui se referme vers le point d'impact
+        vfx.ring(e.pos.x, e.pos.y, 0.5, 0.05, 200, c, 0.06);
+        break;
+      case 'rust':
+        particles.burst(e.pos.x, e.pos.y, 5, c, P_SHARD, 0.8, 2.5, Math.PI / 2, 1.2, 0.3, 0.5, 0.04, 0.07, 6, PRIO_LOW);
+        break;
+      case 'lucky':
+        if (e.crit) { vfx.flashCircle(e.pos.x, e.pos.y, 0.28, 140, c); particles.burst(e.pos.x, e.pos.y, 6, c, P_CRYSTAL, 1, 3, 0, Math.PI, 0.2, 0.35, 0.05, 0.08, 0, PRIO_NORMAL); }
+        break;
+      case 'pierce':
+        vfx.flashCircle(e.pos.x, e.pos.y, 0.18, 90, '#ffffff');
+        break;
+      default:
+    }
   }));
 
   subs.push(bus.on('block:destroyed', (e) => {
@@ -238,13 +273,28 @@ export function createRenderer(
     particles.burst(cx, cy, 4, '#ffffff', P_SPARK, 3, 7, -Math.PI / 2, Math.PI, 0.1, 0.2, 0.04, 0.06, 0);
     vfx.flashRect(cx - w * 0.5 + 0.05, cy - 0.45, w - 0.1, 0.9, 70, '#ffffff');
     vfx.releaseBlockFx(e.blockId);
+    if (e.element === 'vampire') { vampX = e.pos.x; vampY = e.pos.y; vampFrame = frame; }
+    else if (e.element === 'gold') { goldX = cx; goldY = cy; goldFrame = frame; }
   }));
 
   subs.push(bus.on('block:explode', (e) => {
-    vfx.ring(e.pos.x, e.pos.y, 0.15, Math.max(0.5, e.radius), 250, elemColor('fire'), 0.16);
+    // couleur de la source : champ `element` de l'événement, sinon balle suivie la plus proche
+    let src = -1;
+    if (e.element === 'explosive') src = -2;
+    else if (e.element !== undefined) src = ELEMENT_INDEX[e.element];
+    else src = drawer.nearestElement(e.pos.x, e.pos.y, 0.8);
+    const c = src === -2 ? kindColor(KIND_INDEX.explosive) : src === EL_BOMB || src === EL_NOVA ? colors.element[src] ?? PALETTE.danger : elemColor('fire');
+    const core = src === EL_NOVA ? '#ffe0f6' : src === EL_BOMB ? '#ffffff' : '#ffe0b0';
+    vfx.ring(e.pos.x, e.pos.y, 0.15, Math.max(0.5, e.radius), 250, c, 0.16);
     vfx.ring(e.pos.x, e.pos.y, 0.05, Math.max(0.4, e.radius * 0.75), 200, '#ffffff', 0.06);
-    vfx.flashCircle(e.pos.x, e.pos.y, Math.max(0.4, e.radius * 0.6), 120, '#ffe0b0');
-    particles.burst(e.pos.x, e.pos.y, 14, elemColor('fire'), P_SPARK, 4, 9, 0, Math.PI, 0.15, 0.35, 0.05, 0.08, 0, PRIO_HIGH);
+    vfx.flashCircle(e.pos.x, e.pos.y, Math.max(0.4, e.radius * 0.6), 120, core);
+    particles.burst(e.pos.x, e.pos.y, 14, c, P_SPARK, 4, 9, 0, Math.PI, 0.15, 0.35, 0.05, 0.08, 0, PRIO_HIGH);
+    if (src === EL_BOMB) {
+      // bombe : fumée sombre qui retombe
+      particles.burst(e.pos.x, e.pos.y, 10, '#3a3f4b', P_SHARD, 1.5, 4, -Math.PI / 2, 1.3, 0.35, 0.6, 0.08, 0.14, 3, PRIO_NORMAL);
+    } else if (src === EL_NOVA) {
+      vfx.rays(e.pos.x, e.pos.y, 300, c, 10, Math.max(0.8, e.radius));
+    }
   }));
 
   subs.push(bus.on('combo:milestone', (e) => {
@@ -283,6 +333,15 @@ export function createRenderer(
     }
   }));
 
+  subs.push(bus.on('player:healed', (e) => {
+    // vampire : petit cœur rouge au point de la destruction qui a soigné
+    if (e.source === 'vampire' || (e.source === undefined && frame - vampFrame <= 1)) {
+      if (frame - vampFrame > 3) return; // pas de position connue
+      vfx.heart(vampX, vampY - 0.1, 600, colors.element[EL_VAMPIRE] ?? PALETTE.danger, 0.14);
+      particles.burst(vampX, vampY, 5, PALETTE.heart, P_SPARK, 1, 3, -Math.PI / 2, 1, 0.15, 0.3, 0.03, 0.05, 0, PRIO_NORMAL);
+    }
+  }));
+
   subs.push(bus.on('player:damaged', () => {
     flashPlayerRow(360);
   }));
@@ -307,8 +366,10 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('lightning:chain', (e) => {
-    vfx.bolt(e.from.x, e.from.y, e.to.x, e.to.y, 120, elemColor('lightning'));
-    particles.burst(e.to.x, e.to.y, 4, elemColor('lightning'), P_SPARK, 2, 5, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0);
+    const prism = e.element === 'prism';
+    const c = prism ? elemColor('prism') : elemColor('lightning');
+    vfx.bolt(e.from.x, e.from.y, e.to.x, e.to.y, prism ? 160 : 120, c);
+    particles.burst(e.to.x, e.to.y, 4, prism ? '#ff9cf5' : c, P_SPARK, 2, 5, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0);
   }));
 
   subs.push(bus.on('block:frozen', (e) => {
@@ -372,16 +433,46 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('ball:split', (e) => {
-    particles.burst(e.pos.x, e.pos.y, 6, elemColor('split'), P_SPARK, 2, 5, 0, Math.PI, 0.12, 0.25, 0.03, 0.06, 0);
-    vfx.flashCircle(e.pos.x, e.pos.y, 0.22, 90, elemColor('split'));
+    const src: BallElement = e.element ?? (ELEMENTS[drawer.nearestElement(e.pos.x, e.pos.y, 0.6)] ?? 'split');
+    if (src === 'crystal') {
+      // le cristal éclate : éclats pâles en étoile + anneau blanc
+      const c = elemColor('crystal');
+      particles.burst(e.pos.x, e.pos.y, 14, c, P_CRYSTAL, 2, 6, 0, Math.PI, 0.25, 0.45, 0.06, 0.11, 2, PRIO_HIGH);
+      particles.burst(e.pos.x, e.pos.y, 6, '#ffffff', P_SPARK, 3, 7, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_NORMAL);
+      vfx.ring(e.pos.x, e.pos.y, 0.05, 0.6, 200, '#ffffff', 0.05);
+      vfx.flashCircle(e.pos.x, e.pos.y, 0.3, 110, c);
+      return;
+    }
+    const c = src === 'split' ? elemColor('split') : elemColor(src);
+    particles.burst(e.pos.x, e.pos.y, 6, c, P_SPARK, 2, 5, 0, Math.PI, 0.12, 0.25, 0.03, 0.06, 0);
+    vfx.flashCircle(e.pos.x, e.pos.y, 0.22, 90, c);
   }));
 
   subs.push(bus.on('drop:spawned', (e) => {
     vfx.ring(e.pos.x, e.pos.y, 0.05, 0.35, 160, PALETTE.text, 0.04);
+    if (e.kind !== 'coin') return;
+    // pièce : petit reflet doré ; lâchée par la balle d'or (destruction à côté, même frame) : éclat
+    const dx = e.pos.x - goldX, dy = e.pos.y - goldY;
+    if (frame - goldFrame <= 1 && dx * dx + dy * dy < 1) {
+      vfx.flashCircle(e.pos.x, e.pos.y, 0.32, 160, PALETTE.gold);
+      vfx.rays(e.pos.x, e.pos.y, 260, PALETTE.gold, 8, 0.6);
+      particles.burst(e.pos.x, e.pos.y, 10, PALETTE.gold, P_CRYSTAL, 1, 4, -Math.PI / 2, 1.4, 0.25, 0.45, 0.05, 0.08, 3, PRIO_NORMAL);
+    } else {
+      particles.burst(e.pos.x, e.pos.y, 3, PALETTE.goldLight, P_CRYSTAL, 0.5, 1.5, -Math.PI / 2, 1.2, 0.2, 0.35, 0.04, 0.06, 0, PRIO_LOW);
+    }
   }));
 
   subs.push(bus.on('ball:grounded', (e) => {
     particles.burst(e.pos.x, e.pos.y, 2, PALETTE.textDim, P_SPARK, 0.5, 1.5, -Math.PI / 2, 0.8, 0.1, 0.2, 0.03, 0.04, 0, PRIO_LOW);
+    const el = drawer.elementOf(e.ballId);
+    if (el === EL_ECHO) {
+      // écho : la copie fantôme repart d'ici → onde translucide double
+      const c = colors.element[EL_ECHO] ?? PALETTE.split;
+      vfx.ring(e.pos.x, e.pos.y - 0.05, 0.05, 0.55, 260, c, 0.04);
+      vfx.ring(e.pos.x, e.pos.y - 0.05, 0.05, 0.9, 380, c, 0.025);
+    } else if (el === EL_BOOMERANG) {
+      vfx.ring(e.pos.x, e.pos.y - 0.05, 0.05, 0.4, 200, colors.element[EL_BOOMERANG] ?? PALETTE.fire, 0.04);
+    }
   }));
 
   subs.push(bus.on('run:started', () => {

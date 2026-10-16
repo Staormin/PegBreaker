@@ -8,6 +8,7 @@ import type {
   AudioSystem,
   MusicTrackId,
   BallElement,
+  GameConfig,
   GameEvent,
   MetaSystem,
   Renderer,
@@ -21,7 +22,24 @@ import type {
 import { createMeta, createMemoryStorage } from '../systems';
 import { createUI } from './index';
 
-const ELEMENTS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
+/** Démo : si la config ne porte pas encore les nœuds Arsenal / succès des 27 balles (systems-dev),
+ *  les ajoute en mémoire d'après docs/BALLS.md pour que le Puits soit testable. */
+const DEMO_UNLOCK_COSTS: Partial<Record<BallElement, number>> = {
+  acid: 60, magnet: 50, pierce: 80, bomb: 90, homing: 110, giant: 120, swarm: 100, vampire: 130, gold: 70, prism: 140,
+  void: 150, echo: 120, boomerang: 110, crystal: 90, shock: 100, twin: 80, rust: 70,
+};
+const DEMO_ACH_UNLOCKS: Record<string, BallElement> = { combo15: 'nova', wave5: 'comet', shot5000: 'lucky' };
+function withDemoBalls(cfg: GameConfig): GameConfig {
+  const nodes = cfg.meta.nodes.slice();
+  for (const [id, cost] of Object.entries(DEMO_UNLOCK_COSTS)) {
+    if (nodes.some((n) => n.effect === `unlockElement:${id}`)) continue;
+    const def = cfg.balls.defs.find((d) => d.id === id);
+    if (!def || cost === undefined) continue;
+    nodes.push({ id: `el_${id}`, branch: 'arsenal', name: def.name, description: `Débloque la balle ${def.name}.`, costs: [cost], effect: `unlockElement:${id}`, valuePerLevel: 1, requires: [] });
+  }
+  const achievements = cfg.meta.achievements.map((a) => (a.unlocksElement || !DEMO_ACH_UNLOCKS[a.id] ? a : { ...a, unlocksElement: DEMO_ACH_UNLOCKS[a.id] }));
+  return { ...cfg, meta: { ...cfg.meta, nodes, achievements } };
+}
 
 function freshState(launch: Vec2): RunState {
   return {
@@ -74,7 +92,9 @@ function freshState(launch: Vec2): RunState {
 }
 
 export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void {
-  const config = loadConfig();
+  const config = withDemoBalls(loadConfig());
+  // 27 éléments, ordre du JSON
+  const ELEMENTS: BallElement[] = config.balls.defs.map((d) => d.id);
   const bus = createEventBus();
   const log = (...a: unknown[]): void => console.log('[ui-demo]', ...a);
   bus.onAny((e: GameEvent) => {
@@ -459,6 +479,19 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     const el = ELEMENTS[state.volley.length % ELEMENTS.length] ?? 'stone';
     state.volley.push({ element: el, tier: 1 });
     bus.emit({ type: 'drop:collected', dropId: 0, kind: 'ball', pos: { x: 0, y: 0 }, value: 1 });
+  });
+  add('volée 27 éléments', () => {
+    // un exemplaire de chaque élément, quelques rangs II / III pour les anneaux
+    state.volley = ELEMENTS.map((element, i) => ({ element, tier: (i % 9 === 4 ? 3 : i % 5 === 2 ? 2 : 1) as 1 | 2 | 3 }));
+    bus.emit({ type: 'drop:collected', dropId: 0, kind: 'ball', pos: { x: 0, y: 0 }, value: ELEMENTS.length });
+  });
+  add('offre 27 (défile)', () => {
+    // offre de 3 balles prises à tour de rôle dans les 27 (vérifie icônes + descriptions)
+    const k = (state.stats.shots + rerolls++) * 3;
+    const options: RewardOption[] = [0, 1, 2].map((j) => ({ kind: 'ball', element: ELEMENTS[(k + j) % ELEMENTS.length] ?? 'stone', tier: 1 }));
+    state.phase = 'reward';
+    state.rewardOffer = options;
+    bus.emit({ type: 'reward:offered', options, source: 'wave' });
   });
   add('fusion', () => {
     const i = state.volley.findIndex((b, j) => {

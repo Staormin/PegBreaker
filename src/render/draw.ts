@@ -5,7 +5,10 @@ import type { Ball, Block, RunState } from '../core/types';
 import { easeOutBack, easeOutCubic } from '../core/math';
 import type { Layout } from './layout';
 import type { Sprites } from './sprites';
-import { BALL_EXTENT, ballVisualRadius, damageLevel, DMG_LEVELS, DROP_EXTENT, GOLDEN_EXTENT, HALO_EXTENT, PEG_RADIUS } from './sprites';
+import {
+  BALL_EXTENT, ballVisualRadius, damageLevel, DROP_EXTENT, ELEMENT_ORIENT, GOLDEN_EXTENT, HALO_EXTENT, ORIENT_SPIN,
+  ORIENT_VELOCITY, PEG_RADIUS, quantizeRadius, ROT_STEPS, RQ_ONE,
+} from './sprites';
 import type { Particles } from './particles';
 import { P_CRYSTAL, P_SHARD, P_SPARK, PRIO_LOW, PRIO_NORMAL } from './particles';
 import type { DamageNumbers } from './damageNumbers';
@@ -13,7 +16,7 @@ import { formatNumber } from './damageNumbers';
 import type { BlockFx, Vfx } from './vfx';
 import type { Fusions } from './fusion';
 import { POWER_LEVELS, powerTarget } from './backdrop';
-import { ELEMENT_INDEX, KIND_INDEX, PALETTE, type Colors } from './palette';
+import { ELEMENT_COUNT, ELEMENT_INDEX, FAMILY_COUNT, FAMILY_INDEX, KIND_INDEX, PALETTE, type Colors } from './palette';
 
 const TRAIL_CAP = 14;
 const MAX_TRAILS = 96;
@@ -26,10 +29,37 @@ const NO_DASH: number[] = [];
 const SPAWN_DUR = 0.15;
 /** au-delà, les traînées sont raccourcies (budget perf) */
 const MANY_BALLS = 20;
-/** longueur de traînée de base par élément (stone, fire, lightning, ice, ghost, lead, split) */
-const TRAIL_BASE: readonly number[] = [6, 7, 6, 6, 12, 3, 6];
 const EL_FIRE = ELEMENT_INDEX.fire, EL_LIGHTNING = ELEMENT_INDEX.lightning, EL_ICE = ELEMENT_INDEX.ice;
-const EL_GHOST = ELEMENT_INDEX.ghost, EL_LEAD = ELEMENT_INDEX.lead;
+const EL_GHOST = ELEMENT_INDEX.ghost, EL_STONE = ELEMENT_INDEX.stone, EL_ECHO = ELEMENT_INDEX.echo;
+const EL_ACID = ELEMENT_INDEX.acid, EL_COMET = ELEMENT_INDEX.comet, EL_GIANT = ELEMENT_INDEX.giant;
+const EL_CRYSTAL = ELEMENT_INDEX.crystal, EL_NOVA = ELEMENT_INDEX.nova, EL_VOID = ELEMENT_INDEX.void;
+const F_ELEMENTAL = FAMILY_INDEX.elemental, F_HEAVY = FAMILY_INDEX.heavy, F_TRICKY = FAMILY_INDEX.tricky;
+const F_GREED = FAMILY_INDEX.greed, F_ARCANE = FAMILY_INDEX.arcane;
+/**
+ * Style de traînée par famille (indexé par FAMILY_INDEX, dérivé de BALL_FAMILIES) :
+ * elemental = additive ; heavy = courte et dense ; tricky = longue et translucide ; swarm = fine ;
+ * greed = scintillante (alpha qui papillote + paillettes) ; arcane = pointillée.
+ */
+const FAM_LEN = new Float32Array(FAMILY_COUNT);
+const FAM_WIDTH = new Float32Array(FAMILY_COUNT);
+const FAM_ALPHA = new Float32Array(FAMILY_COUNT);
+const FAM_ALPHA_CORE = new Float32Array(FAMILY_COUNT);
+const FAM_MANY_LEN = new Float32Array(FAMILY_COUNT);
+function famStyle(f: number, len: number, width: number, alpha: number, core: number, manyLen: number): void {
+  FAM_LEN[f] = len; FAM_WIDTH[f] = width; FAM_ALPHA[f] = alpha; FAM_ALPHA_CORE[f] = core; FAM_MANY_LEN[f] = manyLen;
+}
+famStyle(FAMILY_INDEX.elemental, 7, 1.5, 0.2, 0.45, 4);
+famStyle(FAMILY_INDEX.heavy, 3, 1.7, 0.3, 0.5, 3);
+famStyle(FAMILY_INDEX.tricky, 12, 1.7, 0.13, 0.26, 6);
+famStyle(FAMILY_INDEX.swarm, 6, 0.75, 0.3, 0.55, 4);
+famStyle(FAMILY_INDEX.greed, 7, 1.3, 0.2, 0.5, 4);
+famStyle(FAMILY_INDEX.arcane, 7, 1.2, 0.22, 0.5, 4);
+/** tirets des traînées arcane (unités plateau) */
+const DASH_TRAIL: number[] = [0.07, 0.07];
+/** cadence de rotation du boomerang (crans de ROT_STEPS par seconde) */
+const SPIN_RATE = 28;
+/** glissement d'un bloc repoussé vers le haut (choc), s */
+const SLIDE_DUR = 0.15;
 /** traînée de la balle dorée (plus longue que toutes les autres) */
 const GOLD_TRAIL = 12;
 const GOLD_TRAIL_MANY = 9;
@@ -71,6 +101,8 @@ interface Trail {
   /** palier de taille du combo affiché (−1 = rien) et minuterie de « pop » au changement */
   comboTier: number;
   comboPop: number;
+  /** élément de la balle (toujours renseigné, même dorée) : retrouvé par id / position pour les événements */
+  elem: number;
 }
 
 /** Résultat d'un raycast (objet unique réutilisé). */
@@ -93,6 +125,10 @@ export interface FrameDrawer {
   setLost(): void;
   revive(): void;
   clearOverlays(): void;
+  /** élément (ELEMENT_INDEX) de la balle `ballId` encore suivie (−1 = inconnue) */
+  elementOf(ballId: number): number;
+  /** élément de la balle suivie la plus proche de (x, y) à moins de maxD (−1 = aucune) */
+  nearestElement(x: number, y: number, maxD: number): number;
 }
 
 export interface DrawDeps {
@@ -116,9 +152,26 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   const R = d.ballRadius;
   const elColors = d.colors.element;
 
+  /** famille, longueur de traînée et longueur en mode « beaucoup de balles », par élément */
+  const famOf = Uint8Array.from(d.colors.family);
+  const elLen = new Uint8Array(ELEMENT_COUNT);
+  const elManyLen = new Uint8Array(ELEMENT_COUNT);
+  for (let e = 0; e < ELEMENT_COUNT; e++) {
+    const f = famOf[e] ?? F_ARCANE;
+    elLen[e] = FAM_LEN[f] ?? 6;
+    elManyLen[e] = FAM_MANY_LEN[f] ?? 4;
+  }
+  // signatures : la comète a la plus longue queue de sa famille, la géante une traînée trapue,
+  // la pierre (balle de base) garde sa traînée sobre
+  elLen[EL_COMET] = 11; elManyLen[EL_COMET] = 7;
+  elLen[EL_GIANT] = 4;
+  elLen[EL_STONE] = 6;
+  /** éléments présents cette frame (mode « beaucoup de balles ») */
+  const present = new Uint8Array(ELEMENT_COUNT);
+
   const trails: Trail[] = [];
   for (let i = 0; i < MAX_TRAILS; i++) {
-    trails.push({ active: false, id: -1, seen: 0, xs: new Float32Array(TRAIL_CAP), ys: new Float32Array(TRAIL_CAP), head: 0, count: 0, emitT: 0, el: 0, n: 0, comboTier: -1, comboPop: 1 });
+    trails.push({ active: false, id: -1, seen: 0, xs: new Float32Array(TRAIL_CAP), ys: new Float32Array(TRAIL_CAP), head: 0, count: 0, emitT: 0, el: 0, n: 0, comboTier: -1, comboPop: 1, elem: 0 });
   }
   const dust = new Float32Array(DUST * 3); // x, y, vitesse
   for (let i = 0; i < DUST; i++) {
@@ -157,6 +210,10 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   let powerLevel = -1;
   /** vrai jusqu'à la fin de la première frame de run : les blocs initiaux n'ont pas de « pop » */
   let suppressPop = true;
+  /** pré-chauffage des sprites de la volée : refait au resize (nouveaux sprites) et quand la volée change */
+  let warmedFor: Sprites | null = null;
+  let warmLen = -1;
+  let warmDone = false;
   /** transform plateau → pixels physiques de la frame courante */
   let K = 1, OX = 0, OY = 0;
 
@@ -363,8 +420,16 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (lowNow !== fx.labelLow) { fx.labelLow = lowNow; fx.labelDirty = true; }
       if (fx.labelDirty && b.kind !== 'peg') renderLabel(fx, b.kind === 'boss', b.width);
       const kind = KIND_INDEX[b.kind];
+      // choc : la rangée diminue hors 'advancing' → glissement vers le haut + poussière
+      if (!advancing && b.row < fx.lastRow) {
+        fx.slideFrom = fx.lastRow - b.row;
+        fx.slideT = 0;
+        particles.burst(b.col + b.width * 0.5, b.row + 1 + fx.slideFrom - 0.05, 10 * b.width, PALETTE.textDim, P_SHARD, 0.6, 2.2, Math.PI / 2, 1.2, 0.25, 0.45, 0.04, 0.08, 4, PRIO_NORMAL);
+      }
+      fx.lastRow = b.row;
+      const slide = fx.slideT < SLIDE_DUR ? fx.slideFrom * (1 - easeOutCubic(fx.slideT / SLIDE_DUR)) : 0;
       // un bloc gelé ne descend pas : pas d'interpolation
-      const y = b.row + (b.frozen ? 0 : shift);
+      const y = b.row + (b.frozen ? 0 : shift) + slide;
       fx.x = b.col; fx.y = y; fx.w = b.width; fx.kind = kind;
 
       const row = sp.block[kind];
@@ -509,7 +574,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     }
     const t = free ?? trails[0]!;
     t.active = true; t.id = id; t.head = 0; t.count = 1; t.seen = frame; t.emitT = Math.random() * 0.05;
-    t.comboTier = -1; t.comboPop = 1;
+    t.comboTier = -1; t.comboPop = 1; t.elem = 0;
     t.xs[0] = x; t.ys[0] = y;
     return t;
   }
@@ -528,6 +593,22 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     ctx.stroke();
   }
 
+  /**
+   * Pré-chauffe pendant la visée (charge nulle) les sprites des balles de la volée : tous les
+   * crans d'orientation à taille normale, plus la taille « mini » des balles qui en libèrent.
+   */
+  function warmVolley(state: Readonly<RunState>): void {
+    const sp = d.getSprites();
+    if (warmDone || state.phase !== 'aiming') return;
+    const v = state.volley;
+    for (let i = 0; i < v.length; i++) {
+      const vb = v[i]!;
+      const e = ELEMENT_INDEX[vb.element];
+      if (!sp.warm(e * 3 + (vb.tier - 1), RQ_ONE)) return;
+    }
+    warmDone = true;
+  }
+
   function drawBalls(state: Readonly<RunState>, frame: number, dt: number): void {
     const sp = d.getSprites();
     const balls = state.balls;
@@ -537,9 +618,12 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     const rs = state.recallSpeed > 1 ? state.recallSpeed : 1;
     const boost = rs > 1 ? Math.round((rs - 1) * 2.5) : 0;
     const ambient = particles.count < 600;
+    // scintillement greed : une valeur par frame (pas par balle : un seul calcul)
+    const twinkle = 0.65 + 0.35 * Math.sin(time * 31);
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    if (many) present.fill(0);
     // 1) échantillonne + traînées (+ particules d'ambiance par élément)
     for (let i = 0; i < balls.length; i++) {
       const b = balls[i]!;
@@ -552,6 +636,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         tr.seen = frame;
       }
       const e = ELEMENT_INDEX[b.element];
+      tr.elem = e;
       const vr = ballVisualRadius(b.radius, e, b.tier);
       if (tr.comboPop < 1) tr.comboPop += dt;
       if (isGolden(b)) {
@@ -572,22 +657,29 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         }
         continue;
       }
-      let len = (TRAIL_BASE[e] ?? 6) + (e === EL_LEAD ? (boost > 2 ? 2 : boost) : boost);
-      if (many) len = e === EL_GHOST ? 6 : len > 4 ? 4 : len;
+      const f = famOf[e] ?? F_ARCANE;
+      let len = (elLen[e] ?? 6) + (f === F_HEAVY ? (boost > 2 ? 2 : boost) : boost);
+      if (many) { const ml = elManyLen[e] ?? 4; if (len > ml) len = ml; }
       if (len > TRAIL_CAP) len = TRAIL_CAP;
       const n = tr.count < len ? tr.count : len;
       const color = elColors[e] ?? PALETTE.stone;
-      if (!many) ctx.strokeStyle = color;
-      if (e === EL_FIRE && !many) ctx.globalCompositeOperation = 'lighter';
-      const ghost = e === EL_GHOST;
       tr.el = e; tr.n = n;
       if (many) {
-        // tracé groupé par élément plus bas (≤ 7 strokes au lieu de 30)
+        present[e] = 1; // tracé groupé par élément plus bas (≤ 1 stroke par élément présent)
       } else {
-        strokeTrail(tr, n, vr * (ghost ? 1.7 : 1.5), ghost ? 0.16 : e === EL_LEAD ? 0.3 : 0.2);
-        strokeTrail(tr, (n + 1) >> 1, vr * 0.7, ghost ? 0.3 : 0.45);
+        const additive = f === F_ELEMENTAL;
+        const dashed = f === F_ARCANE && e !== EL_STONE;
+        const echoCopy = e === EL_ECHO && b.triggered;
+        const am = (f === F_GREED ? twinkle : 1) * (echoCopy ? 0.6 : 1);
+        ctx.strokeStyle = color;
+        if (additive) ctx.globalCompositeOperation = 'lighter';
+        if (dashed) { ctx.setLineDash(DASH_TRAIL); ctx.lineDashOffset = 0; }
+        const w = FAM_WIDTH[f] ?? 1.5;
+        strokeTrail(tr, n, vr * (e === EL_GIANT ? w * 0.8 : w), (FAM_ALPHA[f] ?? 0.2) * am);
+        if (dashed) ctx.setLineDash(NO_DASH);
+        strokeTrail(tr, (n + 1) >> 1, vr * (w * 0.47), (FAM_ALPHA_CORE[f] ?? 0.45) * am);
+        if (additive) ctx.globalCompositeOperation = 'source-over';
       }
-      if (e === EL_FIRE && !many) ctx.globalCompositeOperation = 'source-over';
 
       // particules d'ambiance
       tr.emitT -= dt;
@@ -596,12 +688,25 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         if (e === EL_FIRE) {
           particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? color : PALETTE.accent, P_SPARK, 0.3, 1.0, -Math.PI / 2, 0.7, 0.18, 0.32, vr * 0.35, vr * 0.6, -2.5, PRIO_LOW);
           tr.emitT = 0.035 * slow;
+        } else if (e === EL_COMET) {
+          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? color : '#fff3b0', P_SPARK, 0.2, 0.7, 0, Math.PI, 0.2, 0.35, vr * 0.3, vr * 0.5, 0, PRIO_LOW);
+          tr.emitT = 0.03 * slow;
         } else if (e === EL_LIGHTNING) {
           particles.burst(b.pos.x, b.pos.y, 1, '#ffffff', P_SPARK, 2.5, 4.5, 0, Math.PI, 0.05, 0.1, vr * 0.25, vr * 0.4, 0, PRIO_LOW);
           tr.emitT = 0.07 * slow;
-        } else if (e === EL_ICE) {
-          particles.burst(b.pos.x, b.pos.y, 1, color, P_CRYSTAL, 0.1, 0.4, 0, Math.PI, 0.25, 0.4, vr * 0.35, vr * 0.5, 0.5, PRIO_LOW);
+        } else if (e === EL_ICE || e === EL_CRYSTAL) {
+          particles.burst(b.pos.x, b.pos.y, 1, e === EL_CRYSTAL ? '#ffffff' : color, P_CRYSTAL, 0.1, 0.4, 0, Math.PI, 0.25, 0.4, vr * 0.35, vr * 0.5, 0.5, PRIO_LOW);
           tr.emitT = 0.11 * slow;
+        } else if (e === EL_ACID) {
+          // gouttes qui tombent
+          particles.burst(b.pos.x, b.pos.y + vr * 0.8, 1, color, P_SHARD, 0, 0.2, Math.PI / 2, 0.3, 0.3, 0.45, vr * 0.3, vr * 0.45, 6, PRIO_LOW);
+          tr.emitT = 0.09 * slow;
+        } else if (f === F_GREED) {
+          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? '#ffffff' : color, P_CRYSTAL, 0.1, 0.5, 0, Math.PI, 0.18, 0.3, vr * 0.25, vr * 0.4, 0, PRIO_LOW);
+          tr.emitT = 0.1 * slow;
+        } else if (e === EL_VOID) {
+          particles.burst(b.pos.x, b.pos.y, 1, PALETTE.bg0, P_SHARD, 0.1, 0.3, 0, Math.PI, 0.2, 0.35, vr * 0.3, vr * 0.45, 0, PRIO_LOW);
+          tr.emitT = 0.12 * slow;
         } else {
           tr.emitT = 1;
         }
@@ -610,8 +715,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     if (many) {
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'bevel';
-      ctx.lineWidth = R * 1.2;
-      for (let e = 0; e < TRAIL_BASE.length; e++) {
+      for (let e = 0; e < ELEMENT_COUNT; e++) {
+        if (present[e] === 0) continue;
         let any = false;
         for (let i = 0; i < MAX_TRAILS; i++) {
           const tr = trails[i]!;
@@ -624,9 +729,16 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
           }
         }
         if (!any) continue;
+        const f = famOf[e] ?? F_ARCANE;
+        const dashed = f === F_ARCANE && e !== EL_STONE;
+        ctx.lineWidth = R * 1.2 * (FAM_WIDTH[f] ?? 1.5) * 0.66;
         ctx.strokeStyle = elColors[e] ?? PALETTE.stone;
-        ctx.globalAlpha = e === EL_GHOST ? 0.2 : 0.32;
+        ctx.globalAlpha = (f === F_TRICKY ? 0.2 : 0.32) * (f === F_GREED ? twinkle : 1);
+        if (f === F_ELEMENTAL) ctx.globalCompositeOperation = 'lighter';
+        if (dashed) { ctx.setLineDash(DASH_TRAIL); ctx.lineDashOffset = 0; }
         ctx.stroke();
+        if (dashed) ctx.setLineDash(NO_DASH);
+        if (f === F_ELEMENTAL) ctx.globalCompositeOperation = 'source-over';
       }
     }
     ctx.globalAlpha = 1;
@@ -637,18 +749,26 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (!b.alive) continue;
       const e = ELEMENT_INDEX[b.element];
       const idx = e * 3 + (b.tier - 1);
+      const rq = quantizeRadius(b.radius, R);
       if (isGolden(b)) {
         const gimg = sp.goldenAt(idx);
         if (gimg) {
-          const gext = (sp.goldenExt[idx] ?? R * GOLDEN_EXTENT) * (b.radius / R);
-          blit(gimg, b.pos.x - gext, b.pos.y - gext, 1);
+          const gs = rq / RQ_ONE;
+          const gext = (sp.goldenExt[idx] ?? R * GOLDEN_EXTENT) * gs;
+          blit(gimg, b.pos.x - gext, b.pos.y - gext, gs);
           continue;
         }
       }
-      const img = sp.ballAt(idx);
+      const orient = ELEMENT_ORIENT[e] ?? 0;
+      let rot = 0;
+      if (orient === ORIENT_VELOCITY) rot = Math.round((Math.atan2(b.vel.y, b.vel.x) / (Math.PI * 2)) * ROT_STEPS);
+      else if (orient === ORIENT_SPIN) rot = Math.floor(time * SPIN_RATE + b.id * 5);
+      const img = sp.ball(idx, rq, rot);
       if (!img) continue;
-      const ext = (sp.ballExt[idx] ?? R * BALL_EXTENT) * (b.radius / R);
+      const ext = ((sp.ballExt[idx] ?? R * BALL_EXTENT) * rq) / RQ_ONE;
+      // fantôme translucide ; copie d'écho (Ball.triggered, cf. rapport) encore plus
       if (e === EL_GHOST) ctx.globalAlpha = 0.6;
+      else if (e === EL_ECHO && b.triggered) ctx.globalAlpha = 0.45;
       blit(img, b.pos.x - ext, b.pos.y - ext, 1);
       ctx.globalAlpha = 1;
     }
@@ -658,6 +778,25 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const t = trails[i]!;
       if (t.active && t.seen !== frame) t.active = false;
     }
+  }
+
+  function elementOf(ballId: number): number {
+    for (let i = 0; i < MAX_TRAILS; i++) {
+      const t = trails[i]!;
+      if (t.active && t.id === ballId) return t.elem;
+    }
+    return -1;
+  }
+  function nearestElement(x: number, y: number, maxD: number): number {
+    let best = maxD * maxD, el = -1;
+    for (let i = 0; i < MAX_TRAILS; i++) {
+      const t = trails[i]!;
+      if (!t.active) continue;
+      const dx = t.xs[t.head]! - x, dy = t.ys[t.head]! - y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= best) { best = d2; el = t.elem; }
+    }
+    return el;
   }
 
   function isGoldenId(id: number): boolean {
@@ -885,6 +1024,9 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     prevPhase = curPhase;
     curPhase = state.phase;
     const sp = d.getSprites();
+    sp.resetBudget();
+    if (sp !== warmedFor || state.volley.length !== warmLen) { warmedFor = sp; warmLen = state.volley.length; warmDone = false; }
+    warmVolley(state);
     const dpr = l.dpr;
     const W = ctx.canvas.width, H = ctx.canvas.height;
     const cols = l.cols, rows = l.rows;
@@ -974,5 +1116,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       reviveT = 0;
     },
     clearOverlays() { lostT = -1; liftT = -1; reviveT = -1; goldIds.fill(-1); breachIds.fill(-1); },
+    elementOf,
+    nearestElement,
   };
 }

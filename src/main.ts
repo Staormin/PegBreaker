@@ -45,7 +45,22 @@ function boot(): void {
   const resume = !forcedSeed && !isDaily && !fresh && meta.data.currentRun ? meta.data.currentRun : undefined;
   const seed = forcedSeed ?? (isDaily ? meta.dailySeed() : `run-${Date.now().toString(36)}`);
   const audio: AudioSystem = createAudio(bus, meta.data.settings);
-  const baseMods = meta.getModifiers();
+  const isChallenge = params.get('goal') !== null;
+  // Quotidien et défi : pool standard (les 27 balles, toutes les reliques, aucun bonus de méta) pour que deux joueurs
+  // jouent exactement la même partie sur la même graine. Les fragments gagnés sont crédités normalement.
+  const ownMods = meta.getModifiers();
+  const standardMods = {
+    ...ownMods,
+    bonusHp: 0,
+    bonusStartBalls: 0,
+    coinMultiplier: 1,
+    fragmentMultiplier: ownMods.fragmentMultiplier,
+    freeRerolls: 0,
+    unlockedElements: config.balls.defs.map((d) => d.id),
+    unlockedRelics: config.relics.defs.map((d) => d.id),
+    runMods: [] as string[],
+  };
+  const baseMods = isDaily || isChallenge ? standardMods : ownMods;
   const sim = createSim(config, {
     seed,
     meta: isDaily ? { ...baseMods, runMods: meta.dailyMods() } : baseMods,

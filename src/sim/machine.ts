@@ -16,6 +16,7 @@ import { compactBlocks, releaseBall, releaseBlock, releaseDrop } from './pools';
 import { clampAim } from './aim';
 import { contractOnFire, contractOnWaveEnd, contractSeed } from './contracts';
 import { burnEmbers } from './combat';
+import { elementsShotStart } from './elements/index';
 import { hashString } from '../core/rng';
 import { AUTO_SPEEDUP_RAMP_MS } from './constants';
 import { modElement } from './mods';
@@ -70,6 +71,7 @@ export function startRun(ctx: Ctx, seed: string, restarts: number): void {
   s.internal.contractRng = contractSeed(seed);
   ctx.s = s;
   ctx.spareBalls.length = 0;
+  ctx.spareFx.length = 0;
   ctx.spareDrops.length = 0;
   ctx.spareBlocks.length = 0;
   refreshRelics(ctx);
@@ -164,6 +166,7 @@ export function fire(ctx: Ctx): void {
   s.phase = 'firing';
   contractOnFire(ctx);
   burnEmbers(ctx); // pyromane : brûlure au début du tir suivant (comptée dans ce tir)
+  elementsShotStart(ctx); // acide (charges), choc (compteurs), rouille (élagage)
   if (ctx.blocksDied) compactBlocks(ctx);
   rebuildGrid(ctx);
   emit(ctx, {

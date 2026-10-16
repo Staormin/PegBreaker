@@ -83,7 +83,7 @@ function complete(ctx: Ctx, d: ContractDef): void {
   c.status = 'done';
   s.stats.contractsCompleted = (s.stats.contractsCompleted ?? 0) + 1;
   emit(ctx, { type: 'contract:completed', def: copyDef(d), reward: { ...d.reward } });
-  applyOption(ctx, d.reward);
+  applyOption(ctx, d.reward, 'contract');
 }
 
 function fail(ctx: Ctx, d: ContractDef): void {

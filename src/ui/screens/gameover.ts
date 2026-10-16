@@ -4,6 +4,7 @@ import type { EventBus } from '../../core/events';
 import type { GameConfig, RunSummary } from '../../core/types';
 import { fmtDays, fmtMult } from '../dailyInfo';
 import { button, el, fmt } from '../dom';
+import { ballIcon, elementTable, groupVolley } from '../elements';
 import { canvasToBlob, challengeLink, renderShareCard, shareRun } from '../share';
 import { createScreen, type ScreenEl } from './screen';
 
@@ -49,6 +50,12 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
   fragRow.append(fragVal, fragIco, el('span', 'stat-label', 'fragments'));
   fragRow.setAttribute('aria-live', 'polite');
 
+  // volée finale : une puce par (élément, rang), nom au survol (title) et en aria-label
+  const volleyTitle = el('p', 'end-volley-title', 'Volée finale');
+  const volleyRow = el('div', 'end-volley');
+  volleyRow.setAttribute('role', 'list');
+  volleyRow.setAttribute('aria-label', 'Volée finale');
+
   const record = el('div', 'record');
   record.hidden = true;
   const recordGap = el('p', 'muted record-gap');
@@ -93,7 +100,28 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     row1.append(share, restart);
     actions.append(replay, row1, shareMsg, row2);
   } else actions.append(restart, share, shareMsg, row2);
-  s.panel.append(challenge, dailyLine, record, recordGap, grid, fragRow, actions);
+  s.panel.append(challenge, dailyLine, record, recordGap, grid, fragRow, volleyTitle, volleyRow, actions);
+
+  function renderVolley(sum: RunSummary): void {
+    volleyRow.textContent = '';
+    const groups = groupVolley(d.config, sum.volley);
+    volleyTitle.hidden = volleyRow.hidden = groups.length === 0;
+    volleyTitle.textContent = `Volée finale · ${sum.volley.length} balle${sum.volley.length > 1 ? 's' : ''}`;
+    const t = elementTable(d.config);
+    for (const g of groups) {
+      const info = t.get(g.element);
+      const rank = g.tier === 1 ? '' : g.tier === 2 ? ' II' : ' III';
+      const chip = el('span', 'ev-chip');
+      chip.setAttribute('role', 'listitem');
+      chip.dataset.element = g.element;
+      chip.dataset.family = info.family;
+      chip.dataset.tier = String(g.tier);
+      chip.title = `${info.name}${rank} ×${g.count} — ${info.desc}`;
+      chip.setAttribute('aria-label', `${info.name}${rank} ×${g.count}`);
+      chip.append(ballIcon(d.config, g.element, g.tier, 28), el('span', 'num', `×${g.count}`));
+      volleyRow.append(chip);
+    }
+  }
 
   let current: RunSummary | null = null;
   let cardBlob: Promise<Blob | null> | null = null;
@@ -172,6 +200,7 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     vCombo.textContent = fmt(summary.stats.bestCombo);
     vDmg.textContent = fmt(summary.stats.bestShotDamage);
     fragVal.textContent = `+${fmt(summary.stats.fragmentsEarned)}`;
+    renderVolley(summary);
   }
 
   return { ...s, open };

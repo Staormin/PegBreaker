@@ -1,16 +1,23 @@
-// sim/combat.ts — dégâts, combo, destruction, explosions, foudre, gel, scission.
+// sim/combat.ts — dégâts, combo, destruction, explosions, chaîne de foudre. Les mécaniques propres à chaque
+// élément vivent dans sim/elements (registre de hooks).
 import type { Ball, BallElement, Block } from '../core/types';
 import type { Ctx } from './ctx';
 import { ballDef, emit, isBreakable } from './ctx';
 import { HP_EPS } from './constants';
 import { bossDamage } from './boss';
 import { maybeDrop } from './drops';
-import { heal } from './rewards';
-import { acquireBall } from './pools';
+import { fxOf } from './pools';
 import { contractMax, contractOnKill } from './contracts';
+import type { BallFx } from './state';
+import { elementHooks, hooksOf } from './elements/index';
+import { heal } from './rewards';
 
-/** Dégâts d'impact d'une balle : base × tierMult^(tier-1) × (1 + k × combo) ; plomb : × mult, sans combo ; dorée : × lastBallMultiplier. */
-export function ballDamage(ctx: Ctx, b: Ball): number {
+/**
+ * Dégâts d'impact d'une balle : base × tierMult^(tier-1) × (1 + k × combo) × fx.dmgMult, puis le hook
+ * modifyDamage de l'élément (plomb : × mult, géante, or, cristal, vide, chance, perforante, rouille).
+ * `target` = bloc frappé (null pour un effet dérivé : bombe, prisme, nova). Dorée : × goldenMult.
+ */
+export function ballDamage(ctx: Ctx, b: Ball, target: Block | null = null, fx: BallFx = fxOf(ctx, b)): number {
   const bc = ctx.cfg.balls;
   const r = ctx.relic;
   let d = ballDef(ctx, b.element).baseDamage * Math.pow(bc.tierDamageMultiplier, b.tier - 1);
@@ -20,12 +27,16 @@ export function ballDamage(ctx: Ctx, b: Ball): number {
   const it = ctx.s.internal;
   d *= it.shotDamageMult ?? 1;
   if (b.golden) d *= it.goldenMult ?? bc.lastBallMultiplier;
-  if (b.element === 'lead') return d * bc.lead.damageMultiplier;
-  // plafond doux : au-delà de comboSoftCap, chaque rebond n'ajoute plus que comboDamagePerBounceAfterCap
-  const cap = bc.comboSoftCap;
-  const below = Math.min(b.combo, cap);
-  const above = Math.max(0, b.combo - cap);
-  return d * (1 + bc.comboDamagePerBounce * below + bc.comboDamagePerBounceAfterCap * above);
+  const H = hooksOf(b, fx);
+  if (!H.noCombo) {
+    // plafond doux : au-delà de comboSoftCap, chaque rebond n'ajoute plus que comboDamagePerBounceAfterCap
+    const cap = bc.comboSoftCap;
+    const below = Math.min(b.combo, cap);
+    const above = Math.max(0, b.combo - cap);
+    d = d * (1 + bc.comboDamagePerBounce * below + bc.comboDamagePerBounceAfterCap * above);
+  }
+  if (fx.dmgMult !== 1) d *= fx.dmgMult;
+  return H.modifyDamage ? H.modifyDamage(ctx, b, fx, d, target) : d;
 }
 
 function centerX(b: Block): number {
@@ -81,13 +92,21 @@ function destroyBlock(ctx: Ctx, bi: number, element: BallElement): void {
     s.stats.bossesKilled++;
     emit(ctx, { type: 'boss:killed', bossId: blk.bossId ?? '', pos: { x, y } });
   }
-  maybeDrop(ctx, x, y);
-  if (blk.kind === 'heart') heal(ctx, ctx.relic.heartHeal);
+  // hook de la balle responsable (or : pièces garanties ; vampire : soin)
+  const cb = ctx.curBall;
+  let handled = false;
+  if (cb) {
+    const cf = ctx.curFx ?? ctx.nullFx;
+    const H = hooksOf(cb, cf);
+    if (H.onBlockDestroyed) handled = H.onBlockDestroyed(ctx, cb, cf, blk, x, y);
+  }
+  if (!handled) maybeDrop(ctx, x, y, 0);
+  if (blk.kind === 'heart') heal(ctx, ctx.relic.heartHeal, 'heart', x, y);
   else if (blk.kind === 'explosive') {
     const def = ctx.blockDefs.explosive;
     const radius = (def?.explosionRadius ?? 0) * ctx.relic.bigboom;
     const dmg = (def?.explosionDamageRatio ?? 0) * blk.maxHp;
-    if (radius > 0 && dmg > 0) explode(ctx, x, y, radius, dmg, element, bi, false);
+    if (radius > 0 && dmg > 0) explode(ctx, x, y, radius, dmg, element, bi, false, 'explosive');
   }
 }
 
@@ -101,9 +120,10 @@ export function explode(
   element: BallElement,
   exclude: number,
   ember: boolean,
+  source: BallElement | 'explosive' = element,
 ): void {
   const embers = ctx.s.internal.embers;
-  emit(ctx, { type: 'block:explode', pos: { x, y }, radius, damage });
+  emit(ctx, { type: 'block:explode', pos: { x, y }, radius, damage, element: source });
   const blocks = ctx.s.blocks;
   const r2 = radius * radius;
   const n = blocks.length;
@@ -141,7 +161,7 @@ export function burnEmbers(ctx: Ctx): void {
  * Foudre : frappe le bloc cassable le plus proche (hors `exclude`) dans chainRange, puis, avec paratonnerre,
  * rebondit de bloc en bloc (lightningChains sauts, chaque bloc une seule fois).
  */
-function chainLightning(ctx: Ctx, x: number, y: number, exclude: number, damage: number): void {
+export function chainLightning(ctx: Ctx, x: number, y: number, exclude: number, damage: number): void {
   const blocks = ctx.s.blocks;
   const range = ctx.cfg.balls.lightning.chainRange;
   const hit = ctx.scratch;
@@ -171,7 +191,7 @@ function chainLightning(ctx: Ctx, x: number, y: number, exclude: number, damage:
     const t = blocks[best] as Block;
     const tx = centerX(t);
     const ty = centerY(t);
-    emit(ctx, { type: 'lightning:chain', from: { x: fx, y: fy }, to: { x: tx, y: ty }, damage });
+    emit(ctx, { type: 'lightning:chain', from: { x: fx, y: fy }, to: { x: tx, y: ty }, damage, element: 'lightning' });
     damageBlock(ctx, best, damage, 'lightning', 0, false);
     hit[nHit++] = best;
     fx = tx;
@@ -179,8 +199,8 @@ function chainLightning(ctx: Ctx, x: number, y: number, exclude: number, damage:
   }
 }
 
-export function bumpCombo(ctx: Ctx, b: Ball, n = 1): void {
-  if (b.element === 'lead' || n <= 0) return;
+export function bumpCombo(ctx: Ctx, b: Ball, n = 1, fx?: BallFx): void {
+  if (n <= 0 || elementHooks(b.element).noCombo) return;
   const prev = b.combo;
   b.combo += n;
   const ms = ctx.cfg.balls.comboMilestones;
@@ -188,48 +208,14 @@ export function bumpCombo(ctx: Ctx, b: Ball, n = 1): void {
     const m = ms[k] as number;
     if (prev < m && b.combo >= m) {
       emit(ctx, { type: 'combo:milestone', combo: b.combo, pos: { x: b.pos.x, y: b.pos.y }, level: (k + 1) as 1 | 2 | 3 });
+      if (elementHooks(b.element).onComboMilestone) {
+        const f = fx ?? fxOf(ctx, b);
+        hooksOf(b, f).onComboMilestone?.(ctx, b, f, (k + 1) as 1 | 2 | 3, b.combo);
+      }
     }
   }
   if (b.combo > ctx.s.currentShotCombo) ctx.s.currentShotCombo = b.combo;
   contractMax(ctx, 'reachCombo', b.combo);
-}
-
-function split(ctx: Ctx, b: Ball): void {
-  const it = ctx.s.internal;
-  b.triggered = true;
-  if (it.splitsThisShot >= ctx.cfg.balls.split.maxSplitsPerShot) return;
-  it.splitsThisShot++;
-  const vx = b.vel.x;
-  const vy = b.vel.y;
-  const parts = Math.max(2, ctx.relic.splitParts);
-  // angles répartis de +θ à −θ ; la balle d'origine prend +θ (k = 0)
-  for (let k = parts - 1; k >= 0; k--) {
-    let c: number;
-    let sn: number;
-    const f = 1 - (2 * k) / (parts - 1);
-    if (f === 1 || f === -1) {
-      c = ctx.splitCos;
-      sn = f * ctx.splitSin;
-    } else {
-      const a = f * Math.atan2(ctx.splitSin, ctx.splitCos);
-      c = Math.cos(a);
-      sn = Math.sin(a);
-    }
-    const nb = k === 0 ? b : acquireBall(ctx);
-    if (nb !== b) {
-      nb.element = b.element;
-      nb.tier = b.tier;
-      nb.combo = b.combo;
-      nb.triggered = true;
-      nb.golden = false; // les filles d'une balle dorée ne sont pas dorées
-      nb.radius = b.radius;
-      nb.pos.x = b.pos.x;
-      nb.pos.y = b.pos.y;
-    }
-    nb.vel.x = vx * c - vy * sn;
-    nb.vel.y = vx * sn + vy * c;
-  }
-  emit(ctx, { type: 'ball:split', pos: { x: b.pos.x, y: b.pos.y } });
 }
 
 /** Rangée la plus basse occupée par un bloc cassable (radar). */
@@ -241,23 +227,41 @@ function lowestRow(ctx: Ctx): number {
 
 /**
  * Impact d'une balle sur le bloc/cheville d'index bi au point (px,py), normale (nx,ny) (du bloc vers la balle).
- * `bounced` = faux pour une traversée fantôme.
+ * `bounced` = faux pour une traversée (fantôme, perforante, copie d'écho, boomerang au retour).
+ * Les effets d'élément passent par le registre sim/elements (modifyDamage, onBlockHit, onBounce).
  */
-export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, nx: number, ny: number, bounced: boolean): void {
+export function onImpact(
+  ctx: Ctx,
+  b: Ball,
+  bi: number,
+  px: number,
+  py: number,
+  nx: number,
+  ny: number,
+  bounced: boolean,
+  fx: BallFx = fxOf(ctx, b),
+): void {
   const s = ctx.s;
   const blk = s.blocks[bi];
   if (!blk) return;
   const isPeg = blk.kind === 'peg';
-  const dmg = ballDamage(ctx, b);
+  const H = hooksOf(b, fx);
+  const hit = ctx.hit;
+  hit.bounced = bounced;
+  hit.crit = false;
+  hit.ignoreArmor = false;
+  const dmg = ballDamage(ctx, b, isPeg ? null : blk, fx);
   ctx.curBallId = b.id; // dégâts directs et indirects (explosion, foudre, enclume) attribués à cette balle
   ctx.curGolden = b.golden; // casses de cet impact (et de ses effets) attribuées à la dorée
+  ctx.curBall = b;
+  ctx.curFx = fx;
   if (!isPeg) {
-    const crit = b.combo >= ctx.cfg.balls.comboMilestones[0];
+    const crit = b.combo >= ctx.cfg.balls.comboMilestones[0] || hit.crit;
     let amount = dmg;
     if (ctx.relic.firstblood && !s.internal.firstbloodUsed && blk.kind !== 'boss') {
       s.internal.firstbloodUsed = true;
       amount = Math.max(amount, blk.hp);
-    } else if (blk.kind === 'armored' && blk.armorSide === 'down' && !(ny > 0.5)) {
+    } else if (blk.kind === 'armored' && blk.armorSide === 'down' && !(ny > 0.5) && !hit.ignoreArmor) {
       amount = 0; // blindé : seul le dessous est vulnérable → rebond simple
     }
     if (ctx.relic.radar !== 1) {
@@ -268,34 +272,9 @@ export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, 
       }
     }
     if (amount > 0) damageBlock(ctx, bi, amount, b.element, b.combo, crit);
-    const thawed = s.internal.thawedIds;
-    // glace : gèle seulement au premier impact de la balle, au plus maxFrozenPerShot blocs par tir
-    if (b.element === 'ice' && !b.triggered) {
-      b.triggered = true;
-      const it = s.internal;
-      if (
-        isBreakable(blk) &&
-        !blk.frozen &&
-        !(thawed && thawed.includes(blk.id)) &&
-        (it.frozenThisShot ?? 0) < ctx.cfg.balls.ice.maxFrozenPerShot
-      ) {
-        it.frozenThisShot = (it.frozenThisShot ?? 0) + 1;
-        blk.frozen = true;
-        emit(ctx, { type: 'block:frozen', blockId: blk.id, pos: { x: centerX(blk), y: centerY(blk) } });
-      }
-    }
   }
-  if (b.element === 'ice') b.triggered = true; // une cheville consomme aussi le premier impact
-  if (b.element === 'lightning') chainLightning(ctx, px, py, bi, dmg * ctx.cfg.balls.lightning.damageRatio);
-  else if (b.element === 'fire' && !b.triggered) {
-    b.triggered = true;
-    const f = ctx.cfg.balls.fire;
-    explode(ctx, px, py, f.radius * ctx.relic.bigboom * ctx.relic.pyroRadius, dmg * f.damageRatio, 'fire', bi, ctx.relic.emberRatio > 0);
-  } else if (b.element === 'split' && !b.triggered) split(ctx, b);
-  else if (b.element === 'lead' && ctx.relic.anvilRatio > 0 && ctx.relic.anvilRadius > 0) {
-    explode(ctx, px, py, ctx.relic.anvilRadius * ctx.relic.bigboom, dmg * ctx.relic.anvilRatio, 'lead', bi, false);
-  }
-  bumpCombo(ctx, b, !bounced ? ctx.relic.ghostCombo : isPeg ? ctx.relic.pegCombo : 1);
+  if (H.onBlockHit) H.onBlockHit(ctx, b, fx, bi, blk, px, py, dmg, isPeg);
+  bumpCombo(ctx, b, !bounced ? (H.passThrough ? ctx.relic.ghostCombo : 1) : isPeg ? ctx.relic.pegCombo : 1, fx);
   if (bounced) {
     emit(ctx, {
       type: 'ball:bounce',
@@ -305,7 +284,10 @@ export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, 
       surface: isPeg ? 'peg' : 'block',
       combo: b.combo,
     });
+    if (H.onBounce && b.alive) H.onBounce(ctx, b, fx, isPeg ? 'peg' : 'block', nx, ny, bi);
   }
   ctx.curGolden = false;
   ctx.curBallId = -1;
+  ctx.curBall = null;
+  ctx.curFx = null;
 }

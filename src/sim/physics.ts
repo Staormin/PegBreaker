@@ -1,13 +1,16 @@
 // sim/physics.ts — déplacement des balles, murs, sol, collisions cercle/AABB et cercle/cercle.
 // Broad phase : grille cellule → index de bloc. Pas de tunneling : à 240 Hz, le déplacement
-// par sous-pas (ballSpeed/240) reste inférieur au rayon de la balle (vérifié par core/config.ts).
+// par sous-pas (ballSpeed/240) reste inférieur au rayon de la balle (vérifié par core/config.ts) ; une balle
+// plus rapide (comète) ou plus petite (mini-balle) que cette marge est découpée en micro-pas (physicsStep).
 import type { Ball, Block } from '../core/types';
 import type { Ctx } from './ctx';
 import { emit, isDead } from './ctx';
-import { LAUNCH_MARGIN, PEG_RADIUS } from './constants';
+import { LAUNCH_MARGIN, MICROSTEP_RADIUS_FRACTION, PEG_RADIUS } from './constants';
 import { bumpCombo, onImpact } from './combat';
 import { collectTouched } from './drops';
 import { compactBlocks, releaseBall } from './pools';
+import type { BallFx } from './state';
+import { hooksOf } from './elements/index';
 
 export function rebuildGrid(ctx: Ctx): void {
   const { cols, rows } = ctx.cfg.blocks.board;
@@ -32,9 +35,9 @@ function boxAt(ctx: Ctx, col: number, row: number): boolean {
   return !!b && b.kind !== 'peg' && !isDead(b);
 }
 
-/** Renormalise à ballSpeed et impose l'angle minimal par rapport à l'horizontale. */
-function fixVelocity(ctx: Ctx, b: Ball): void {
-  const sp = ctx.ballSpeed;
+/** Renormalise à la vitesse de la balle (ballSpeed × fx.speedMult) et impose l'angle minimal par rapport à l'horizontale. */
+export function fixVelocity(ctx: Ctx, b: Ball, fx: BallFx): void {
+  const sp = fx.speedMult === 1 ? ctx.ballSpeed : ctx.ballSpeed * fx.speedMult;
   let vx = b.vel.x;
   let vy = b.vel.y;
   const l = Math.hypot(vx, vy);
@@ -54,7 +57,7 @@ function fixVelocity(ctx: Ctx, b: Ball): void {
   b.vel.y = vy;
 }
 
-function collideBox(ctx: Ctx, b: Ball, bi: number, blk: Block): void {
+function collideBox(ctx: Ctx, b: Ball, fx: BallFx, bi: number, blk: Block): void {
   const r = b.radius;
   const minX = blk.col;
   const maxX = blk.col + blk.width;
@@ -131,12 +134,12 @@ function collideBox(ctx: Ctx, b: Ball, bi: number, blk: Block): void {
   if (vn < 0) {
     b.vel.x -= 2 * vn * nx;
     b.vel.y -= 2 * vn * ny;
-    fixVelocity(ctx, b);
-    onImpact(ctx, b, bi, qx, qy, nx, ny, true);
+    fixVelocity(ctx, b, fx);
+    onImpact(ctx, b, bi, qx, qy, nx, ny, true, fx);
   }
 }
 
-function collidePeg(ctx: Ctx, b: Ball, bi: number, blk: Block): void {
+function collidePeg(ctx: Ctx, b: Ball, fx: BallFx, bi: number, blk: Block): void {
   const cx = blk.col + 0.5;
   const cy = blk.row + 0.5;
   const R = PEG_RADIUS + b.radius;
@@ -159,8 +162,8 @@ function collidePeg(ctx: Ctx, b: Ball, bi: number, blk: Block): void {
   if (vn < 0) {
     b.vel.x -= 2 * vn * nx;
     b.vel.y -= 2 * vn * ny;
-    fixVelocity(ctx, b);
-    onImpact(ctx, b, bi, cx + nx * PEG_RADIUS, cy + ny * PEG_RADIUS, nx, ny, true);
+    fixVelocity(ctx, b, fx);
+    onImpact(ctx, b, bi, cx + nx * PEG_RADIUS, cy + ny * PEG_RADIUS, nx, ny, true, fx);
   }
 }
 
@@ -178,10 +181,16 @@ function overlaps(blk: Block, x: number, y: number, r: number): boolean {
   return dx * dx + dy * dy < r * r;
 }
 
-/** Collisions avec les blocs des cellules recouvertes (≤ 4 cellules, dédoublonnées pour les boss). */
-function collideBlocks(ctx: Ctx, b: Ball, px: number, py: number): void {
+/**
+ * Collisions avec les blocs des cellules recouvertes (≤ 4 cellules, dédoublonnées pour les boss).
+ * Traversée (fantôme, fx.pass) : impact à l'entrée dans le bloc, sans rebond. Perforante : les `pierceLeft`
+ * premiers blocs rectangulaires touchés sont traversés (fx.piercingId = bloc en cours de traversée).
+ */
+function collideBlocks(ctx: Ctx, b: Ball, fx: BallFx, px: number, py: number): void {
   const { cols, rows } = ctx.cfg.blocks.board;
-  const ghost = b.element === 'ghost';
+  const ghost = fx.pass || hooksOf(b, fx).passThrough === true;
+  const piercing = fx.piercingId >= 0 || fx.pierceLeft > 0;
+  let inside = false;
   for (let pass = 0; pass < 2; pass++) {
     if (ctx.gridDirty) rebuildGrid(ctx);
     const r = b.radius;
@@ -204,23 +213,43 @@ function collideBlocks(ctx: Ctx, b: Ball, px: number, py: number): void {
         if (!blk || isDead(blk)) continue;
         if (ghost) {
           if (overlaps(blk, b.pos.x, b.pos.y, r) && !overlaps(blk, px, py, r)) {
-            onImpact(ctx, b, idx, b.pos.x, b.pos.y, 0, 0, false);
+            onImpact(ctx, b, idx, b.pos.x, b.pos.y, 0, 0, false, fx);
+            if (!b.alive) return;
           }
           continue;
         }
+        if (piercing && blk.kind !== 'peg' && overlaps(blk, b.pos.x, b.pos.y, r)) {
+          // traversée en cours : bloc déjà chevauché au pas précédent
+          if (fx.piercingId >= 0 && overlaps(blk, px, py, r)) {
+            inside = true;
+            continue;
+          }
+          // entrée dans un nouveau bloc
+          if (fx.pierceLeft > 0) {
+            fx.pierceLeft--;
+            fx.piercingId = blk.id;
+            inside = true;
+            onImpact(ctx, b, idx, b.pos.x, b.pos.y, 0, 0, false, fx);
+            if (!b.alive) return;
+            continue;
+          }
+        }
         const vx = b.vel.x;
         const vy = b.vel.y;
-        if (blk.kind === 'peg') collidePeg(ctx, b, idx, blk);
-        else collideBox(ctx, b, idx, blk);
+        if (blk.kind === 'peg') collidePeg(ctx, b, fx, idx, blk);
+        else collideBox(ctx, b, fx, idx, blk);
+        if (!b.alive) return;
         if (vx !== b.vel.x || vy !== b.vel.y) hit = true;
       }
     }
+    if (pass === 0 && piercing && !inside) fx.piercingId = -1; // sortie du bloc traversé
     // une seconde passe seulement si la poussée a pu faire entrer la balle dans un voisin
     if (ghost || !hit) return;
   }
 }
 
-function groundBall(ctx: Ctx, b: Ball): void {
+/** La balle touche le sol (ou finit son retour de boomerang) : ball:grounded, puis hook onGrounded (bombe, écho). */
+export function groundBall(ctx: Ctx, b: Ball, fx: BallFx): void {
   const s = ctx.s;
   const board = ctx.cfg.blocks.board;
   b.pos.y = board.rows - b.radius;
@@ -236,64 +265,93 @@ function groundBall(ctx: Ctx, b: Ball): void {
   }
   b.combo = 0;
   b.alive = false;
+  const H = hooksOf(b, fx);
+  if (H.onGrounded) H.onGrounded(ctx, b, fx);
 }
 
-function walls(ctx: Ctx, b: Ball): void {
+function walls(ctx: Ctx, b: Ball, fx: BallFx): void {
   const { cols } = ctx.cfg.blocks.board;
+  const H = hooksOf(b, fx);
+  const wc = H.noWallCombo ? 0 : ctx.relic.ricochet;
   const r = b.radius;
   if (b.pos.x < r) {
     b.pos.x = r;
     if (b.vel.x < 0) {
       b.vel.x = -b.vel.x;
-      bumpCombo(ctx, b, ctx.relic.ricochet);
+      bumpCombo(ctx, b, wc, fx);
       emit(ctx, { type: 'ball:bounce', ballId: b.id, pos: { x: 0, y: b.pos.y }, normal: { x: 1, y: 0 }, surface: 'wall', combo: b.combo });
+      if (H.onWallBounce) H.onWallBounce(ctx, b, fx, 0);
+      if (H.onBounce && b.alive) H.onBounce(ctx, b, fx, 'wall', 1, 0, -1);
+      if (!b.alive) return;
     }
   } else if (b.pos.x > cols - r) {
     b.pos.x = cols - r;
     if (b.vel.x > 0) {
       b.vel.x = -b.vel.x;
-      bumpCombo(ctx, b, ctx.relic.ricochet);
+      bumpCombo(ctx, b, wc, fx);
       emit(ctx, { type: 'ball:bounce', ballId: b.id, pos: { x: cols, y: b.pos.y }, normal: { x: -1, y: 0 }, surface: 'wall', combo: b.combo });
+      if (H.onWallBounce) H.onWallBounce(ctx, b, fx, cols);
+      if (H.onBounce && b.alive) H.onBounce(ctx, b, fx, 'wall', -1, 0, -1);
+      if (!b.alive) return;
     }
   }
   if (b.pos.y < r) {
     b.pos.y = r;
     if (b.vel.y < 0) {
       b.vel.y = -b.vel.y;
-      bumpCombo(ctx, b, ctx.relic.ricochet);
+      bumpCombo(ctx, b, wc, fx);
+      if (H.onCeilingBounce) H.onCeilingBounce(ctx, b, fx);
       emit(ctx, { type: 'ball:bounce', ballId: b.id, pos: { x: b.pos.x, y: 0 }, normal: { x: 0, y: 1 }, surface: 'wall', combo: b.combo });
+      if (H.onBounce && b.alive) H.onBounce(ctx, b, fx, 'wall', 0, 1, -1);
     }
   }
 }
 
-function moveBall(ctx: Ctx, b: Ball, sec: number): void {
+function moveBall(ctx: Ctx, b: Ball, fx: BallFx, sec: number): void {
   const { cols, rows } = ctx.cfg.blocks.board;
+  const H = hooksOf(b, fx);
+  if (H.onTick) {
+    H.onTick(ctx, b, fx, sec * 1000);
+    if (!b.alive) return;
+  }
   const px = b.pos.x;
   const py = b.pos.y;
   b.pos.x += b.vel.x * sec;
   b.pos.y += b.vel.y * sec;
-  walls(ctx, b);
-  collideBlocks(ctx, b, px, py);
+  walls(ctx, b, fx);
+  if (!b.alive) return;
+  collideBlocks(ctx, b, fx, px, py);
+  if (!b.alive) return;
   const r = b.radius;
   // garde-fous (la poussée hors d'un bloc ne doit jamais sortir du plateau)
   if (b.pos.x < r) b.pos.x = r;
   else if (b.pos.x > cols - r) b.pos.x = cols - r;
   if (b.pos.y < r) b.pos.y = r;
-  if (b.vel.y > 0 && b.pos.y + r >= rows) groundBall(ctx, b);
+  // boomerang au retour : se pose à l'arrivée (onTick), pas au contact du sol
+  if (b.vel.y > 0 && b.pos.y + r >= rows && !fx.returning) groundBall(ctx, b, fx);
   else if (b.pos.y > rows - r) b.pos.y = rows - r;
 }
 
 /** Un sous-pas physique de dtMs (≤ SUBSTEP_MS). */
 export function physicsStep(ctx: Ctx, dtMs: number): void {
   const balls = ctx.s.balls;
+  const bfx = ctx.s.internal.bfx;
   if (ctx.gridDirty) rebuildGrid(ctx);
   const sec = dtMs / 1000;
-  const n = balls.length; // les balles nées d'une scission bougent au sous-pas suivant
+  const n = balls.length; // les balles nées pendant ce sous-pas (scission, mini-balles) bougent au suivant
   for (let i = 0; i < n; i++) {
     const b = balls[i] as Ball;
     if (!b.alive) continue;
-    moveBall(ctx, b, sec);
-    if (b.alive && ctx.s.drops.length > 0) collectTouched(ctx, b.pos.x, b.pos.y, b.radius);
+    const fx = bfx[i] ?? ctx.nullFx;
+    // anti-tunneling : déplacement par micro-pas < rayon (comète, mini-balles, mod swift)
+    const disp = ctx.ballSpeed * fx.speedMult * sec;
+    const m = disp < b.radius ? 1 : Math.ceil(disp / (b.radius * MICROSTEP_RADIUS_FRACTION));
+    const ss = sec / m;
+    for (let k = 0; k < m && b.alive; k++) moveBall(ctx, b, fx, ss);
+    if (b.alive && ctx.s.drops.length > 0) {
+      const H = hooksOf(b, fx);
+      collectTouched(ctx, b.pos.x, b.pos.y, b.radius, H.collectRadius ? H.collectRadius(ctx, b, fx) : 0, b, fx);
+    }
   }
   if (ctx.blocksDied) compactBlocks(ctx);
   for (let i = balls.length - 1; i >= 0; i--) if (!(balls[i] as Ball).alive) releaseBall(ctx, i);

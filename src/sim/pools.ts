@@ -2,6 +2,7 @@
 import type { Ball, Block, BlockKind, Drop, DropKind, BallElement } from '../core/types';
 import type { Ctx } from './ctx';
 import { newId } from './ctx';
+import { createFx, resetFx, type BallFx } from './state';
 
 export function acquireBall(ctx: Ctx): Ball {
   const b =
@@ -24,8 +25,28 @@ export function acquireBall(ctx: Ctx): Ball {
   b.alive = true;
   b.triggered = false;
   b.golden = false;
+  b.kind = 'main';
   ctx.s.balls.push(b);
+  const fx = ctx.spareFx.pop() ?? createFx();
+  resetFx(fx);
+  ctx.s.internal.bfx.push(fx);
   return b;
+}
+
+/** Effets de la balle (index aligné sur state.balls) ; repli neutre si absente. */
+export function fxOf(ctx: Ctx, b: Ball): BallFx {
+  const balls = ctx.s.balls;
+  const fx = ctx.s.internal.bfx;
+  for (let i = balls.length - 1; i >= 0; i--) if (balls[i] === b) return fx[i] ?? ctx.nullFx;
+  return ctx.nullFx;
+}
+
+/** Garantit l'alignement bfx ↔ balls (reprise d'un snapshot antérieur aux 27 balles). */
+export function syncFx(ctx: Ctx): void {
+  const it = ctx.s.internal;
+  if (!Array.isArray(it.bfx)) it.bfx = [];
+  while (it.bfx.length > ctx.s.balls.length) it.bfx.pop();
+  while (it.bfx.length < ctx.s.balls.length) it.bfx.push(createFx());
 }
 
 export function releaseBall(ctx: Ctx, i: number): void {
@@ -37,6 +58,14 @@ export function releaseBall(ctx: Ctx, i: number): void {
   arr.pop();
   b.alive = false;
   ctx.spareBalls.push(b);
+  const fx = ctx.s.internal.bfx;
+  const f = fx[i];
+  if (f) {
+    const lf = fx.length - 1;
+    if (i !== lf) fx[i] = fx[lf] as BallFx;
+    fx.pop();
+    ctx.spareFx.push(f);
+  }
 }
 
 export function acquireDrop(ctx: Ctx, kind: DropKind, x: number, y: number, value: number, element: BallElement | null): Drop {
@@ -86,6 +115,7 @@ export function acquireBlock(ctx: Ctx, kind: BlockKind, col: number, row: number
   b.frozen = false;
   b.armorSide = kind === 'armored' ? 'down' : 'none';
   b.bossId = null;
+  if (b.acidCharges !== undefined) b.acidCharges = 0;
   ctx.s.blocks.push(b);
   ctx.gridDirty = true;
   return b;

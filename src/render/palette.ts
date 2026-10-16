@@ -1,6 +1,6 @@
 // render/palette.ts — palette imposée (skill procedural-assets). La config JSON fait foi
 // pour les couleurs des éléments et des blocs ; la palette sert au reste et aux replis.
-import type { BallElement, BlockKind, GameConfig } from '../core/types';
+import { BALL_FAMILIES, type BallElement, type BallFamily, type BlockKind, type GameConfig } from '../core/types';
 
 export const PALETTE = {
   bg0: '#0b0f1a', bg1: '#121a2b', grid: '#1b2740', wall: '#2a3a5c',
@@ -12,15 +12,37 @@ export const PALETTE = {
   gold: '#ffc23d', goldLight: '#fff2b8', goldDark: '#a86b00',
 } as const;
 
-export const ELEMENTS: readonly BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
+/**
+ * Repli de couleur par élément (la config fait foi). L'objet est typé `Record<BallElement, …>` :
+ * le compilateur exige les 27 clés, et c'est la SEULE liste écrite à la main ; ELEMENTS et
+ * ELEMENT_INDEX en sont dérivés (ordre = ordre de déclaration, identique à balls.json).
+ */
+const ELEMENT_FALLBACK: Readonly<Record<BallElement, string>> = {
+  stone: PALETTE.stone, fire: PALETTE.fire, lightning: PALETTE.lightning, ice: PALETTE.ice,
+  ghost: PALETTE.ghost, lead: PALETTE.lead, split: PALETTE.split,
+  acid: PALETTE.good, magnet: PALETTE.heart, pierce: PALETTE.text, bomb: PALETTE.danger,
+  homing: PALETTE.heart, giant: PALETTE.stone, swarm: PALETTE.good, vampire: PALETTE.danger,
+  gold: PALETTE.gold, prism: PALETTE.ice, void: PALETTE.boss, echo: PALETTE.split,
+  boomerang: PALETTE.fire, crystal: PALETTE.ice, shock: PALETTE.lightning, twin: PALETTE.split,
+  rust: PALETTE.fire, nova: PALETTE.heart, comet: PALETTE.fire, lucky: PALETTE.good,
+};
+/** famille de repli si la config n'en donne pas (BallDef.family est requis : simple garde-fou) */
+const FAMILY_FALLBACK: BallFamily = 'arcane';
+
+export const ELEMENTS: readonly BallElement[] = Object.keys(ELEMENT_FALLBACK) as BallElement[];
+export const ELEMENT_COUNT = ELEMENTS.length;
 export const KINDS: readonly BlockKind[] = ['normal', 'armored', 'explosive', 'peg', 'heart', 'boss'];
 
-export const ELEMENT_INDEX: Readonly<Record<BallElement, number>> = {
-  stone: 0, fire: 1, lightning: 2, ice: 3, ghost: 4, lead: 5, split: 6,
-};
-export const KIND_INDEX: Readonly<Record<BlockKind, number>> = {
-  normal: 0, armored: 1, explosive: 2, peg: 3, heart: 4, boss: 5,
-};
+function indexOf<K extends string>(keys: readonly K[]): Readonly<Record<K, number>> {
+  const out = {} as Record<K, number>;
+  keys.forEach((k, i) => { out[k] = i; });
+  return out;
+}
+
+export const ELEMENT_INDEX: Readonly<Record<BallElement, number>> = indexOf(ELEMENTS);
+export const KIND_INDEX: Readonly<Record<BlockKind, number>> = indexOf(KINDS);
+export const FAMILY_INDEX: Readonly<Record<BallFamily, number>> = indexOf(BALL_FAMILIES);
+export const FAMILY_COUNT = BALL_FAMILIES.length;
 
 const KIND_FALLBACK: Readonly<Record<BlockKind, string>> = {
   normal: PALETTE.block, armored: PALETTE.armored, explosive: PALETTE.explosive,
@@ -30,22 +52,30 @@ const KIND_FALLBACK: Readonly<Record<BlockKind, string>> = {
 export interface Colors {
   /** couleur par élément (indexé par ELEMENT_INDEX) */
   element: string[];
+  /** famille par élément (indexé par ELEMENT_INDEX → FAMILY_INDEX) */
+  family: number[];
+  /** nom affiché par élément (indexé par ELEMENT_INDEX) */
+  name: string[];
   /** couleur par type de bloc (indexé par KIND_INDEX) */
   kind: string[];
 }
 
 export function buildColors(config: GameConfig): Colors {
   const element: string[] = [];
+  const family: number[] = [];
+  const name: string[] = [];
   for (const el of ELEMENTS) {
     const def = config.balls.defs.find((d) => d.id === el);
-    element.push(def ? def.color : PALETTE[el]);
+    element.push(def && /^#[0-9a-fA-F]{6}$/.test(def.color) ? def.color : ELEMENT_FALLBACK[el]);
+    family.push(FAMILY_INDEX[def?.family ?? FAMILY_FALLBACK] ?? FAMILY_INDEX[FAMILY_FALLBACK]);
+    name.push(def ? def.name : el);
   }
   const kind: string[] = [];
   for (const k of KINDS) {
     const def = config.blocks.defs.find((d) => d.kind === k);
     kind.push(def ? def.color : KIND_FALLBACK[k]);
   }
-  return { element, kind };
+  return { element, family, name, kind };
 }
 
 /** Éclaircit (+) ou assombrit (−) une couleur #rrggbb. Usage hors boucle uniquement. */

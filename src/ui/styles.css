@@ -1891,3 +1891,167 @@ body {
     font-size: 15px;
   }
 }
+
+/* ---------------------------------------------------------------- 27 balles : icônes par famille */
+@media (hover: hover) and (pointer: fine) {
+  /* titres des pastilles au survol ; l'appui est relayé au canvas (hud.ts) */
+  .hud-volley .pill {
+    pointer-events: auto;
+    cursor: crosshair;
+  }
+}
+.ball-icon,
+.fam-icon {
+  display: block;
+  flex: none;
+}
+
+/* Puits : Arsenal à 27 balles */
+.well-filters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.well-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--wall);
+  background: var(--bg1);
+  color: var(--text-dim) !important;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.well-filter[aria-pressed='true'] {
+  background: var(--wall);
+  border-color: var(--accent);
+  color: var(--text) !important;
+}
+.well-filter .fam-icon {
+  color: currentColor;
+}
+.pane-body.arsenal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+.arsenal-grid .node {
+  padding: 10px;
+  gap: 6px;
+  min-width: 0;
+}
+.arsenal-grid .node[hidden] {
+  display: none;
+}
+.arsenal-grid .node-head {
+  gap: 6px;
+}
+.arsenal-grid .node-name {
+  font-size: 15px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.arsenal-grid .node-desc {
+  font-size: 13px;
+  flex: 1;
+}
+.arsenal-grid .btn-buy {
+  padding: 8px 6px;
+  font-size: 15px;
+  min-height: 48px;
+}
+.node-ico {
+  opacity: 0.75;
+  filter: grayscale(0.5);
+}
+.node-ico.owned {
+  opacity: 1;
+  filter: none;
+}
+.node[data-unlock='achievement'].ach-locked {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--wall));
+}
+.node-ach {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--bg0);
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1.25;
+}
+.na-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ach-unlock {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+}
+@media (max-width: 420px) {
+  .arsenal-grid .btn-buy .buy-verb {
+    display: none;
+  }
+  .well-filter {
+    font-size: 12px;
+    gap: 4px;
+  }
+}
+@media (min-width: 720px) {
+  .well-panes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pane-arsenal {
+    grid-column: 1 / -1;
+  }
+  .well-filters {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .pane-body.arsenal-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+/* fin de run : volée finale (noms au survol / aria-label) */
+.end-volley {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.end-volley-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-align: center;
+}
+.ev-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px 2px 2px;
+  border-radius: 999px;
+  border: 1px solid var(--wall);
+  background: var(--bg1);
+  font-weight: 900;
+  font-size: 14px;
+  pointer-events: auto;
+  cursor: default;
+}

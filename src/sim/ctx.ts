@@ -13,7 +13,8 @@ import type {
   VolleyBall,
 } from '../core/types';
 import { createRng, type Rng } from '../core/rng';
-import type { SimState } from './state';
+import type { BallFx, SimState } from './state';
+import { createFx } from './state';
 import { DEFAULT_SPLIT_ANGLE_DEG, DEFAULT_START_ROWS } from './constants';
 import { resolveMods, type ModEffects } from './mods';
 
@@ -78,6 +79,15 @@ export interface Ctx {
   /** grille d'occupation temporaire (avancée des rangées) */
   readonly occ: Uint8Array;
   readonly spareBalls: Ball[];
+  /** pool des effets par balle (state.internal.bfx) */
+  readonly spareFx: BallFx[];
+  /** balle (et ses effets) dont l'impact ou l'effet est en cours de résolution, null sinon */
+  curBall: Ball | null;
+  curFx: BallFx | null;
+  /** effets neutres (repli si une balle n'a pas d'entrée bfx) — jamais modifié */
+  readonly nullFx: BallFx;
+  /** résultat de modifyDamage pour l'impact en cours (objet réutilisé) */
+  readonly hit: HitScratch;
   readonly spareDrops: Drop[];
   readonly spareBlocks: Block[];
   readonly scratch: number[];
@@ -103,6 +113,15 @@ export interface Ctx {
   readonly ballSpeed: number;
   readonly cmpVolley: (a: VolleyBall, b: VolleyBall) => number;
   readonly cmpBlocksRowDesc: (a: Block, b: Block) => number;
+}
+
+export interface HitScratch {
+  /** l'impact en cours est un rebond (faux : traversée fantôme/perforante) */
+  bounced: boolean;
+  /** critique forcé (chance) */
+  crit: boolean;
+  /** ignore l'armure (vide, rouille) */
+  ignoreArmor: boolean;
 }
 
 /** Clés ajoutées aux JSON (non typées dans core/types.ts, demande d'ajout faite). */
@@ -145,6 +164,11 @@ export function createCtx(cfg: GameConfig, meta: MetaModifiers, rng: Rng, isDail
     breachBudget: Infinity,
     occ: new Uint8Array(board.cols * (board.rows + 2)),
     spareBalls: [],
+    spareFx: [],
+    curBall: null,
+    curFx: null,
+    nullFx: createFx(),
+    hit: { bounced: true, crit: false, ignoreArmor: false },
     spareDrops: [],
     spareBlocks: [],
     scratch: new Array<number>(Math.max(board.cols, 8)).fill(0),

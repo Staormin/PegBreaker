@@ -134,6 +134,228 @@
       ]
     },
     {
+      "id": "el_magnet",
+      "branch": "arsenal",
+      "name": "Aimant",
+      "description": "Ramasse les drops proches de sa route.",
+      "costs": [
+        40
+      ],
+      "effect": "unlockElement:magnet",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_acid",
+      "branch": "arsenal",
+      "name": "Acide",
+      "description": "Ronge le bloc pendant 3 tirs.",
+      "costs": [
+        45
+      ],
+      "effect": "unlockElement:acid",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_fire"
+      ]
+    },
+    {
+      "id": "el_gold",
+      "branch": "arsenal",
+      "name": "Or",
+      "description": "Les blocs détruits lâchent des pièces.",
+      "costs": [
+        50
+      ],
+      "effect": "unlockElement:gold",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_magnet"
+      ]
+    },
+    {
+      "id": "el_rust",
+      "branch": "arsenal",
+      "name": "Rouille",
+      "description": "Affaiblit le bloc pour de bon.",
+      "costs": [
+        55
+      ],
+      "effect": "unlockElement:rust",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_pierce",
+      "branch": "arsenal",
+      "name": "Perforante",
+      "description": "Traverse le premier bloc touché.",
+      "costs": [
+        60
+      ],
+      "effect": "unlockElement:pierce",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_twin",
+      "branch": "arsenal",
+      "name": "Jumelle",
+      "description": "Part en deux balles miroirs.",
+      "costs": [
+        80
+      ],
+      "effect": "unlockElement:twin",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_split"
+      ]
+    },
+    {
+      "id": "el_bomb",
+      "branch": "arsenal",
+      "name": "Bombe",
+      "description": "Explose en touchant le sol.",
+      "costs": [
+        90
+      ],
+      "effect": "unlockElement:bomb",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_crystal",
+      "branch": "arsenal",
+      "name": "Cristal",
+      "description": "Plus fort à chaque rebond, puis éclate.",
+      "costs": [
+        120
+      ],
+      "effect": "unlockElement:crystal",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_swarm",
+      "branch": "arsenal",
+      "name": "Essaim",
+      "description": "Libère des mini-balles à l'impact.",
+      "costs": [
+        130
+      ],
+      "effect": "unlockElement:swarm",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_twin"
+      ]
+    },
+    {
+      "id": "el_shock",
+      "branch": "arsenal",
+      "name": "Choc",
+      "description": "Repousse le bloc d'une rangée.",
+      "costs": [
+        145
+      ],
+      "effect": "unlockElement:shock",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_homing",
+      "branch": "arsenal",
+      "name": "Traqueuse",
+      "description": "Dévie vers le bloc le plus proche.",
+      "costs": [
+        155
+      ],
+      "effect": "unlockElement:homing",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_pierce"
+      ]
+    },
+    {
+      "id": "el_boomerang",
+      "branch": "arsenal",
+      "name": "Boomerang",
+      "description": "Revient vers toi en frappant.",
+      "costs": [
+        155
+      ],
+      "effect": "unlockElement:boomerang",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_giant",
+      "branch": "arsenal",
+      "name": "Géante",
+      "description": "Énorme, lente, dégâts ×2.",
+      "costs": [
+        180
+      ],
+      "effect": "unlockElement:giant",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_bomb"
+      ]
+    },
+    {
+      "id": "el_echo",
+      "branch": "arsenal",
+      "name": "Écho",
+      "description": "Repart du sol une fois.",
+      "costs": [
+        180
+      ],
+      "effect": "unlockElement:echo",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_boomerang"
+      ]
+    },
+    {
+      "id": "el_vampire",
+      "branch": "arsenal",
+      "name": "Vampire",
+      "description": "Rend 1 PV par bloc détruit.",
+      "costs": [
+        205
+      ],
+      "effect": "unlockElement:vampire",
+      "valuePerLevel": 1,
+      "requires": []
+    },
+    {
+      "id": "el_prism",
+      "branch": "arsenal",
+      "name": "Prisme",
+      "description": "Rayon sur toute la rangée à chaque mur.",
+      "costs": [
+        215
+      ],
+      "effect": "unlockElement:prism",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_lightning"
+      ]
+    },
+    {
+      "id": "el_void",
+      "branch": "arsenal",
+      "name": "Vide",
+      "description": "Ignore l'armure, mord les gros blocs.",
+      "costs": [
+        240
+      ],
+      "effect": "unlockElement:void",
+      "valuePerLevel": 1,
+      "requires": [
+        "el_rust"
+      ]
+    },
+    {
       "id": "rel_alchimie",
       "branch": "arsenal",
       "name": "Alchimie",
@@ -281,7 +503,8 @@
       "condition": {
         "stat": "bestCombo",
         "gte": 15
-      }
+      },
+      "unlocksElement": "nova"
     },
     {
       "id": "combo50",
@@ -321,7 +544,8 @@
       "condition": {
         "stat": "bossesKilled",
         "gte": 1
-      }
+      },
+      "unlocksElement": "comet"
     },
     {
       "id": "wave10",
@@ -361,7 +585,8 @@
       "condition": {
         "stat": "bestShotDamage",
         "gte": 5000
-      }
+      },
+      "unlocksElement": "lucky"
     },
     {
       "id": "daily1",

@@ -54,7 +54,7 @@ export function buy(ctx: Ctx, index: number): void {
   if (!item || item.sold || s.coins < item.price) return;
   s.coins -= item.price;
   item.sold = true;
-  applyOption(ctx, item.option);
+  applyOption(ctx, item.option, 'shop');
   emit(ctx, { type: 'shop:bought', item: structuredClone(item) });
 }
 

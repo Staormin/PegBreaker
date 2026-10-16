@@ -332,7 +332,7 @@ describe('blocs spéciaux', () => {
     setup(sim, [h, keep], [{ element: 'stone', tier: 1 }]);
     mut(sim).hp = 3;
     const evs = shoot(sim, UP);
-    expect(ofType(evs, 'player:healed')).toEqual([{ type: 'player:healed', amount: 1, hpLeft: 4 }]);
+    expect(ofType(evs, 'player:healed')).toEqual([{ type: 'player:healed', amount: 1, hpLeft: 4, pos: { x: 3.5, y: 4.5 }, source: 'heart' }]);
     expect(sim.state.hp).toBe(4);
   });
 

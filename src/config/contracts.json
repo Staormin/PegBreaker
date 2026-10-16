@@ -136,6 +136,58 @@
       },
       "minWave": 2,
       "weight": 5
+    },
+    {
+      "id": "acid3",
+      "kind": "killWithElement",
+      "target": 3,
+      "element": "acid",
+      "text": "Casse {n} blocs avec l'acide",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 3,
+      "weight": 5
+    },
+    {
+      "id": "bomb3",
+      "kind": "killWithElement",
+      "target": 3,
+      "element": "bomb",
+      "text": "Casse {n} blocs avec la bombe",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 3,
+      "weight": 5
+    },
+    {
+      "id": "prism3",
+      "kind": "killWithElement",
+      "target": 3,
+      "element": "prism",
+      "text": "Casse {n} blocs avec le prisme",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 3,
+      "weight": 5
+    },
+    {
+      "id": "nova3",
+      "kind": "killWithElement",
+      "target": 3,
+      "element": "nova",
+      "text": "Casse {n} blocs avec la nova",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 3,
+      "weight": 5
     }
   ]
 }

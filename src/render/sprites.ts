@@ -1,8 +1,9 @@
 // render/sprites.ts — sprites pré-rendus (canvas hors écran), régénérés au resize uniquement.
 // Tout est dessiné par code : aucune image, aucune police externe.
-import type { GameConfig } from '../core/types';
+import type { BallElement, GameConfig } from '../core/types';
 import type { Layout } from './layout';
 import { ELEMENT_INDEX, ELEMENTS, KIND_INDEX, KINDS, PALETTE, shade, type Colors } from './palette';
+
 
 /** Marge intérieure d'un bloc dans sa cellule (unités plateau). */
 export const BLOCK_INSET = 0.05;
@@ -10,15 +11,6 @@ export const BLOCK_INSET = 0.05;
 export const PEG_RADIUS = 0.3;
 /** Demi-étendue d'un sprite de balle, en multiples du rayon. */
 export const BALL_EXTENT = 2.4;
-/**
- * Demi-étendue serrée par sprite (en multiples du rayon visuel) : un sprite plus petit = moins
- * de pixels à blitter. Le glow (feu, rang 3) a besoin de marge, le reste non.
- */
-export function ballExtent(element: number, tier: number): number {
-  if (tier === 3 || element === ELEMENT_INDEX.fire) return BALL_EXTENT;
-  if (tier === 2) return 1.75;
-  return element === ELEMENT_INDEX.lightning ? 1.7 : 1.3;
-}
 /** niveaux d'endommagement pré-composés et assombrissement associé */
 export const DMG_LEVELS = 5;
 const DMG_DARK: readonly number[] = [0, 0.1, 0.2, 0.3, 0.42];
@@ -44,9 +36,19 @@ export interface Sprites {
   whiteAt(kind: number, width: number): HTMLCanvasElement | undefined;
   /** surcouche gelée */
   frozenAt(width: number): HTMLCanvasElement | undefined;
-  /** balle : elementIndex * 3 + (tier − 1) */
+  /**
+   * balle : index = elementIndex * 3 + (tier − 1) ; rq = rayon quantifié (RQ_ONE = rayon de config,
+   * cf. quantizeRadius) ; rot = cran d'orientation 0..ROT_STEPS-1 (ignoré pour les éléments fixes).
+   * Créé à la première demande puis en cache jusqu'au prochain resize.
+   */
+  ball(index: number, rq: number, rot: number): HTMLCanvasElement | undefined;
+  /** pré-chauffe les sprites (tous les crans) d'une balle dans la limite du budget ; true = complet */
+  warm(index: number, rq: number): boolean;
+  /** remet à zéro le budget de créations de sprites de balle (une fois par frame) */
+  resetBudget(): void;
+  /** balle de taille standard, orientée vers le haut (lancement, galerie, drops, fusion) */
   ballAt(index: number): HTMLCanvasElement | undefined;
-  /** demi-étendue de chaque sprite de balle (unités plateau), même index que ballAt */
+  /** demi-étendue de chaque sprite de balle à rq = RQ_ONE (unités plateau), même index que ballAt ; × rq / RQ_ONE sinon */
   ballExt: number[];
   /** balle dorée (dernière de la volée) : même index que ballAt ; l'élément reste lisible par un anneau */
   goldenAt(index: number): HTMLCanvasElement | undefined;
@@ -269,12 +271,94 @@ function makeFrozen(width: number, cell: number): HTMLCanvasElement {
 
 /** Rayon visuel d'une balle (unités plateau) selon l'élément et le rang. Visuel seulement. */
 export const TIER_SCALE: readonly number[] = [1, 1.25, 1.5];
+const EL_GIANT = ELEMENT_INDEX.giant, EL_LEAD = ELEMENT_INDEX.lead;
 export function ballVisualRadius(radius: number, element: number, tier: number): number {
-  return radius * (TIER_SCALE[tier - 1] ?? 1) * (element === ELEMENT_INDEX.lead ? 1.12 : 1);
+  // géante : son rayon de sim grandit déjà avec le rang (radiusMult) ; le rang se lit aux anneaux
+  if (element === EL_GIANT) return radius;
+  return radius * (TIER_SCALE[tier - 1] ?? 1) * (element === EL_LEAD ? 1.12 : 1);
 }
 
-/** Silhouette par élément : on doit reconnaître la balle sans la couleur. */
-function makeBall(element: number, color: string, tier: number, radius: number, cell: number): HTMLCanvasElement {
+/**
+ * Orientation des sprites : 0 = fixe, 1 = suit la vitesse (comète, perforante, traqueuse),
+ * 2 = tourne sur elle-même (boomerang). Les sprites orientés sont pré-rendus en ROT_STEPS crans.
+ */
+export const ORIENT_NONE = 0;
+export const ORIENT_VELOCITY = 1;
+export const ORIENT_SPIN = 2;
+export const ROT_STEPS = 16;
+/** cran « vers le haut » (affichage statique : point de lancement, galerie, drops) */
+export const ROT_UP = (ROT_STEPS * 3) / 4;
+const ORIENT_BY_ID: Partial<Record<BallElement, number>> = {
+  comet: ORIENT_VELOCITY, pierce: ORIENT_VELOCITY, homing: ORIENT_VELOCITY, boomerang: ORIENT_SPIN,
+};
+export const ELEMENT_ORIENT: Uint8Array = new Uint8Array(ELEMENTS.length);
+for (let i = 0; i < ELEMENTS.length; i++) ELEMENT_ORIENT[i] = ORIENT_BY_ID[ELEMENTS[i]!] ?? ORIENT_NONE;
+
+/** Rayon quantifié : RQ_ONE = rayon de config ; mini-balles et géante ont leur propre sprite. */
+export const RQ_ONE = 20;
+/** sprites de balle créés au plus par frame (hors premier affichage d'un élément fixe) */
+export const BALL_BUILD_BUDGET = 2;
+export const RQ_MAX = 63;
+export function quantizeRadius(radius: number, base: number): number {
+  const q = Math.round((radius / base) * RQ_ONE);
+  return q < 1 ? 1 : q > RQ_MAX ? RQ_MAX : q;
+}
+
+/** Demi-étendue propre à la forme (multiples du rayon visuel), sans anneau de rang ni glow. */
+const SHAPE_EXT: Partial<Record<BallElement, number>> = {
+  fire: BALL_EXTENT, lightning: 1.7, comet: 2.75, acid: 1.75, bomb: 1.7, shock: 1.8, nova: 1.5,
+  prism: 1.4, boomerang: 1.5, pierce: 1.5, echo: 1.5, lucky: 1.4, magnet: 1.35,
+};
+/**
+ * Demi-étendue serrée par sprite (en multiples du rayon visuel) : un sprite plus petit = moins
+ * de pixels à blitter. Le glow (feu, rang 3) et les queues ont besoin de marge, le reste non.
+ */
+export function ballExtent(element: number, tier: number): number {
+  const shape = SHAPE_EXT[ELEMENTS[element] ?? 'stone'] ?? 1.3;
+  if (tier === 3) return shape > BALL_EXTENT ? shape : BALL_EXTENT;
+  if (tier === 2) return shape > 1.75 ? shape : 1.75;
+  return shape;
+}
+
+const TAU = Math.PI * 2;
+function disc(g: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+}
+function ring(g: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
+}
+/** étoile à n branches (rayons ro / ri), première branche vers a0 */
+function starPath(g: CanvasRenderingContext2D, cx: number, cy: number, n: number, ro: number, ri: number, a0: number): void {
+  g.beginPath();
+  for (let i = 0; i < n * 2; i++) {
+    const a = a0 + (i / (n * 2)) * TAU;
+    const rr = i % 2 === 0 ? ro : ri;
+    if (i === 0) g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    else g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+  }
+  g.closePath();
+}
+/** petit éclair en zigzag de (x0,y0) vers l'extérieur selon l'angle a, longueur len */
+function zigzag(g: CanvasRenderingContext2D, x0: number, y0: number, a: number, len: number, jag: number): void {
+  const ca = Math.cos(a), sa = Math.sin(a);
+  g.moveTo(x0, y0);
+  g.lineTo(x0 + ca * len * 0.4 - sa * jag, y0 + sa * len * 0.4 + ca * jag);
+  g.lineTo(x0 + ca * len * 0.6 + sa * jag, y0 + sa * len * 0.6 - ca * jag);
+  g.lineTo(x0 + ca * len, y0 + sa * len);
+}
+/** reflet standard (−30 %, −30 %) */
+function gloss(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, alpha: number): void {
+  g.fillStyle = `rgba(255,255,255,${alpha})`;
+  disc(g, cx - r * 0.3, cy - r * 0.3, r * 0.26);
+}
+
+/**
+ * Silhouette par élément : on doit reconnaître la balle sans la couleur (une forme par balle,
+ * une parenté par famille). `rot` (radians) n'est utilisé que pour les éléments orientés ; les
+ * formes orientées sont dessinées « vers +x » puis tournées.
+ */
+function makeBall(element: number, color: string, tier: number, radius: number, cell: number, rot: number): HTMLCanvasElement {
+  const id: BallElement = ELEMENTS[element] ?? 'stone';
   const vr = ballVisualRadius(radius, element, tier);
   const ext = vr * ballExtent(element, tier) * cell;
   const [c, g] = makeCanvas(ext * 2, ext * 2);
@@ -282,15 +366,17 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
   const lw = Math.max(1, r * 0.14);
   const dark = shade(color, -0.5);
   const light = shade(color, 0.55);
-  const TAU = Math.PI * 2;
 
-  if (tier === 3 || element === ELEMENT_INDEX.fire) {
+  if (tier === 3 || id === 'fire' || id === 'comet' || id === 'nova') {
     g.shadowColor = color;
-    g.shadowBlur = r * (element === ELEMENT_INDEX.fire ? 1.4 : 1.6);
+    g.shadowBlur = r * (id === 'fire' ? 1.4 : tier === 3 ? 1.6 : 0.9);
+  }
+  if ((ELEMENT_ORIENT[element] ?? 0) !== ORIENT_NONE) {
+    g.translate(cx, cy); g.rotate(rot); g.translate(-cx, -cy);
   }
 
-  switch (element) {
-    case ELEMENT_INDEX.fire: {
+  switch (id) {
+    case 'fire': {
       // couronne de flammèches irrégulières + cœur chaud
       g.fillStyle = color;
       g.beginPath();
@@ -304,12 +390,12 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       g.closePath(); g.fill();
       g.shadowBlur = 0;
       g.fillStyle = shade(color, 0.35);
-      g.beginPath(); g.arc(cx, cy, r * 0.78, 0, TAU); g.fill();
+      disc(g, cx, cy, r * 0.78);
       g.fillStyle = '#fff3b0';
-      g.beginPath(); g.arc(cx, cy + r * 0.1, r * 0.42, 0, TAU); g.fill();
+      disc(g, cx, cy + r * 0.1, r * 0.42);
       break;
     }
-    case ELEMENT_INDEX.lightning: {
+    case 'lightning': {
       // disque + 4 arcs électriques en croix + éclair sombre
       g.strokeStyle = light; g.lineWidth = lw; g.lineCap = 'round';
       g.beginPath();
@@ -322,7 +408,7 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       }
       g.stroke();
       g.fillStyle = color;
-      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      disc(g, cx, cy, r);
       g.fillStyle = dark;
       g.beginPath();
       g.moveTo(cx + r * 0.15, cy - r * 0.75); g.lineTo(cx - r * 0.35, cy + r * 0.08); g.lineTo(cx - r * 0.02, cy + r * 0.08);
@@ -330,8 +416,8 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       g.closePath(); g.fill();
       break;
     }
-    case ELEMENT_INDEX.ice: {
-      // hexagone facetté
+    case 'ice': {
+      // hexagone facetté (pointe en haut, rayons depuis le centre)
       g.fillStyle = color;
       g.beginPath();
       for (let i = 0; i < 6; i++) {
@@ -358,7 +444,7 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       g.stroke();
       break;
     }
-    case ELEMENT_INDEX.ghost: {
+    case 'ghost': {
       // silhouette de fantôme : dôme + bas ondulé + deux yeux
       g.fillStyle = color;
       g.beginPath();
@@ -370,26 +456,26 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       }
       g.closePath(); g.fill();
       g.fillStyle = PALETTE.bg0;
-      g.beginPath(); g.arc(cx - r * 0.35, cy - r * 0.15, r * 0.18, 0, TAU); g.fill();
-      g.beginPath(); g.arc(cx + r * 0.35, cy - r * 0.15, r * 0.18, 0, TAU); g.fill();
+      disc(g, cx - r * 0.35, cy - r * 0.15, r * 0.18);
+      disc(g, cx + r * 0.35, cy - r * 0.15, r * 0.18);
       break;
     }
-    case ELEMENT_INDEX.lead: {
+    case 'lead': {
       // sombre, lourd : contour épais, reflet terne, rivets
       g.fillStyle = color;
-      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      disc(g, cx, cy, r);
       g.strokeStyle = '#1a1e26'; g.lineWidth = Math.max(1.5, r * 0.26);
-      g.beginPath(); g.arc(cx, cy, r * 0.8, 0, TAU); g.stroke();
+      ring(g, cx, cy, r * 0.8);
       // liseré clair extérieur : lisible sur fond sombre malgré la teinte plomb
       g.strokeStyle = 'rgba(232,236,245,0.55)'; g.lineWidth = Math.max(1, r * 0.1);
-      g.beginPath(); g.arc(cx, cy, r * 0.97, 0, TAU); g.stroke();
+      ring(g, cx, cy, r * 0.97);
       g.fillStyle = 'rgba(255,255,255,0.28)';
-      g.beginPath(); g.arc(cx - r * 0.28, cy - r * 0.28, r * 0.24, 0, TAU); g.fill();
+      disc(g, cx - r * 0.28, cy - r * 0.28, r * 0.24);
       g.fillStyle = '#1a1e26';
-      g.beginPath(); g.arc(cx + r * 0.3, cy + r * 0.25, r * 0.1, 0, TAU); g.fill();
+      disc(g, cx + r * 0.3, cy + r * 0.25, r * 0.1);
       break;
     }
-    case ELEMENT_INDEX.split: {
+    case 'split': {
       // deux demi-disques séparés par une fente
       const gap = r * 0.2;
       g.fillStyle = color;
@@ -397,29 +483,444 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       g.beginPath(); g.arc(cx + gap, cy, r, -Math.PI / 2, Math.PI / 2); g.closePath(); g.fill();
       g.shadowBlur = 0;
       g.fillStyle = 'rgba(255,255,255,0.6)';
-      g.beginPath(); g.arc(cx - gap - r * 0.35, cy - r * 0.35, r * 0.22, 0, TAU); g.fill();
-      g.beginPath(); g.arc(cx + gap + r * 0.3, cy - r * 0.35, r * 0.18, 0, TAU); g.fill();
+      disc(g, cx - gap - r * 0.35, cy - r * 0.35, r * 0.22);
+      disc(g, cx + gap + r * 0.3, cy - r * 0.35, r * 0.18);
+      break;
+    }
+
+    // ---------------- elemental ----------------
+    case 'acid': {
+      // goutte (pointe en haut) qui dégouline : deux coulures pendent sous le corps
+      g.fillStyle = color;
+      g.beginPath();
+      g.moveTo(cx, cy - r * 1.3);
+      g.quadraticCurveTo(cx + r * 0.95, cy - r * 0.4, cx + r * 0.95, cy + r * 0.12);
+      g.arc(cx, cy + r * 0.12, r * 0.95, 0, Math.PI);
+      g.quadraticCurveTo(cx - r * 0.95, cy - r * 0.4, cx, cy - r * 1.3);
+      g.closePath(); g.fill();
+      // coulures
+      g.fillRect(cx + r * 0.26, cy + r * 0.8, r * 0.2, r * 0.6);
+      disc(g, cx + r * 0.36, cy + r * 1.42, r * 0.17);
+      g.fillRect(cx - r * 0.42, cy + r * 0.8, r * 0.14, r * 0.32);
+      disc(g, cx - r * 0.35, cy + r * 1.14, r * 0.12);
+      g.shadowBlur = 0;
+      // bulles sombres + reflet
+      g.fillStyle = shade(color, -0.45);
+      disc(g, cx + r * 0.25, cy + r * 0.25, r * 0.17);
+      disc(g, cx - r * 0.2, cy + r * 0.5, r * 0.1);
+      g.fillStyle = 'rgba(255,255,255,0.7)';
+      g.beginPath(); g.ellipse(cx - r * 0.35, cy - r * 0.2, r * 0.13, r * 0.28, 0.35, 0, TAU); g.fill();
+      break;
+    }
+    case 'comet': {
+      // queue orange longue (vers −x, la balle file vers +x) + noyau chaud
+      const tail = g.createLinearGradient(cx, cy, cx - r * 2.7, cy);
+      tail.addColorStop(0, color);
+      tail.addColorStop(1, 'rgba(255,140,66,0)');
+      g.fillStyle = tail;
+      g.beginPath();
+      g.moveTo(cx + r * 0.2, cy - r * 0.95);
+      g.quadraticCurveTo(cx - r * 1.2, cy - r * 0.75, cx - r * 2.7, cy);
+      g.quadraticCurveTo(cx - r * 1.2, cy + r * 0.75, cx + r * 0.2, cy + r * 0.95);
+      g.closePath(); g.fill();
+      const inner = g.createLinearGradient(cx, cy, cx - r * 1.9, cy);
+      inner.addColorStop(0, '#fff3b0');
+      inner.addColorStop(1, 'rgba(255,243,176,0)');
+      g.fillStyle = inner;
+      g.beginPath();
+      g.moveTo(cx, cy - r * 0.45);
+      g.quadraticCurveTo(cx - r * 0.9, cy - r * 0.3, cx - r * 1.9, cy);
+      g.quadraticCurveTo(cx - r * 0.9, cy + r * 0.3, cx, cy + r * 0.45);
+      g.closePath(); g.fill();
+      g.fillStyle = color;
+      disc(g, cx, cy, r * 0.92);
+      g.shadowBlur = 0;
+      g.fillStyle = '#fff3b0';
+      disc(g, cx + r * 0.18, cy, r * 0.5);
+      g.fillStyle = '#ffffff';
+      disc(g, cx + r * 0.3, cy - r * 0.1, r * 0.18);
+      break;
+    }
+
+    // ---------------- heavy ----------------
+    case 'bomb': {
+      // sphère sombre à mèche (capuchon en haut à droite, étincelle au bout)
+      const ca = Math.cos(-Math.PI / 4), sa = Math.sin(-Math.PI / 4);
+      g.fillStyle = '#3a3f4b';
+      g.save(); g.translate(cx + ca * r * 0.9, cy + sa * r * 0.9); g.rotate(Math.PI / 4);
+      g.fillRect(-r * 0.28, -r * 0.22, r * 0.56, r * 0.36);
+      g.restore();
+      g.strokeStyle = '#d9c9a3'; g.lineWidth = Math.max(1, r * 0.11); g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + ca * r * 1.05, cy + sa * r * 1.05);
+      g.quadraticCurveTo(cx + r * 1.15, cy - r * 1.35, cx + r * 1.3, cy - r * 1.05);
+      g.stroke();
+      g.fillStyle = PALETTE.accent;
+      starPath(g, cx + r * 1.32, cy - r * 1.1, 4, r * 0.34, r * 0.11, 0); g.fill();
+      g.fillStyle = color;
+      disc(g, cx + r * 1.32, cy - r * 1.1, r * 0.12);
+      g.fillStyle = shade(color, -0.78);
+      disc(g, cx, cy, r);
+      g.shadowBlur = 0;
+      g.strokeStyle = color; g.lineWidth = Math.max(1, r * 0.1);
+      ring(g, cx, cy, r * 0.95);
+      g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = Math.max(1, r * 0.14);
+      g.beginPath(); g.arc(cx, cy, r * 0.62, Math.PI * 1.05, Math.PI * 1.45); g.stroke();
+      break;
+    }
+    case 'giant': {
+      // grand disque strié (bandes de planète)
+      g.fillStyle = color;
+      disc(g, cx, cy, r);
+      g.shadowBlur = 0;
+      g.save();
+      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.clip();
+      g.fillStyle = shade(color, -0.3);
+      g.fillRect(cx - r, cy - r * 0.62, r * 2, r * 0.2);
+      g.fillRect(cx - r, cy - r * 0.08, r * 2, r * 0.28);
+      g.fillRect(cx - r, cy + r * 0.52, r * 2, r * 0.18);
+      g.fillStyle = shade(color, 0.35);
+      g.fillRect(cx - r, cy - r * 0.32, r * 2, r * 0.1);
+      g.fillRect(cx - r, cy + r * 0.3, r * 2, r * 0.08);
+      g.restore();
+      g.strokeStyle = shade(color, -0.55); g.lineWidth = Math.max(1.5, r * 0.08);
+      ring(g, cx, cy, r * 0.97);
+      gloss(g, cx, cy, r, 0.55);
+      break;
+    }
+    case 'shock': {
+      // disque sombre cerclé de jaune + éclairs jaunes courts tout autour + onde intérieure
+      g.strokeStyle = color; g.lineWidth = Math.max(1, r * 0.16); g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU + Math.PI / 6;
+        zigzag(g, cx + Math.cos(a) * r * 1.0, cy + Math.sin(a) * r * 1.0, a, r * 0.72, r * 0.14);
+      }
+      g.stroke();
+      g.fillStyle = shade(color, -0.68);
+      disc(g, cx, cy, r);
+      g.shadowBlur = 0;
+      g.strokeStyle = color; g.lineWidth = Math.max(1.5, r * 0.17);
+      ring(g, cx, cy, r * 0.9);
+      g.lineWidth = Math.max(1, r * 0.09);
+      ring(g, cx, cy, r * 0.45);
+      g.fillStyle = color;
+      disc(g, cx, cy, r * 0.16);
+      break;
+    }
+
+    // ---------------- tricky ----------------
+    case 'pierce': {
+      // pointe de flèche blanche (vers +x), arête centrale
+      g.fillStyle = color;
+      g.beginPath();
+      g.moveTo(cx + r * 1.4, cy);
+      g.lineTo(cx - r * 0.85, cy - r * 0.95);
+      g.lineTo(cx - r * 0.35, cy);
+      g.lineTo(cx - r * 0.85, cy + r * 0.95);
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.strokeStyle = 'rgba(11,15,26,0.55)'; g.lineWidth = Math.max(1, r * 0.1); g.lineJoin = 'round';
+      g.stroke();
+      g.fillStyle = 'rgba(138,148,168,0.6)';
+      g.beginPath(); g.moveTo(cx + r * 1.4, cy); g.lineTo(cx - r * 0.35, cy); g.lineTo(cx - r * 0.85, cy + r * 0.95); g.closePath(); g.fill();
+      break;
+    }
+    case 'homing': {
+      // œil rose : sclère claire cerclée de rose, iris et pupille tournés vers l'avant (+x)
+      g.fillStyle = '#fff0fb';
+      disc(g, cx, cy, r);
+      g.shadowBlur = 0;
+      g.strokeStyle = color; g.lineWidth = Math.max(1.5, r * 0.2);
+      ring(g, cx, cy, r * 0.92);
+      g.fillStyle = color;
+      disc(g, cx + r * 0.3, cy, r * 0.52);
+      g.fillStyle = PALETTE.bg0;
+      disc(g, cx + r * 0.42, cy, r * 0.25);
+      g.fillStyle = '#ffffff';
+      disc(g, cx + r * 0.22, cy - r * 0.2, r * 0.12);
+      break;
+    }
+    case 'echo': {
+      // disque translucide en double contour (onde d'écho)
+      g.fillStyle = color;
+      g.globalAlpha = 0.35;
+      disc(g, cx, cy, r);
+      g.globalAlpha = 1;
+      g.shadowBlur = 0;
+      g.strokeStyle = color; g.lineWidth = Math.max(1.5, r * 0.18);
+      ring(g, cx, cy, r * 0.9);
+      g.globalAlpha = 0.5; g.lineWidth = Math.max(1, r * 0.12);
+      ring(g, cx, cy, r * 1.32);
+      g.globalAlpha = 1;
+      g.fillStyle = light;
+      disc(g, cx, cy, r * 0.32);
+      break;
+    }
+    case 'boomerang': {
+      // forme en V épaisse (pointe vers −x), tourne sur elle-même
+      const w = r * 0.55;
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath();
+      g.moveTo(cx + r * 0.62, cy - r * 0.92); g.lineTo(cx - r * 0.42, cy); g.lineTo(cx + r * 0.62, cy + r * 0.92);
+      g.strokeStyle = shade(color, -0.55); g.lineWidth = w + Math.max(2, r * 0.16); g.stroke();
+      g.shadowBlur = 0;
+      g.strokeStyle = color; g.lineWidth = w; g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = Math.max(1, w * 0.22);
+      g.beginPath(); g.moveTo(cx + r * 0.55, cy - r * 0.98); g.lineTo(cx - r * 0.5, cy - r * 0.08); g.stroke();
+      break;
+    }
+
+    // ---------------- swarm ----------------
+    case 'swarm': {
+      // grappe de 3 points
+      const d = r * 0.5, pr = r * 0.52;
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < 3; i++) {
+          const a = -Math.PI / 2 + (i / 3) * TAU;
+          const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+          if (pass === 0) { g.fillStyle = shade(color, -0.55); disc(g, x, y, pr + Math.max(1, r * 0.08)); }
+          else { g.fillStyle = color; disc(g, x, y, pr); g.fillStyle = 'rgba(255,255,255,0.65)'; disc(g, x - pr * 0.3, y - pr * 0.3, pr * 0.3); }
+        }
+        g.shadowBlur = 0;
+      }
+      break;
+    }
+    case 'twin': {
+      // deux demi-lunes dos à dos : deux disques décalés, remplissage pair-impair
+      g.fillStyle = color;
+      g.beginPath();
+      g.arc(cx - r * 0.28, cy, r * 0.9, 0, TAU);
+      g.moveTo(cx + r * 0.28 + r * 0.9, cy);
+      g.arc(cx + r * 0.28, cy, r * 0.9, 0, TAU);
+      g.fill('evenodd');
+      g.shadowBlur = 0;
+      g.strokeStyle = shade(color, -0.5); g.lineWidth = Math.max(1, r * 0.08);
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.7)';
+      disc(g, cx - r * 0.85, cy - r * 0.25, r * 0.13);
+      disc(g, cx + r * 0.85, cy - r * 0.25, r * 0.13);
+      break;
+    }
+
+    // ---------------- greed ----------------
+    case 'gold': {
+      // pièce avec « $ » et tranche crantée
+      g.fillStyle = shade(color, -0.4);
+      disc(g, cx, cy, r);
+      g.shadowBlur = 0;
+      g.strokeStyle = shade(color, 0.3); g.lineWidth = Math.max(1, r * 0.1);
+      g.beginPath();
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU;
+        g.moveTo(cx + Math.cos(a) * r * 0.86, cy + Math.sin(a) * r * 0.86);
+        g.lineTo(cx + Math.cos(a) * r * 0.99, cy + Math.sin(a) * r * 0.99);
+      }
+      g.stroke();
+      g.fillStyle = color;
+      disc(g, cx, cy, r * 0.82);
+      g.fillStyle = shade(color, -0.55);
+      g.font = `900 ${Math.max(6, Math.round(r * 1.3))}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('$', cx, cy + r * 0.06);
+      g.fillStyle = 'rgba(255,255,255,0.75)';
+      disc(g, cx - r * 0.42, cy - r * 0.42, r * 0.14);
+      break;
+    }
+    case 'lucky': {
+      // trèfle à quatre feuilles (chaque feuille = deux lobes) + tige
+      g.strokeStyle = shade(color, -0.4); g.lineWidth = Math.max(1, r * 0.2); g.lineCap = 'round';
+      g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + r * 0.2, cy + r * 0.9, cx + r * 0.75, cy + r * 1.15); g.stroke();
+      for (let pass = 0; pass < 2; pass++) {
+        g.fillStyle = pass === 0 ? shade(color, -0.55) : color;
+        const grow = pass === 0 ? Math.max(1, r * 0.08) : 0;
+        for (let i = 0; i < 4; i++) {
+          const a = Math.PI / 4 + (i / 4) * TAU;
+          const ca = Math.cos(a), sa = Math.sin(a);
+          const lx = cx + ca * r * 0.5, ly = cy + sa * r * 0.5;
+          disc(g, lx - sa * r * 0.2, ly + ca * r * 0.2, r * 0.34 + grow);
+          disc(g, lx + sa * r * 0.2, ly - ca * r * 0.2, r * 0.34 + grow);
+        }
+        g.shadowBlur = 0;
+      }
+      g.strokeStyle = shade(color, -0.35); g.lineWidth = Math.max(1, r * 0.07);
+      g.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + (i / 4) * TAU;
+        g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7);
+      }
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.6)';
+      disc(g, cx - r * 0.55, cy - r * 0.3, r * 0.1);
+      break;
+    }
+    case 'magnet': {
+      // fer à cheval rose, pointes argentées en bas
+      const R0 = r * 0.62, w = r * 0.52, top = cy - r * 0.12, bot = cy + r * 0.82;
+      g.lineCap = 'butt';
+      g.beginPath();
+      g.moveTo(cx - R0, bot); g.lineTo(cx - R0, top); g.arc(cx, top, R0, Math.PI, 0); g.lineTo(cx + R0, bot);
+      g.strokeStyle = shade(color, -0.55); g.lineWidth = w + Math.max(2, r * 0.16); g.stroke();
+      g.shadowBlur = 0;
+      g.strokeStyle = color; g.lineWidth = w; g.stroke();
+      g.fillStyle = '#dfe5f0';
+      g.fillRect(cx - R0 - w / 2, bot - r * 0.36, w, r * 0.36);
+      g.fillRect(cx + R0 - w / 2, bot - r * 0.36, w, r * 0.36);
+      g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = Math.max(1, w * 0.22);
+      g.beginPath(); g.arc(cx, top, R0 + w * 0.2, Math.PI * 1.1, Math.PI * 1.5); g.stroke();
+      break;
+    }
+    case 'vampire': {
+      // disque rouge + bouche sombre et deux crocs blancs
+      g.fillStyle = color;
+      disc(g, cx, cy, r);
+      g.shadowBlur = 0;
+      g.strokeStyle = shade(color, 0.4); g.lineWidth = Math.max(1, r * 0.08);
+      ring(g, cx, cy, r * 0.96);
+      g.strokeStyle = shade(color, -0.65); g.lineWidth = Math.max(1, r * 0.14); g.lineCap = 'round';
+      g.beginPath(); g.arc(cx, cy - r * 0.35, r * 0.6, Math.PI * 0.2, Math.PI * 0.8); g.stroke();
+      g.fillStyle = '#ffffff';
+      for (let s = -1; s <= 1; s += 2) {
+        const fx = cx + s * r * 0.27, fy = cy + r * 0.17;
+        g.beginPath(); g.moveTo(fx - r * 0.14, fy); g.lineTo(fx + r * 0.14, fy); g.lineTo(fx + s * r * 0.02, fy + r * 0.5); g.closePath(); g.fill();
+      }
+      g.fillStyle = 'rgba(255,255,255,0.5)';
+      disc(g, cx - r * 0.38, cy - r * 0.42, r * 0.15);
+      break;
+    }
+
+    // ---------------- arcane ----------------
+    case 'prism': {
+      // triangle irisé (dégradé arc-en-ciel pré-rendu) + facettes
+      const p0x = cx, p0y = cy - r * 1.25;
+      const p1x = cx + r * 1.1, p1y = cy + r * 0.65;
+      const p2x = cx - r * 1.1, p2y = cy + r * 0.65;
+      const iri = g.createLinearGradient(p2x, p2y, p1x, p0y);
+      iri.addColorStop(0, '#ff9cf5');
+      iri.addColorStop(0.35, color);
+      iri.addColorStop(0.65, '#ffe95c');
+      iri.addColorStop(1, '#5cff9d');
+      g.fillStyle = iri;
+      g.beginPath(); g.moveTo(p0x, p0y); g.lineTo(p1x, p1y); g.lineTo(p2x, p2y); g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1, r * 0.1); g.lineJoin = 'round';
+      g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = Math.max(1, r * 0.06);
+      g.beginPath();
+      g.moveTo(cx, cy); g.lineTo(p0x, p0y); g.moveTo(cx, cy); g.lineTo(p1x, p1y); g.moveTo(cx, cy); g.lineTo(p2x, p2y);
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.45)';
+      g.beginPath(); g.moveTo(p0x, p0y); g.lineTo(cx, cy); g.lineTo(p2x, p2y); g.closePath(); g.fill();
+      break;
+    }
+    case 'void': {
+      // disque violet à bord sombre et centre noir, liseré clair pour rester lisible sur le fond
+      g.fillStyle = shade(color, 0.5);
+      disc(g, cx, cy, r * 1.04);
+      g.fillStyle = shade(color, -0.65);
+      disc(g, cx, cy, r * 0.97);
+      g.shadowBlur = 0;
+      g.fillStyle = color;
+      disc(g, cx, cy, r * 0.74);
+      g.strokeStyle = shade(color, 0.35); g.lineWidth = Math.max(1, r * 0.08);
+      g.beginPath(); g.arc(cx, cy, r * 0.58, Math.PI * 0.1, Math.PI * 0.9); g.stroke();
+      g.beginPath(); g.arc(cx, cy, r * 0.58, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+      g.fillStyle = '#000000';
+      disc(g, cx, cy, r * 0.4);
+      break;
+    }
+    case 'crystal': {
+      // gemme hexagonale allongée, taille « brillant » : table centrale + facettes
+      const ox = r * 0.82, oyT = r * 1.22, oyS = r * 0.5;
+      const ix = r * 0.36, iyT = r * 0.55, iyS = r * 0.22;
+      const OX = [cx, cx + ox, cx + ox, cx, cx - ox, cx - ox];
+      const OY = [cy - oyT, cy - oyS, cy + oyS, cy + oyT, cy + oyS, cy - oyS];
+      const IX = [cx, cx + ix, cx + ix, cx, cx - ix, cx - ix];
+      const IY = [cy - iyT, cy - iyS, cy + iyS, cy + iyT, cy + iyS, cy - iyS];
+      g.fillStyle = color;
+      g.beginPath();
+      for (let i = 0; i < 6; i++) { if (i === 0) g.moveTo(OX[i]!, OY[i]!); else g.lineTo(OX[i]!, OY[i]!); }
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      // facettes sombres à droite
+      g.fillStyle = 'rgba(80,140,190,0.45)';
+      for (let i = 1; i <= 2; i++) {
+        g.beginPath(); g.moveTo(OX[i]!, OY[i]!); g.lineTo(OX[i + 1]!, OY[i + 1]!); g.lineTo(IX[i + 1]!, IY[i + 1]!); g.lineTo(IX[i]!, IY[i]!); g.closePath(); g.fill();
+      }
+      g.fillStyle = 'rgba(255,255,255,0.75)';
+      g.beginPath();
+      for (let i = 0; i < 6; i++) { if (i === 0) g.moveTo(IX[i]!, IY[i]!); else g.lineTo(IX[i]!, IY[i]!); }
+      g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(70,120,170,0.8)'; g.lineWidth = Math.max(1, r * 0.06);
+      g.beginPath();
+      for (let i = 0; i < 6; i++) { g.moveTo(OX[i]!, OY[i]!); g.lineTo(IX[i]!, IY[i]!); }
+      for (let i = 0; i <= 6; i++) { const j = i % 6; if (i === 0) g.moveTo(OX[j]!, OY[j]!); else g.lineTo(OX[j]!, OY[j]!); }
+      g.stroke();
+      g.fillStyle = '#ffffff';
+      starPath(g, cx + r * 0.5, cy - r * 0.75, 4, r * 0.3, r * 0.07, 0); g.fill();
+      break;
+    }
+    case 'rust': {
+      // disque brun au bord rongé, écailles plus sombres et taches orangées
+      let seed = 97;
+      const rnd = (): number => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      g.fillStyle = color;
+      g.beginPath();
+      const n = 15;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU;
+        const rr = r * (0.86 + rnd() * 0.16);
+        if (i === 0) g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); else g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      }
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.strokeStyle = shade(color, -0.55); g.lineWidth = Math.max(1, r * 0.09);
+      g.stroke();
+      g.strokeStyle = shade(color, -0.45); g.lineWidth = Math.max(1, r * 0.08);
+      g.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const sx = cx + (rnd() - 0.5) * r * 1.1, sy = cy + (rnd() - 0.5) * r * 1.1;
+        g.moveTo(sx + r * 0.22, sy); g.arc(sx, sy, r * 0.22, 0, Math.PI);
+      }
+      g.stroke();
+      g.fillStyle = shade(color, 0.4);
+      for (let i = 0; i < 4; i++) disc(g, cx + (rnd() - 0.5) * r * 1.2, cy + (rnd() - 0.5) * r * 1.2, r * (0.07 + rnd() * 0.07));
+      break;
+    }
+    case 'nova': {
+      // étoile rose à 5 branches, cœur blanc
+      g.fillStyle = color;
+      starPath(g, cx, cy, 5, r * 1.32, r * 0.6, -Math.PI / 2); g.fill();
+      g.shadowBlur = 0;
+      g.strokeStyle = shade(color, 0.5); g.lineWidth = Math.max(1, r * 0.08); g.lineJoin = 'round';
+      g.stroke();
+      g.fillStyle = shade(color, 0.6);
+      disc(g, cx, cy, r * 0.42);
+      g.fillStyle = '#ffffff';
+      disc(g, cx, cy, r * 0.22);
       break;
     }
     default: {
       // pierre : disque + reflet décalé (−30 %, −30 %)
       g.fillStyle = color;
-      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      disc(g, cx, cy, r);
       g.shadowBlur = 0;
       g.strokeStyle = shade(color, -0.45); g.lineWidth = lw;
-      g.beginPath(); g.arc(cx, cy, r * 0.93, 0, TAU); g.stroke();
+      ring(g, cx, cy, r * 0.93);
       g.fillStyle = 'rgba(255,255,255,0.75)';
-      g.beginPath(); g.arc(cx - r * 0.3, cy - r * 0.3, r * 0.32, 0, TAU); g.fill();
+      disc(g, cx - r * 0.3, cy - r * 0.3, r * 0.32);
     }
   }
+  g.setTransform(1, 0, 0, 1, 0, 0);
   g.shadowBlur = 0;
+  g.globalAlpha = 1;
   if (tier >= 2) {
     g.strokeStyle = light; g.lineWidth = Math.max(1, r * 0.16);
-    g.beginPath(); g.arc(cx, cy, r * 1.5, 0, TAU); g.stroke();
+    ring(g, cx, cy, r * 1.5);
   }
   if (tier >= 3) {
     g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = Math.max(1, r * 0.12);
-    g.beginPath(); g.arc(cx, cy, r * 1.85, 0, TAU); g.stroke();
+    ring(g, cx, cy, r * 1.85);
   }
   return c;
 }
@@ -575,19 +1076,57 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   }
 
   const radius = config.blocks.board.ballRadius;
-  const balls: (HTMLCanvasElement | undefined)[] = [];
+  const nIdx = ELEMENTS.length * 3;
   const ballExt: number[] = [];
   for (let e = 0; e < ELEMENTS.length; e++) {
     for (let t = 1; t <= 3; t++) ballExt.push(ballVisualRadius(radius, e, t) * ballExtent(e, t));
   }
-  function ballAt(i: number): HTMLCanvasElement | undefined {
-    const hit = balls[i];
-    if (hit) return hit;
-    if (i < 0 || i >= ELEMENTS.length * 3) return undefined;
-    const e = Math.floor(i / 3), t = (i % 3) + 1;
-    const c = makeBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell);
-    balls[i] = c;
+  // cache paresseux : clé = ((idx × (RQ_MAX + 1)) + rq) × ROT_STEPS + rot ; vidé au resize
+  // (nouvel objet Sprites). Map<number> : get/set sans allocation une fois le sprite créé.
+  const ballCache = new Map<number, HTMLCanvasElement>();
+  /**
+   * Budget de créations par frame (shadowBlur en raster logiciel = plusieurs ms par sprite) :
+   * au-delà, un cran d'orientation manquant est remplacé par le cran en cache le plus proche ;
+   * les crans restants sont pré-chauffés pendant la visée (warm).
+   */
+  let budget = BALL_BUILD_BUDGET;
+  function build(i: number, rq: number, rr: number, key: number): HTMLCanvasElement {
+    const e = (i / 3) | 0, t = (i % 3) + 1;
+    const c = makeBall(e, colors.element[e] ?? PALETTE.stone, t, (radius * rq) / RQ_ONE, cell, (rr / ROT_STEPS) * TAU);
+    ballCache.set(key, c);
+    budget--;
     return c;
+  }
+  function ball(i: number, rq: number, rot: number): HTMLCanvasElement | undefined {
+    if (i < 0 || i >= nIdx) return undefined;
+    const e = (i / 3) | 0;
+    const oriented = (ELEMENT_ORIENT[e] ?? 0) !== ORIENT_NONE;
+    const rr = oriented ? ((rot % ROT_STEPS) + ROT_STEPS) % ROT_STEPS : 0;
+    const base = (i * (RQ_MAX + 1) + rq) * ROT_STEPS;
+    const hit = ballCache.get(base + rr);
+    if (hit) return hit;
+    if (oriented && budget <= 0) {
+      for (let d = 1; d <= ROT_STEPS / 2; d++) {
+        const a = ballCache.get(base + ((rr + d) % ROT_STEPS)) ?? ballCache.get(base + ((rr - d + ROT_STEPS) % ROT_STEPS));
+        if (a) return a;
+      }
+    }
+    return build(i, rq, rr, base + rr);
+  }
+  function warm(i: number, rq: number): boolean {
+    if (i < 0 || i >= nIdx || budget <= 0) return false;
+    const e = (i / 3) | 0;
+    const steps = (ELEMENT_ORIENT[e] ?? 0) === ORIENT_NONE ? 1 : ROT_STEPS;
+    const base = (i * (RQ_MAX + 1) + rq) * ROT_STEPS;
+    for (let r = 0; r < steps; r++) {
+      if (ballCache.has(base + r)) continue;
+      build(i, rq, r, base + r);
+      if (budget <= 0) return false;
+    }
+    return true;
+  }
+  function ballAt(i: number): HTMLCanvasElement | undefined {
+    return ball(i, RQ_ONE, ROT_UP);
   }
   const golden: (HTMLCanvasElement | undefined)[] = [];
   const goldenExt: number[] = [];
@@ -597,7 +1136,7 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   function goldenAt(i: number): HTMLCanvasElement | undefined {
     const hit = golden[i];
     if (hit) return hit;
-    if (i < 0 || i >= ELEMENTS.length * 3) return undefined;
+    if (i < 0 || i >= nIdx) return undefined;
     const e = Math.floor(i / 3), t = (i % 3) + 1;
     const c = makeGoldenBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell);
     golden[i] = c;
@@ -605,7 +1144,8 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   }
 
   return {
-    block, damagedAt, whiteAt, frozenAt, ballAt, ballExt, goldenAt, goldenExt,
+    block, damagedAt, whiteAt, frozenAt, ball, ballAt, ballExt, warm,
+    resetBudget() { budget = BALL_BUILD_BUDGET; }, goldenAt, goldenExt,
     coin: makeDrop('coin', cell), fragment: makeDrop('fragment', cell), heart: makeDrop('heart', cell),
     halo: makeHalo(cell),
   };

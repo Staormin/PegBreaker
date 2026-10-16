@@ -9,6 +9,14 @@
 // el_lead 180, mitose/radar 110, berserk 140, glass 90, rush 130 (revive.cost 30 inchangé).
 // Mesuré : sans revanche 27-32 runs (moy. 29), ~63 ◆/run ; revanche une run sur deux
 // 28-36 runs, ~70 ◆/run, revanche payée 58/79 (73 %), coût = 0,43 run.
+// Lot BALLS.md (2026-10-17) : 17 nœuds `unlockElement:` (arsenal), arbre 2 080 → 3 940 ◆
+// (contenu long terme voulu). Coûts : magnet 40, acid 45, gold 50, rust 55, pierce 60, twin 80,
+// bomb 90, crystal 100, swarm 110, shock 120, homing/boomerang 130, giant/echo 150, vampire 170,
+// prism 180, void 200 (BALLS.md : 50-150, bas de gamme abaissé pour que les 5 moins chères
+// tombent avant la run 12, haut de gamme relevé). nova/comet/lucky : succès combo15/wave5/shot5000.
+// Mesuré (sim actuelle, ~55 ◆/run) : 1er achat run 1 ; 5 balles les moins chères runs 4-11 ;
+// 8 premières runs 13-21 ; arbre complet 66-69 runs ; avec revanche une run sur deux 72-77 runs,
+// revanche payée 134/189 (71 %), coût = 0,51 run.
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, RunSummary } from '../core/types';
@@ -56,8 +64,16 @@ function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMe
       if (p !== 'firing' && p !== 'advancing') break;
     }
   }
-  throw new Error(`run ${seed} sans fin : vague ${sim.state.wave}, profondeur ${sim.state.depth}`);
+  // Plafond de tirs : le bot abandonne (cas observé quand beaucoup de balles sont débloquées :
+  // le bot naïf ne meurt plus, cf. compteur `capped`).
+  capped.push(`${seed}@v${sim.state.wave}`);
+  sim.giveUp();
+  for (const e of sim.step(0)) if (e.type === 'run:over') return e.summary;
+  throw new Error(`run ${seed} : plafond de tirs, giveUp sans run:over (vague ${sim.state.wave})`);
 }
+
+/** Runs arrêtées au plafond de tirs (abandon), pour le rapport. */
+const capped: string[] = [];
 
 /** Achète le nœud achetable le moins cher, tant que possible. Renvoie le nombre d'achats. */
 function buyGreedy(cfg: GameConfig, meta: ReturnType<typeof createMeta>): number {
@@ -76,19 +92,44 @@ function buyGreedy(cfg: GameConfig, meta: ReturnType<typeof createMeta>): number
 const complete = (cfg: GameConfig, meta: ReturnType<typeof createMeta>): boolean =>
   cfg.meta.nodes.every((n) => (meta.data.meta.nodes[n.id] ?? 0) >= n.costs.length);
 
+/** Les 7 balles d'origine ; les autres nœuds `unlockElement:` sont les « nœuds de balles » (BALLS.md). */
+const ORIGINAL_ELEMENTS = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
+/** Nœuds de balles (lot BALLS.md) triés par coût croissant (puis id, ordre stable). */
+function ballNodes(cfg: GameConfig): { id: string; cost: number }[] {
+  return cfg.meta.nodes
+    .filter((n) => n.effect.startsWith('unlockElement:') && !ORIGINAL_ELEMENTS.includes(n.effect.slice('unlockElement:'.length)))
+    .map((n) => ({ id: n.id, cost: n.costs[0] ?? 0 }))
+    .sort((a, b) => a.cost - b.cost || a.id.localeCompare(b.id));
+}
+
+/** Run (1-based) à laquelle tous les nœuds `ids` sont achetés, ou Infinity. */
+function boughtBy(boughtAt: Record<string, number>, ids: readonly string[]): number {
+  return Math.max(...ids.map((id) => boughtAt[id] ?? Infinity));
+}
+
+const MAX_RUNS = 150;
+
 describe('économie méta', () => {
-  it('1er achat après ≤ 2 runs, arbre complet en 22-38 runs, moyenne 26-34 ; run 1 médiane ≤ 4 succès (5 joueurs simulés)', () => {
+  it('1er achat ≤ 2 runs ; 5 balles les moins chères avant la run 12 ; 8 premières balles ≤ 25 runs ; arbre complet en 55-90 runs (5 joueurs simulés)', () => {
     const cfg = structuredClone(loadConfig());
+    const balls = ballNodes(cfg);
+    expect(balls).toHaveLength(17);
+    const cheap5 = balls.slice(0, 5).map((b) => b.id);
+    const cheap8 = balls.slice(0, 8).map((b) => b.id);
+    const total = cfg.meta.nodes.reduce((t, n) => t + n.costs.reduce((a, b) => a + b, 0), 0);
     const firstBuy: number[] = [];
     const full: number[] = [];
+    const at5: number[] = [];
+    const at8: number[] = [];
     const perRun: number[] = [];
     const log: string[] = [];
     const run1Ach: number[] = [];
     for (let p = 0; p < 5; p++) {
       const meta = createMeta(createMemoryStorage(), cfg, () => new Date(2026, 9, 16));
+      const boughtAt: Record<string, number> = {};
       let first = 0;
       let runs = 0;
-      while (!complete(cfg, meta) && runs < 60) {
+      while (!complete(cfg, meta) && runs < MAX_RUNS) {
         const s = playRun(cfg, `eco-${p}-${runs}`, meta);
         runs++;
         perRun.push(s.stats.fragmentsEarned);
@@ -97,29 +138,33 @@ describe('économie méta', () => {
           run1Ach.push(ach.length);
           log.push(`J${p} run1: ${s.stats.fragmentsEarned} ◆ run + ${meta.data.meta.fragments - s.stats.fragmentsEarned} ◆ succès [${ach.join(',')}]`);
         }
-        if (runs === 5) log.push(`J${p} 5 runs: ${meta.data.stats.totalFragments} ◆ dont succès ${meta.data.stats.totalFragments - perRun.slice(-5).reduce((a, b) => a + b, 0)} ◆, ${meta.data.achievements.length} succès`);
         if (buyGreedy(cfg, meta) > 0 && first === 0) first = runs;
+        for (const n of cfg.meta.nodes) if ((meta.data.meta.nodes[n.id] ?? 0) >= 1 && boughtAt[n.id] === undefined) boughtAt[n.id] = runs;
       }
       firstBuy.push(first);
-      full.push(runs);
+      full.push(complete(cfg, meta) ? runs : Infinity);
+      at5.push(boughtBy(boughtAt, cheap5));
+      at8.push(boughtBy(boughtAt, cheap8));
+      log.push(`J${p} balles (run d'achat) : ${balls.map((b) => `${b.id.slice(3)}@${boughtAt[b.id] ?? '-'}`).join(' ')} | succès ${meta.data.achievements.join(',')}`);
     }
     const mean = perRun.reduce((a, b) => a + b, 0) / perRun.length;
     console.log(log.join('\n'));
-    console.log(`[economy] 1er achat: run ${firstBuy.join(',')} | arbre complet: ${full.join(',')} runs | fragments/run moyen ${mean.toFixed(1)} (min ${Math.min(...perRun)}, max ${Math.max(...perRun)})`);
+    console.log(
+      `[economy] arbre ${total} ◆ | 1er achat: run ${firstBuy.join(',')} | 5 balles [${cheap5.join(',')}]: run ${at5.join(',')} | 8 balles: run ${at8.join(',')} | arbre complet: ${full.join(',')} runs | fragments/run moyen ${mean.toFixed(1)} (min ${Math.min(...perRun)}, max ${Math.max(...perRun)}) | runs au plafond de tirs: ${capped.length} [${capped.join(',')}]`,
+    );
     // Run 1 bimodale (QA J3-02) : une run courte débloque 1-2 succès, une longue jusqu'à 10.
     const med = [...run1Ach].sort((a, b) => a - b)[Math.floor(run1Ach.length / 2)] ?? 0;
     expect(med).toBeGreaterThanOrEqual(1);
     expect(med).toBeLessThanOrEqual(4);
     for (const f of firstBuy) expect(f).toBeGreaterThanOrEqual(1);
     for (const f of firstBuy) expect(f).toBeLessThanOrEqual(2);
+    for (const r of at5) expect(r).toBeLessThan(12);
+    for (const r of at8) expect(r).toBeLessThanOrEqual(25);
     for (const r of full) {
-      expect(r).toBeGreaterThanOrEqual(22);
-      expect(r).toBeLessThanOrEqual(38);
+      expect(r).toBeGreaterThanOrEqual(55);
+      expect(r).toBeLessThanOrEqual(90);
     }
-    const avgFull = full.reduce((a, b) => a + b, 0) / full.length;
-    expect(avgFull).toBeGreaterThanOrEqual(26);
-    expect(avgFull).toBeLessThanOrEqual(34);
-  }, 120_000);
+  }, 300_000);
 });
 
 // Seconde chance (FUN.md F4, economy.revive). Cible : un joueur moyen peut se payer une
@@ -131,7 +176,7 @@ describe('économie méta', () => {
 // du temps, arbre inchangé) ; à 30 (0,44 run) elle est payée ~63 % du temps, arbre en 26-32
 // runs (25-30 sans revanche). Au-delà de 35, moins d'une revanche voulue sur deux est payable.
 describe('économie : seconde chance', () => {
-  it('revive.cost ≈ 0,35-0,55 run moyenne ; revanche une run sur deux → arbre complet ≤ 36 runs', () => {
+  it('revive.cost ≈ 0,35-0,55 run moyenne ; revanche une run sur deux → arbre complet ≤ 90 runs', () => {
     const cfg = structuredClone(loadConfig());
     const full: number[] = [];
     const perRun: number[] = [];
@@ -140,7 +185,7 @@ describe('économie : seconde chance', () => {
     for (let p = 0; p < 5; p++) {
       const meta = createMeta(createMemoryStorage(), cfg, () => new Date(2026, 9, 16));
       let runs = 0;
-      while (!complete(cfg, meta) && runs < 60) {
+      while (!complete(cfg, meta) && runs < MAX_RUNS) {
         // Revanche une run sur deux (runs 1, 3, 5…) ; payée en fin de run (même solde :
         // les ◆ de la run ne sont crédités qu'au run:over, après la revanche).
         // Revanche une run sur deux (runs 1, 3, 5…), payée au moment de la mort avec le
@@ -160,16 +205,16 @@ describe('économie : seconde chance', () => {
         meta.onRunEnd(s);
         buyGreedy(cfg, meta);
       }
-      full.push(runs);
+      full.push(complete(cfg, meta) ? runs : Infinity);
     }
     const mean = perRun.reduce((a, b) => a + b, 0) / perRun.length;
     const ratio = cfg.economy.revive.cost / mean;
     console.log(`[economy revive] cost ${cfg.economy.revive.cost} = ${ratio.toFixed(2)} run moyenne (${mean.toFixed(1)} ◆) | revanches payées ${taken}/${wanted} | arbre complet: ${full.join(',')} runs`);
     expect(ratio).toBeGreaterThanOrEqual(0.35);
     expect(ratio).toBeLessThanOrEqual(0.55);
-    for (const r of full) expect(r).toBeLessThanOrEqual(36);
+    for (const r of full) expect(r).toBeLessThanOrEqual(90);
     // le joueur glouton doit quand même pouvoir se payer la majorité des revanches voulues
     expect(taken / wanted).toBeGreaterThanOrEqual(0.5);
     expect(taken / wanted).toBeLessThanOrEqual(0.8); // pas automatique
-  }, 120_000);
+  }, 300_000);
 });

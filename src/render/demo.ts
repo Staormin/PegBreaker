@@ -8,18 +8,23 @@ import { createEventBus, type EventBus } from '../core/events';
 import { loadConfig } from '../core/config';
 import type { Ball, BallElement, Block, BlockKind, ContractDef, Drop, GameEvent, RunState } from '../core/types';
 import { createRenderer } from './index';
+import { ELEMENTS } from './palette';
+export { mountBallGallery } from './gallery';
 
-const ELEMS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
+const ELEMS: readonly BallElement[] = ELEMENTS;
+/** au-delà d'une balle par élément : mini-balles (essaim, éclats de cristal, jumelles), rayon × 0,6 */
+const MINIS: readonly BallElement[] = ['swarm', 'crystal', 'twin'];
+const MINI_RADIUS = 0.6;
 
 export interface RenderDemoOptions {
-  /** nombre de balles de la volée (défaut 7 : une par élément) */
+  /** nombre de balles de la volée (défaut : une par élément, 27) ; au-delà, des mini-balles */
   balls?: number;
   /** accès de debug (captures QA) : bus et état factice */
   debug?: (api: { bus: EventBus; state: RunState }) => void;
 }
 
 export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptions = {}): () => void {
-  const nBalls = opts.balls ?? 7;
+  const nBalls = opts.balls ?? ELEMS.length;
   const config = loadConfig();
   const { cols, rows, ballRadius: R } = config.blocks.board;
   const bus = createEventBus();
@@ -44,9 +49,21 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
     { id: 4, kind: 'heart', pos: { x: 4.5, y: 7.5 }, value: 1, element: null },
   ];
   const balls: Ball[] = [];
+  const giantMult = config.balls.defs.find((d) => d.id === 'giant')?.params?.radiusMult ?? [1.8, 2.1, 2.4];
+  const crystalBounces = config.balls.defs.find((d) => d.id === 'crystal')?.params?.bounces?.[0] ?? 8;
+  const radiusOf = (b: Ball, i: number): number =>
+    i >= ELEMS.length ? R * MINI_RADIUS : b.element === 'giant' ? R * (giantMult[b.tier - 1] ?? 1.8) : R;
   for (let i = 0; i < nBalls; i++) {
-    balls.push({ id: 100 + i, element: ELEMS[i % ELEMS.length] ?? 'stone', tier: ((Math.floor(i / ELEMS.length) % 3) + 1) as 1 | 2 | 3, pos: { x: 3.5, y: rows - R }, vel: { x: 0, y: 0 }, radius: R, combo: 0, alive: false, triggered: false, golden: false });
+    const mini = i >= ELEMS.length;
+    const element = mini ? MINIS[(i - ELEMS.length) % MINIS.length] ?? 'swarm' : ELEMS[i] ?? 'stone';
+    // rangs mélangés : on voit les anneaux II / III sur toutes les familles
+    const tier = (mini ? 1 : (i % 3) + 1) as 1 | 2 | 3;
+    const b: Ball = { id: 100 + i, element, tier, pos: { x: 3.5, y: rows - R }, vel: { x: 0, y: 0 }, radius: R, combo: 0, alive: false, triggered: false, golden: false };
+    b.radius = radiusOf(b, i);
+    balls.push(b);
   }
+  /** rebonds par balle (cristal) et échos déjà relancés */
+  const bounces = new Map<number, number>();
 
   const state: RunState = {
     seed: 'demo', phase: 'aiming', wave: 1, shotInWave: 0, rowsLeftInWave: 3, depth: 0,
@@ -100,13 +117,32 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       if (other && other !== b) emit({ type: 'lightning:chain', from: { x: ball.pos.x, y: ball.pos.y }, to: { x: other.col + other.width / 2, y: other.row + 0.5 }, damage: 1 });
     }
     if (ball.element === 'ice' && !b.frozen && b.kind !== 'boss') { b.frozen = true; emit({ type: 'block:frozen', blockId: b.id, pos: { x: b.col + 0.5, y: b.row + 0.5 } }); }
+    if (ball.element === 'shock' && b.kind !== 'boss' && b.row > 1 && !blocks.some((o) => o !== b && o.row === b.row - 1 && o.col <= b.col && b.col < o.col + o.width)) {
+      b.row--; // la sim le fait sans événement dédié : le rendu détecte la baisse de row
+    }
+    if (ball.element === 'crystal') {
+      const n = (bounces.get(ball.id) ?? 0) + 1;
+      bounces.set(ball.id, n);
+      if (n >= crystalBounces) {
+        bounces.set(ball.id, 0);
+        emit({ type: 'ball:split', pos: { x: ball.pos.x, y: ball.pos.y }, element: 'crystal' });
+      }
+    }
     if (b.hp <= 0) {
       const pos = { x: b.col + b.width / 2, y: b.row + 0.5 };
       emit({ type: 'block:destroyed', blockId: b.id, kind: b.kind, pos, width: b.width, element: ball.element });
-      if (b.kind === 'explosive') emit({ type: 'block:explode', pos, radius: 1.2, damage: 5 });
+      if (b.kind === 'explosive') emit({ type: 'block:explode', pos, radius: 1.2, damage: 5, element: 'explosive' });
+      if (ball.element === 'vampire') emit({ type: 'player:healed', amount: 1, hpLeft: state.hp, source: 'vampire' });
+      if (ball.element === 'gold') emit({ type: 'drop:spawned', dropId: 999, kind: 'coin', pos: { x: pos.x, y: pos.y } });
       if (b.kind === 'boss') b.hp = b.maxHp = 1520;
       else respawnBlock(b);
     }
+  }
+
+  /** prisme : rayon horizontal sur toute la rangée à chaque rebond de mur */
+  function prismRay(ball: Ball): void {
+    const y = Math.floor(ball.pos.y) + 0.5;
+    emit({ type: 'lightning:chain', from: { x: 0.05, y }, to: { x: cols - 0.05, y }, damage: 1, element: 'prism' });
   }
 
   function physics(dtMs: number): void {
@@ -118,12 +154,20 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       for (let s = 0; s < sub; s++) {
         ball.pos.x += ball.vel.x * h;
         ball.pos.y += ball.vel.y * h;
+        if (ball.element === 'prism' && (ball.pos.x < R || ball.pos.x > cols - R)) prismRay(ball);
         if (ball.pos.x < R) { ball.pos.x = R; ball.vel.x = Math.abs(ball.vel.x); emit({ type: 'ball:bounce', ballId: ball.id, pos: { x: 0, y: ball.pos.y }, normal: { x: 1, y: 0 }, surface: 'wall', combo: ball.combo }); }
         if (ball.pos.x > cols - R) { ball.pos.x = cols - R; ball.vel.x = -Math.abs(ball.vel.x); emit({ type: 'ball:bounce', ballId: ball.id, pos: { x: cols, y: ball.pos.y }, normal: { x: -1, y: 0 }, surface: 'wall', combo: ball.combo }); }
         if (ball.pos.y < R) { ball.pos.y = R; ball.vel.y = Math.abs(ball.vel.y); emit({ type: 'ball:bounce', ballId: ball.id, pos: { x: ball.pos.x, y: 0 }, normal: { x: 0, y: 1 }, surface: 'wall', combo: ball.combo }); }
         if (ball.pos.y > rows - R) {
-          ball.pos.y = rows - R; ball.alive = false; ball.combo = 0;
+          ball.pos.y = rows - R;
           emit({ type: 'ball:grounded', ballId: ball.id, pos: { x: ball.pos.x, y: rows } });
+          if (ball.element === 'bomb') emit({ type: 'block:explode', pos: { x: ball.pos.x, y: rows - 0.3 }, radius: 1.4, damage: 30, element: 'bomb' });
+          if (ball.element === 'echo' && !ball.triggered) {
+            // copie fantôme : repart vers le haut (Ball.triggered = copie, convention supposée)
+            ball.triggered = true; ball.vel.y = -Math.abs(ball.vel.y); ball.pos.y = rows - R - 0.01;
+            continue;
+          }
+          ball.alive = false; ball.combo = 0;
           break;
         }
         for (const b of blocks) {
@@ -180,7 +224,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       while (launched < balls.length && launchT >= launched * 90 && dir) {
         const b = balls[launched]!;
         // combos de départ échelonnés : montre les paliers 8 / 16 / 32 du combo sur balle
-        b.alive = true; b.combo = launched % 4 === 0 ? 6 + launched : 0;
+        b.alive = true; b.combo = launched % 4 === 0 ? 6 + launched : 0; b.triggered = false;
         b.golden = launched === balls.length - 1;
         b.pos.x = state.launchPos.x; b.pos.y = state.launchPos.y;
         const u = balls.length > 1 ? (launched / (balls.length - 1)) * 2 - 1 : 0;
@@ -198,6 +242,8 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
         milestoneT = 0;
         const lead = balls.find((b) => b.alive) ?? balls[0]!;
         emit({ type: 'combo:milestone', combo: [5, 10, 20][milestoneLvl - 1] ?? 5, pos: { x: lead.pos.x, y: lead.pos.y }, level: milestoneLvl });
+        const nova = balls.find((b) => b.alive && b.element === 'nova');
+        if (nova) emit({ type: 'block:explode', pos: { x: nova.pos.x, y: nova.pos.y }, radius: 1.2, damage: 10, element: 'nova' });
         milestoneLvl = milestoneLvl === 3 ? 1 : ((milestoneLvl + 1) as 2 | 3);
       }
       if (phaseT > 5000 || (launched === balls.length && balls.every((b) => !b.alive))) {

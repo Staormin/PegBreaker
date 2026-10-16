@@ -1,5 +1,5 @@
 // sim/rewards.ts — tirages : éléments, reliques, offres de récompense, application d'une option.
-import type { BallElement, BallTier, DropKind, RewardOption } from '../core/types';
+import type { BallElement, BallTier, DropKind, GameEvent, RewardOption } from '../core/types';
 import type { Ctx } from './ctx';
 import { emit } from './ctx';
 import { addRelic, relicDef, relicRequiredElement } from './relics';
@@ -177,15 +177,20 @@ export function makeBossOptions(ctx: Ctx, count: number): RewardOption[] {
   return out;
 }
 
-export function heal(ctx: Ctx, amount: number): void {
+export type HealSource = Extract<GameEvent, { type: 'player:healed' }>['source'];
+
+export function heal(ctx: Ctx, amount: number, source?: HealSource, x?: number, y?: number): void {
   const s = ctx.s;
   const before = s.hp;
   s.hp = Math.min(s.maxHp, s.hp + amount);
   const gained = s.hp - before;
-  if (gained > 0) emit(ctx, { type: 'player:healed', amount: gained, hpLeft: s.hp });
+  if (gained <= 0) return;
+  if (x !== undefined && y !== undefined) emit(ctx, { type: 'player:healed', amount: gained, hpLeft: s.hp, pos: { x, y }, source });
+  else if (source) emit(ctx, { type: 'player:healed', amount: gained, hpLeft: s.hp, source });
+  else emit(ctx, { type: 'player:healed', amount: gained, hpLeft: s.hp });
 }
 
-export function applyOption(ctx: Ctx, o: RewardOption): void {
+export function applyOption(ctx: Ctx, o: RewardOption, source?: HealSource): void {
   switch (o.kind) {
     case 'ball':
       addVolleyBall(ctx, o.element, o.tier);
@@ -197,7 +202,7 @@ export function applyOption(ctx: Ctx, o: RewardOption): void {
       ctx.s.coins += o.amount;
       break;
     case 'heal':
-      heal(ctx, o.amount);
+      heal(ctx, o.amount, source);
       break;
     case 'fuse':
       // alchimie : seulement sur une fusion choisie (pas l'auto-fusion au plafond, qui bouclerait)

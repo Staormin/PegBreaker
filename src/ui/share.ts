@@ -1,8 +1,8 @@
 // ui/share.ts — carte de score PNG 1080×1350 (canvas DOM) + lien de défi (F6).
 // Lien : `${origin}${pathname}?seed=<seed>&goal=<depth>`. Partage : Web Share API avec fichier si
 // supportée, sinon lien copié dans le presse-papiers + image téléchargée (<a download>).
-import type { BallElement, BallTier, GameConfig, RunSummary } from '../core/types';
-import { ballColor } from './options';
+import type { BallTier, GameConfig, RunSummary } from '../core/types';
+import { drawBallShape, elementTable } from './elements';
 
 export const CARD_W = 1080;
 export const CARD_H = 1350;
@@ -70,29 +70,6 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLine
     return kept;
   }
   return out;
-}
-
-function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, tier: BallTier): void {
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = color;
-  if (tier >= 3) {
-    ctx.beginPath();
-    ctx.arc(x, y, r + 14, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  if (tier >= 2) {
-    ctx.beginPath();
-    ctx.arc(x, y, r + 7, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.beginPath();
-  ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.28, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 /** Dessine la carte de score (titre, profondeur, vague, combo, dégâts, volée, reliques, seed, lien). */
@@ -166,12 +143,12 @@ export function renderShareCard(config: GameConfig, s: RunSummary, link: string,
   ctx.fillStyle = C.dim;
   ctx.fillText(`VOLÉE · ${s.volley.length} BALLE${s.volley.length > 1 ? 'S' : ''}`, cx, y);
   y += 60;
-  const r = 20;
+  const r = 18;
   const step = 62;
   const perRow = Math.floor((CARD_W - 120) / step);
   const maxShown = perRow * 2;
-  const order: Record<BallElement, number> = { stone: 0, fire: 1, lightning: 2, ice: 3, ghost: 4, lead: 5, split: 6 };
-  const balls = [...s.volley].sort((a, b) => b.tier - a.tier || order[a.element] - order[b.element]);
+  const elements = elementTable(config);
+  const balls = [...s.volley].sort((a, b) => b.tier - a.tier || elements.index(a.element) - elements.index(b.element));
   const shown = balls.slice(0, balls.length > maxShown ? maxShown - 1 : maxShown);
   const rows = Math.ceil((shown.length + (balls.length > shown.length ? 1 : 0)) / perRow) || 1;
   for (let row = 0; row < rows; row++) {
@@ -181,7 +158,10 @@ export function renderShareCard(config: GameConfig, s: RunSummary, link: string,
     for (let i = 0; i < n; i++) {
       const b = shown[start + i];
       const x = x0 + i * step;
-      if (b) drawBall(ctx, x, y + row * 70, r, ballColor(config, b.element), b.tier);
+      if (b) {
+        const info = elements.get(b.element);
+        drawBallShape(ctx, x, y + row * 70, r, info.family, info.color, b.tier);
+      }
       else {
         ctx.fillStyle = C.dim;
         ctx.font = `900 30px ${FONT}`;
