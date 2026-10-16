@@ -41,9 +41,9 @@ type Predicate = (c: AchievementContext) => boolean;
 
 /** Repli par id (succès sans `condition`). Seuils de contenu = ceux du nom du succès. */
 export const ACHIEVEMENT_RULES: Readonly<Record<string, Predicate>> = {
-  relic5: (c) => c.summary.relics.length >= 5,
-  volley20: (c) => c.summary.volley.length >= 20,
-  score10k: (c) => c.stats.bestScore >= 10000,
+  relic6: (c) => c.summary.relics.length >= 6,
+  volley24: (c) => c.summary.volley.length >= 24,
+  score20k: (c) => c.stats.bestScore >= 20000,
 };
 
 export function isMet(def: AchievementDef, ctx: AchievementContext): boolean {

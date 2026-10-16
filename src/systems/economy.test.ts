@@ -1,6 +1,6 @@
 // Sanity d'économie méta : bot « vise le bloc le plus bas » (sim réelle), achats gloutons
 // du nœud le moins cher après chaque run. Cibles (brief T10) : 1er achat après 1-2 runs,
-// arbre complet en ~25-30 runs (J3 : 16 nœuds, total 1 790).
+// arbre complet en 25-35 runs (T10c : 16 nœuds, total 1 910).
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, RunSummary } from '../core/types';
@@ -53,11 +53,13 @@ const complete = (cfg: GameConfig, meta: ReturnType<typeof createMeta>): boolean
   cfg.meta.nodes.every((n) => (meta.data.meta.nodes[n.id] ?? 0) >= n.costs.length);
 
 describe('économie méta', () => {
-  it('1er achat après ≤ 2 runs, arbre complet en 20-35 runs, moyenne 24-31 (5 joueurs simulés)', () => {
+  it('1er achat après ≤ 2 runs, arbre complet en 22-38 runs, moyenne 26-34 ; run 1 médiane ≤ 4 succès (5 joueurs simulés)', () => {
     const cfg = structuredClone(loadConfig());
     const firstBuy: number[] = [];
     const full: number[] = [];
     const perRun: number[] = [];
+    const log: string[] = [];
+    const run1Ach: number[] = [];
     for (let p = 0; p < 5; p++) {
       const meta = createMeta(createMemoryStorage(), cfg, () => new Date(2026, 9, 16));
       let first = 0;
@@ -66,22 +68,32 @@ describe('économie méta', () => {
         const s = playRun(cfg, `eco-${p}-${runs}`, meta);
         runs++;
         perRun.push(s.stats.fragmentsEarned);
-        meta.onRunEnd(s);
+        const ach = meta.onRunEnd(s);
+        if (runs === 1) {
+          run1Ach.push(ach.length);
+          log.push(`J${p} run1: ${s.stats.fragmentsEarned} ◆ run + ${meta.data.meta.fragments - s.stats.fragmentsEarned} ◆ succès [${ach.join(',')}]`);
+        }
+        if (runs === 5) log.push(`J${p} 5 runs: ${meta.data.stats.totalFragments} ◆ dont succès ${meta.data.stats.totalFragments - perRun.slice(-5).reduce((a, b) => a + b, 0)} ◆, ${meta.data.achievements.length} succès`);
         if (buyGreedy(cfg, meta) > 0 && first === 0) first = runs;
       }
       firstBuy.push(first);
       full.push(runs);
     }
     const mean = perRun.reduce((a, b) => a + b, 0) / perRun.length;
+    console.log(log.join('\n'));
     console.log(`[economy] 1er achat: run ${firstBuy.join(',')} | arbre complet: ${full.join(',')} runs | fragments/run moyen ${mean.toFixed(1)} (min ${Math.min(...perRun)}, max ${Math.max(...perRun)})`);
+    // Run 1 bimodale (QA J3-02) : une run courte débloque 1-2 succès, une longue jusqu'à 10.
+    const med = [...run1Ach].sort((a, b) => a - b)[Math.floor(run1Ach.length / 2)] ?? 0;
+    expect(med).toBeGreaterThanOrEqual(1);
+    expect(med).toBeLessThanOrEqual(4);
     for (const f of firstBuy) expect(f).toBeGreaterThanOrEqual(1);
     for (const f of firstBuy) expect(f).toBeLessThanOrEqual(2);
     for (const r of full) {
-      expect(r).toBeGreaterThanOrEqual(20);
-      expect(r).toBeLessThanOrEqual(35);
+      expect(r).toBeGreaterThanOrEqual(22);
+      expect(r).toBeLessThanOrEqual(38);
     }
     const avgFull = full.reduce((a, b) => a + b, 0) / full.length;
-    expect(avgFull).toBeGreaterThanOrEqual(24);
-    expect(avgFull).toBeLessThanOrEqual(31);
+    expect(avgFull).toBeGreaterThanOrEqual(26);
+    expect(avgFull).toBeLessThanOrEqual(34);
   }, 120_000);
 });

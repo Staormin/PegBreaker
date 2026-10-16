@@ -366,9 +366,9 @@ describe('onRunEnd', () => {
     const c = cfg();
     const reward = (id: string): number => c.meta.achievements.find((a) => a.id === id)?.rewardFragments ?? NaN;
     const m = createMeta(createMemoryStorage(), c, fixedNow);
-    const s = summary({ wave: 10, volley: [{ element: 'fire', tier: 3 }] }, { fragmentsEarned: 0, bestCombo: 31, bestShotDamage: 1000, bossesKilled: 1, fusions: 2 });
+    const s = summary({ wave: 15, volley: [{ element: 'fire', tier: 3 }] }, { fragmentsEarned: 0, bestCombo: 50, bestShotDamage: 5000, bossesKilled: 1, fusions: 2 });
     const got = m.onRunEnd(s);
-    expect(got).toEqual(['combo10', 'combo30', 'fusion2', 'fusion3', 'wave5', 'wave10', 'shot1000']);
+    expect(got).toEqual(['combo15', 'combo50', 'fusion2', 'fusion3', 'wave5', 'wave10', 'wave15', 'shot5000']);
     const sum = got.reduce((a, id) => a + reward(id), 0);
     expect(m.data.meta.fragments).toBe(sum);
     expect(m.data.stats.totalFragments).toBe(sum);
@@ -377,9 +377,9 @@ describe('onRunEnd', () => {
     expect(m.data.achievements).toEqual(got);
   });
 
-  it('seuils : combo 9, tir 999, rang 1 → rien ; balle de rang 2 → fusion2', () => {
+  it('seuils : combo 14, tir 4999, vague 9, prof 79, score 19999, rang 1 → rien ; balle de rang 2 → fusion2', () => {
     const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
-    expect(m.onRunEnd(summary({ wave: 9, depth: 49, score: 9999 }, { bestCombo: 9, bestShotDamage: 999 }))).toEqual([]);
+    expect(m.onRunEnd(summary({ wave: 9, depth: 79, score: 19999, relics: ['a', 'b', 'c', 'd', 'e'], volley: Array.from({ length: 23 }, () => ({ element: 'stone' as const, tier: 1 as const })) }, { bestCombo: 14, bestShotDamage: 4999 }))).toEqual([]);
     expect(m.onRunEnd(summary({ volley: [{ element: 'stone', tier: 2 }] }))).toEqual(['fusion2']);
   });
 
@@ -417,26 +417,26 @@ describe('onRunEnd', () => {
 });
 
 describe('succès J3 (condition déclarative + repli par id)', () => {
-  it('perfectwave via perfectWaves, depth50, score10k, relic5, volley20', () => {
+  it('perfectwave via perfectWaves, depth80, score20k, relic6, volley24', () => {
     const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
     const got = m.onRunEnd(
       summary(
-        { depth: 50, score: 10000, relics: ['a', 'b', 'c', 'd', 'e'], volley: Array.from({ length: 20 }, () => ({ element: 'stone' as const, tier: 1 as const })) },
+        { depth: 80, score: 20000, relics: ['a', 'b', 'c', 'd', 'e', 'f'], volley: Array.from({ length: 24 }, () => ({ element: 'stone' as const, tier: 1 as const })) },
         { perfectWaves: 1 },
       ),
     );
-    expect(got).toEqual(['perfectwave', 'depth50', 'relic5', 'volley20', 'score10k']);
-    expect(m.onRunEnd(summary({ relics: ['a', 'b', 'c', 'd'] }, { perfectWaves: 0 }))).toEqual([]);
+    expect(got).toEqual(['perfectwave', 'depth80', 'relic6', 'volley24', 'score20k']);
+    expect(m.onRunEnd(summary({ relics: ['a', 'b', 'c', 'd', 'e'] }, { perfectWaves: 0 }))).toEqual([]);
   });
 
   it('la condition du JSON prime sur la table par id ; id sans condition ni règle → jamais', () => {
     const c = cfg();
-    const relic5 = c.meta.achievements.find((a) => a.id === 'relic5');
-    if (!relic5) throw new Error('relic5');
-    relic5.condition = { stat: 'bestCombo', gte: 3 }; // remplace la règle « 5 reliques »
+    const relic6 = c.meta.achievements.find((a) => a.id === 'relic6');
+    if (!relic6) throw new Error('relic6');
+    relic6.condition = { stat: 'bestCombo', gte: 3 }; // remplace la règle « 6 reliques »
     c.meta.achievements.push({ id: 'mystery', name: '?', description: '', rewardFragments: 99 });
     const m = createMeta(createMemoryStorage(), c, fixedNow);
-    expect(m.onRunEnd(summary({ relics: [] }, { bestCombo: 3 }))).toEqual(['relic5']);
+    expect(m.onRunEnd(summary({ relics: [] }, { bestCombo: 3 }))).toEqual(['relic6']);
   });
 
   it('une relique verrouillée est débloquée par son nœud (requires respectés)', () => {
@@ -452,6 +452,15 @@ describe('succès J3 (condition déclarative + repli par id)', () => {
     expect(r).toContain('alchimie');
     expect(r).not.toContain('radar');
     expect(r).not.toContain('berserk');
+  });
+});
+
+describe('rythme des succès (QA J3-01)', () => {
+  it('les succès faciles (combo15, fusion2, wave5, perfectwave) rapportent ≤ 50 ◆ au total', () => {
+    const c = cfg();
+    const easy = ['combo15', 'fusion2', 'wave5', 'perfectwave'];
+    const sum = c.meta.achievements.filter((a) => easy.includes(a.id)).reduce((t, a) => t + a.rewardFragments, 0);
+    expect(sum).toBeLessThanOrEqual(50);
   });
 });
 
