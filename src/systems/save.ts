@@ -5,10 +5,10 @@ export const SAVE_KEY = 'pegbreaker.save.v1';
 export const BACKUP_KEY = 'pegbreaker.save.backup';
 export const SAVE_VERSION = 1;
 
-export const DEFAULT_SETTINGS: Readonly<Settings> = { sfx: 0.8, music: 0.5, musicTrack: 'neon' };
+export const DEFAULT_SETTINGS: Readonly<Settings> = { sfx: 0.8, music: 0.5, musicTrack: 'arcade' };
 export const MUSIC_TRACKS: readonly MusicTrackId[] = ['neon', 'arcade', 'deep'];
 export function parseMusicTrack(v: unknown): MusicTrackId {
-  return MUSIC_TRACKS.find((t) => t === v) ?? 'neon';
+  return MUSIC_TRACKS.find((t) => t === v) ?? 'arcade';
 }
 
 export function defaultStats(): GlobalStats {

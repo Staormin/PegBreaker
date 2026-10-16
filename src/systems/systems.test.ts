@@ -59,7 +59,7 @@ describe('sauvegarde', () => {
     expect(d.stats.runs).toBe(0);
     expect(d.achievements).toEqual([]);
     expect(d.currentRun).toBeNull();
-    expect(d.settings).toEqual({ sfx: 0.8, music: 0.5, musicTrack: 'neon' });
+    expect(d.settings).toEqual({ sfx: 0.8, music: 0.5, musicTrack: 'arcade' });
     expect(d.onboarded).toBe(false);
     expect(st.getItem(SAVE_KEY)).toBeNull(); // load n'écrit pas
   });
@@ -112,7 +112,7 @@ describe('sauvegarde', () => {
     expect(d.stats.runs).toBe(12);
     expect(d.stats.bestCombo).toBe(0);
     expect(d.stats.totalBlocks).toBe(0);
-    expect(d.settings).toEqual({ sfx: 0.3, music: 0.5, musicTrack: 'neon' });
+    expect(d.settings).toEqual({ sfx: 0.3, music: 0.5, musicTrack: 'arcade' });
     expect(d.achievements).toEqual([]);
     expect(d.daily).toEqual({ '2026-10-15': { depth: 7, score: 1234, completedAt: '' } });
     expect(d.currentRun).toBeNull();
@@ -213,7 +213,7 @@ describe('sauvegarde', () => {
     const st = createMemoryStorage();
     const m = createMeta(st, cfg(), fixedNow);
     m.updateSettings({ sfx: 3, music: -1 });
-    expect(m.data.settings).toEqual({ sfx: 1, music: 0, musicTrack: 'neon' });
+    expect(m.data.settings).toEqual({ sfx: 1, music: 0, musicTrack: 'arcade' });
     m.setOnboarded();
     expect(createMeta(st, cfg(), fixedNow).data.onboarded).toBe(true);
   });
@@ -223,13 +223,13 @@ describe('musicTrack', () => {
   it('défaut neon, updateSettings persiste, valeur inconnue -> neon', () => {
     const st = createMemoryStorage();
     const m = createMeta(st, cfg(), fixedNow);
-    expect(m.data.settings.musicTrack).toBe('neon');
+    expect(m.data.settings.musicTrack).toBe('arcade');
     m.updateSettings({ musicTrack: 'deep' });
     expect(createMeta(st, cfg(), fixedNow).data.settings.musicTrack).toBe('deep');
     const raw = JSON.parse(st.getItem(SAVE_KEY) ?? '{}') as { settings: Record<string, unknown> };
     raw.settings['musicTrack'] = 'polka';
     st.setItem(SAVE_KEY, JSON.stringify(raw));
-    expect(createMeta(st, cfg(), fixedNow).data.settings.musicTrack).toBe('neon');
+    expect(createMeta(st, cfg(), fixedNow).data.settings.musicTrack).toBe('arcade');
   });
 });
 
