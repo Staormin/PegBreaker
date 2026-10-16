@@ -2,9 +2,8 @@
 import type { UiScreen } from '../../core/types';
 import { el } from '../dom';
 
-/** écrans internes à l'UI : `UiScreen` + 'revive' (Seconde chance, absent de core/types.ts :
- *  émis comme 'gameover' sur le bus, exposé tel quel dans `#ui[data-screen]`). */
-export type UiLocalScreen = UiScreen | 'revive';
+/** alias historique : `UiScreen` contient 'revive' depuis le lot 1 */
+export type UiLocalScreen = UiScreen;
 
 export interface ScreenEl {
   readonly id: UiLocalScreen;

@@ -1436,6 +1436,11 @@ body {
 .hs-label {
   color: var(--text-dim);
 }
+/* spread = 0 : « rafale » en évidence ; ouvert : « éventail » */
+.hud-spread[data-mode='burst'] .hs-min,
+.hud-spread[data-mode='fan'] .hs-max {
+  color: var(--accent);
+}
 .hs-track {
   position: relative;
   flex: 1;
@@ -1515,6 +1520,10 @@ body {
 .challenge-result[data-result='won'] {
   background: var(--good);
   color: #062010;
+}
+.challenge-result[data-result='tie'] {
+  border: 2px solid var(--accent);
+  color: var(--accent);
 }
 .challenge-result[data-result='lost'] {
   border: 2px solid var(--danger);

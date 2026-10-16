@@ -58,6 +58,10 @@ export interface SimInternal {
   bossKilledThisWave: boolean;
   /** run:over déjà émis pour cette run (giveUp / restart) */
   overEmitted: boolean;
+  /** multiplicateur de dégâts de la volée, figé au tir : 1 − spreadDamagePenalty × aimSpread */
+  shotDamageMult: number;
+  /** multiplicateur de la balle dorée, figé au tir selon le nombre de balles lancées */
+  goldenMult: number;
 }
 
 export interface SimState extends RunState {
@@ -95,6 +99,8 @@ export function createInternal(nextId: number): SimInternal {
     shotKills: 0,
     bossKilledThisWave: false,
     overEmitted: false,
+    shotDamageMult: 1,
+    goldenMult: 1,
   };
 }
 

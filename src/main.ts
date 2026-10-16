@@ -39,6 +39,8 @@ function boot(): void {
   const params = new URLSearchParams(location.search);
   const isDaily = params.get('daily') === '1';
   const forcedSeed = params.get('seed');
+  // qa=1 : run de test, jamais créditée ni sauvegardée ; une run de défi (?seed=&goal=) est créditée mais pas reprise
+  const isQa = params.get('qa') === '1';
   const fresh = params.get('fresh') === '1';
   const resume = !forcedSeed && !isDaily && !fresh && meta.data.currentRun ? meta.data.currentRun : undefined;
   const seed = forcedSeed ?? (isDaily ? meta.dailySeed() : `run-${Date.now().toString(36)}`);
@@ -77,7 +79,7 @@ function boot(): void {
     meta.setCurrentRun(sim.snapshot());
   };
   bus.on('run:over', (e) => {
-    if (forcedSeed) return;
+    if (isQa) return;
     const unlocked = meta.onRunEnd(e.summary);
     meta.setCurrentRun(null);
     for (const id of unlocked) bus.emit({ type: 'achievement:unlocked', achievementId: id });

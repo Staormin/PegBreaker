@@ -2,7 +2,7 @@
 // Visée DIRECTE : la balle part vers le point touché (dir = point plateau − launchPos).
 // Seul endroit de ui/ qui manipule des pixels (coordonnées CSS relatives au canvas).
 // Éventail (F1) : la longueur du geste (px CSS depuis le point d'appui) règle l'ouverture
-//   spread = clamp((len − 90) / 220, 0, 1), mêmes seuils souris et tactile.
+//   spread = clamp((len − 150) / 220, 0, 1) (zone morte large : un geste court reste en rafale), mêmes seuils souris et tactile.
 // Clavier : ← → visent, A/Q ferment (rafale) et E/D ouvrent (éventail) par pas de 0,1, Espace tire.
 import type { AudioSystem, Renderer, Sim, Vec2 } from '../core/types';
 
@@ -12,7 +12,7 @@ const DRAG_THRESHOLD_PX = 12;
 const KEY_STEP_DEG = 2;
 const KEY_STEP_FINE_DEG = 0.5;
 /** éventail : longueur de geste (px CSS) sans ouverture, puis plage jusqu'à l'ouverture max */
-export const SPREAD_DEAD_PX = 90;
+export const SPREAD_DEAD_PX = 150;
 export const SPREAD_RANGE_PX = 220;
 const KEY_SPREAD_STEP = 0.1;
 

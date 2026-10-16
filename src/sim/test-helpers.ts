@@ -21,6 +21,8 @@ export function config(): GameConfig {
   const c = structuredClone(loadConfig());
   if (neutralFun) {
     c.balls.lastBallMultiplier = 1;
+    c.balls.lastBallMultiplierPerBall = 0;
+    c.balls.spreadDamagePenalty = 0;
     c.contracts.chance = 0;
   }
   return c;

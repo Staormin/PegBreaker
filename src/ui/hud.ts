@@ -460,6 +460,7 @@ export function createHud(deps: HudDeps): Hud {
     if (v !== cSpread) {
       cSpread = v;
       spreadBox.style.setProperty('--sp', String(v));
+      spreadBox.dataset.mode = v === 0 ? 'burst' : 'fan';
       spreadBox.setAttribute('aria-label', `Ouverture de la volée : ${Math.round(v * 100)} %`);
     }
   }

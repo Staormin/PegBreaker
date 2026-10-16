@@ -139,9 +139,10 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     const goal = d.challengeGoal;
     challenge.hidden = goal === null;
     if (goal !== null) {
-      const won = summary.depth > goal;
-      challenge.dataset.result = won ? 'won' : 'lost';
-      challenge.textContent = won ? '✓ Défi réussi !' : `✗ Défi raté : P${fmt(summary.depth)} / P${fmt(goal)}`;
+      const res = summary.depth > goal ? 'won' : summary.depth === goal ? 'tie' : 'lost';
+      challenge.dataset.result = res;
+      challenge.textContent =
+        res === 'won' ? '✓ Défi réussi !' : res === 'tie' ? `= Égalité : P${fmt(goal)}` : `✗ Défi raté : P${fmt(summary.depth)} / P${fmt(goal)}`;
     }
     // F8 : fin d'un quotidien → « Série : N jours, ×M fragments »
     const ds = summary.isDaily && d.dailyStreak ? d.dailyStreak(summary) : null;

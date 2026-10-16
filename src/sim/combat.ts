@@ -16,7 +16,10 @@ export function ballDamage(ctx: Ctx, b: Ball): number {
   let d = ballDef(ctx, b.element).baseDamage * Math.pow(bc.tierDamageMultiplier, b.tier - 1);
   if (b.tier >= 2 && r.catalyst > 0) d *= 1 + r.catalyst;
   if (r.berserk > 0) d *= 1 + r.berserk * Math.max(0, ctx.s.maxHp - ctx.s.hp);
-  if (b.golden) d *= bc.lastBallMultiplier;
+  // éventail (figé au tir) et dorée : s'appliquent aussi aux effets dérivés (explosion, foudre, enclume)
+  const it = ctx.s.internal;
+  d *= it.shotDamageMult ?? 1;
+  if (b.golden) d *= it.goldenMult ?? bc.lastBallMultiplier;
   if (b.element === 'lead') return d * bc.lead.damageMultiplier;
   // plafond doux : au-delà de comboSoftCap, chaque rebond n'ajoute plus que comboDamagePerBounceAfterCap
   const cap = bc.comboSoftCap;

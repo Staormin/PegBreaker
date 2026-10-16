@@ -10,7 +10,7 @@
 // - Tout clic de bouton émet `ui:click` ; tout changement d'écran émet `ui:screen`.
 // - Les écrans suivent les événements (`reward:offered`, `shop:opened`, `run:over`...) et, en
 //   secours (reprise d'une sauvegarde), la phase de `RunState` lue dans `update`.
-// - Lot 1 : `run:lost` → écran « Revanche ? » (id interne 'revive', émis 'gameover' sur le bus,
+// - Lot 1 : `run:lost` → écran « Revanche ? » ('revive' : bus, `ui.screen` et
 //   `#ui[data-screen=revive]`) → `sim.revive()` / `sim.giveUp()` ; `run:over` → fin de run.
 //   Mode défi lu dans `location.search` (`?seed=X&goal=N`).
 // - Lot 2 : F8 quotidien muté (`?daily=1`) : mutateurs `meta.dailyMods()` dans le badge HUD,
@@ -201,8 +201,6 @@ export function createUI(deps: UiDeps): UI {
   window.addEventListener('keydown', () => (keyboardUser = true), true);
   window.addEventListener('pointerdown', () => (keyboardUser = false), true);
   /** changement d'écran : fondu court (100 ms, CSS) à l'ouverture, fermeture instantanée */
-  /** dernier écran annoncé sur le bus ('revive' → 'gameover' n'est pas annoncé deux fois) */
-  let lastPublished: UiScreen = 'game';
   function show(next: UiLocalScreen): void {
     if (next === screen) return;
     if (screen === 'revive') revive.stop();
@@ -220,10 +218,7 @@ export function createUI(deps: UiDeps): UI {
       const first = visible.root.querySelector<HTMLElement>('button:not([disabled])') ?? visible.root;
       setTimeout(() => first.focus({ preventScroll: true }), 0);
     }
-    // 'revive' n'existe pas dans UiScreen (core) : annoncé comme 'gameover'
-    const pub: UiScreen = next === 'revive' ? 'gameover' : next;
-    if (pub !== lastPublished) bus.emit({ type: 'ui:screen', screen: pub });
-    lastPublished = pub;
+    bus.emit({ type: 'ui:screen', screen: next });
   }
   root.dataset.screen = screen;
 
@@ -439,7 +434,7 @@ export function createUI(deps: UiDeps): UI {
   return {
     show,
     get screen(): UiScreen {
-      return screen === 'revive' ? 'gameover' : screen;
+      return screen;
     },
     update,
   };

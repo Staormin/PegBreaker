@@ -6,8 +6,9 @@ import { spreadFromDrag, SPREAD_DEAD_PX, SPREAD_RANGE_PX } from './input';
 import { readChallenge } from './share';
 
 describe('éventail : longueur du geste → spread', () => {
-  it('0 sous 90 px, 1 au-delà de 310 px, linéaire entre', () => {
+  it('0 sous 150 px, 1 au-delà de 370 px, linéaire entre', () => {
     expect(spreadFromDrag(0)).toBe(0);
+    expect(spreadFromDrag(120)).toBe(0);
     expect(spreadFromDrag(SPREAD_DEAD_PX)).toBe(0);
     expect(spreadFromDrag(SPREAD_DEAD_PX + SPREAD_RANGE_PX / 2)).toBeCloseTo(0.5);
     expect(spreadFromDrag(SPREAD_DEAD_PX + SPREAD_RANGE_PX)).toBe(1);

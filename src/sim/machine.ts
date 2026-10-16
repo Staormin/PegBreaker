@@ -120,6 +120,18 @@ function planVolley(ctx: Ctx, dirX: number, dirY: number, spread: number): void 
   }
 }
 
+/** Éventail = arbitrage : dégâts de toute la volée × (1 − spreadDamagePenalty × spread), au moins 0. */
+export function shotDamageMult(ctx: Ctx, spread: number): number {
+  return Math.max(0, 1 - (ctx.cfg.balls.spreadDamagePenalty ?? 0) * spread);
+}
+
+/** Balle dorée : min(lastBallMultiplierMax, lastBallMultiplier + lastBallMultiplierPerBall × (N − 1)), N = balles lancées (hors scissions). */
+export function goldenMultiplier(ctx: Ctx, n: number): number {
+  const bc = ctx.cfg.balls;
+  const m = bc.lastBallMultiplier + (bc.lastBallMultiplierPerBall ?? 0) * Math.max(0, n - 1);
+  return Math.min(bc.lastBallMultiplierMax ?? m, m);
+}
+
 export function fire(ctx: Ctx): void {
   const s = ctx.s;
   if (s.phase !== 'aiming' || !s.aimDir || s.volley.length === 0) return;
@@ -127,6 +139,8 @@ export function fire(ctx: Ctx): void {
   refreshRelics(ctx); // l'état a pu être modifié de l'extérieur (reprise, outils de debug)
   const spread = Number.isFinite(s.aimSpread) ? Math.min(1, Math.max(0, s.aimSpread)) : 0;
   planVolley(ctx, s.aimDir.x, s.aimDir.y, spread);
+  it.shotDamageMult = shotDamageMult(ctx, spread);
+  it.goldenMult = goldenMultiplier(ctx, it.launchQueue.length);
   it.launchTimer = 0;
   it.volleyElapsed = 0;
   it.originX = s.launchPos.x;

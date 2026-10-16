@@ -158,9 +158,54 @@ describe('F3 balle dorée', () => {
     expect(hits).toHaveLength(3);
     for (const h of hits) {
       expect(h.combo).toBe(0);
-      expect(h.damage).toBe(h.ballId === goldId ? 10 * sim.config.balls.lastBallMultiplier : 10);
+      const bc = sim.config.balls;
+      const gold = Math.min(bc.lastBallMultiplierMax, bc.lastBallMultiplier + bc.lastBallMultiplierPerBall * 2);
+      expect(h.damage).toBe(h.ballId === goldId ? Math.round(10 * gold) : 10);
     }
     expect(hits.map((h) => h.ballId).sort()).toEqual(launched.map((e) => e.ballId).sort());
+  });
+
+  it('multiplicateur doré = min(max, base + parBalle × (N − 1)) : N = 1, 3, plafond ; scissions non comptées', () => {
+    const cfg = config();
+    cfg.balls.lastBallMultiplier = 2;
+    cfg.balls.lastBallMultiplierPerBall = 0.5;
+    cfg.balls.lastBallMultiplierMax = 3;
+    const goldHit = (volley: VolleyBall[]): number => {
+      const sim = newSim('golden-n', cfg);
+      setup(sim, [block(sim, 'normal', 3, 4, 100000)], volley, { rowsLeft: 3, launchX: 3.5 });
+      const evs = shoot(sim, UP);
+      const goldId = ofType(evs, 'ball:launched').find((e) => e.golden)!.ballId;
+      return ofType(evs, 'block:hit').find((h) => h.ballId === goldId)!.damage;
+    };
+    expect(goldHit(stones(1))).toBe(20); // 2 + 0,5 × 0
+    expect(goldHit(stones(2))).toBe(25); // 2 + 0,5 × 1
+    expect(goldHit(stones(5))).toBe(30); // 2 + 0,5 × 4 = 4 → plafond 3
+    // une seule balle de scission : N = 1 malgré les filles
+    const sim = newSim('golden-split-n', cfg);
+    setup(sim, [block(sim, 'normal', 3, 4, 100000)], [{ element: 'split', tier: 1 }], { rowsLeft: 3, launchX: 3.5 });
+    const first = ofType(shoot(sim, UP), 'block:hit')[0]!;
+    expect(first.damage).toBe(20);
+  });
+
+  it('pénalité d éventail : dégâts × (1 − spreadDamagePenalty × spread), figée au tir, dorée comprise', () => {
+    const cfg = config();
+    cfg.balls.spreadDamagePenalty = 0.4;
+    cfg.balls.lastBallMultiplierPerBall = 0;
+    cfg.blocks.board.maxSpreadDeg = 0; // même trajectoire quel que soit spread : seuls les dégâts changent
+    const hits = (spread: number, changeAfter?: number): number[] => {
+      const sim = newSim('spread-pen', cfg);
+      setup(sim, [block(sim, 'normal', 3, 4, 100000)], stones(2), { rowsLeft: 3, launchX: 3.5 });
+      sim.aim(UP, spread);
+      sim.fire();
+      if (changeAfter !== undefined) sim.aim(UP, changeAfter); // ne change rien à la volée en cours
+      const evs: GameEvent[] = [];
+      for (let f = 0; f < 5000 && sim.state.phase === 'firing'; f++) evs.push(...sim.step(FRAME));
+      return ofType(evs, 'block:hit').map((h) => h.damage);
+    };
+    expect(hits(0)).toEqual([10, 20]);
+    expect(hits(1)).toEqual([6, 12]);
+    expect(hits(0.5)).toEqual([8, 16]);
+    expect(hits(1, 0)).toEqual([6, 12]);
   });
 
   it('split : les filles d une balle dorée ne sont pas dorées', () => {

@@ -383,8 +383,12 @@ export interface BallsConfig {
   comboMilestones: [number, number, number];
   /** nb max de balles dans la volée */
   maxVolley: number;
-  /** multiplicateur de dégâts de la dernière balle (dorée) */
+  /** multiplicateur de dégâts de la dernière balle (dorée) : lastBallMultiplier + lastBallMultiplierPerBall × (N − 1), plafonné à lastBallMultiplierMax */
   lastBallMultiplier: number;
+  lastBallMultiplierPerBall: number;
+  lastBallMultiplierMax: number;
+  /** pénalité de dégâts à ouverture max de l'éventail : dégâts × (1 − spreadDamagePenalty × aimSpread) */
+  spreadDamagePenalty: number;
   /** 'fire' : rayon d'explosion en cellules ; dégâts = ratio × dégâts de la balle */
   fire: { radius: number; damageRatio: number };
   lightning: { chainRange: number; damageRatio: number };
