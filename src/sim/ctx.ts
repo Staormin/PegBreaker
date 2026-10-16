@@ -72,6 +72,8 @@ export interface Ctx {
   gridDirty: boolean;
   /** un bloc est mort pendant le sous-pas : compacter le tableau */
   blocksDied: boolean;
+  /** PV de brèche encore infligeables pendant l'avancée en cours */
+  breachBudget: number;
   /** grille d'occupation temporaire (avancée des rangées) */
   readonly occ: Uint8Array;
   readonly spareBalls: Ball[];
@@ -128,6 +130,7 @@ export function createCtx(cfg: GameConfig, meta: MetaModifiers, rng: Rng, isDail
     grid: new Int32Array(cells).fill(-1),
     gridDirty: true,
     blocksDied: false,
+    breachBudget: Infinity,
     occ: new Uint8Array(board.cols * (board.rows + 2)),
     spareBalls: [],
     spareDrops: [],

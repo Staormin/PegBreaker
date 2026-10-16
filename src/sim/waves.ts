@@ -187,11 +187,18 @@ function shiftOnce(ctx: Ctx): void {
     if (b.row < board.rows - 1) continue;
     if (b.kind !== 'peg' && b.hp > 0) {
       // boss : dégâts de brèche dédiés (non plafonnés par breachDamageCap)
-      const dmg = b.kind === 'boss' ? ctx.cfg.blocks.bossBreachDamage : Math.min(Math.ceil(b.hp), ctx.cfg.blocks.breachDamageCap);
+      let dmg = b.kind === 'boss' ? ctx.cfg.blocks.bossBreachDamage : Math.min(Math.ceil(b.hp), ctx.cfg.blocks.breachDamageCap);
+      // plafond par avancée (hors boss) : un effondrement coûte au plus breachDamageCapPerShot PV, pour que les PV max comptent
+      if (b.kind !== 'boss') {
+        dmg = Math.min(dmg, ctx.breachBudget);
+        ctx.breachBudget -= dmg;
+      }
       emit(ctx, { type: 'block:breached', blockId: b.id, kind: b.kind, damage: dmg });
-      s.hp = Math.max(0, s.hp - dmg);
-      s.internal.damagedThisWave = true;
-      emit(ctx, { type: 'player:damaged', amount: dmg, hpLeft: s.hp });
+      if (dmg > 0) {
+        s.hp = Math.max(0, s.hp - dmg);
+        s.internal.damagedThisWave = true;
+        emit(ctx, { type: 'player:damaged', amount: dmg, hpLeft: s.hp });
+      }
     }
     releaseBlock(ctx, i);
   }
@@ -204,6 +211,8 @@ export function advanceRows(ctx: Ctx): void {
   const shifts = ctx.meta.runMods.includes('rush') ? 2 : 1;
   if (!s.internal.thawedIds) s.internal.thawedIds = []; // snapshot antérieur à T2d
   s.internal.thawedIds.length = 0;
+  const perShot = (ctx.cfg.blocks as unknown as { breachDamageCapPerShot?: number }).breachDamageCapPerShot;
+  ctx.breachBudget = typeof perShot === 'number' && perShot > 0 ? perShot : Infinity;
   for (let k = 0; k < shifts; k++) shiftOnce(ctx);
   let newRow = false;
   if (s.rowsLeftInWave > 0) {

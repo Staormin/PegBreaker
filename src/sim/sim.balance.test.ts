@@ -12,6 +12,28 @@ const FULL_META: Partial<MetaModifiers> = {
 /** Temps de visée humain supposé par tir (méthode QA j1). */
 const AIM_MS = 1500;
 
+function stdev(a: number[]): number {
+  const m = a.reduce((x, y) => x + y, 0) / a.length;
+  return Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / a.length);
+}
+
+/** Vagues de mort du bot « vise le bloc le plus bas » sur les seeds balance-0..9. */
+function deathWaves(meta: Partial<MetaModifiers>): number[] {
+  const cfg = config();
+  const deaths: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const sim = newSim(`balance-${i}`, cfg, meta);
+    for (let shots = 0; shots < 600 && sim.state.phase !== 'gameover'; shots++) {
+      settle(sim);
+      shoot(sim, lowestBlockDir(sim));
+    }
+    expect(sim.state.phase).toBe('gameover');
+    deaths.push(sim.state.wave);
+  }
+  return deaths;
+}
+const avgOf = (a: number[]): number => a.reduce((x, y) => x + y, 0) / a.length;
+
 describe('sanity d équilibrage', () => {
   it('sans méta, bot « vise le bloc le plus bas », 10 seeds : mort v4-5, 6-8 tirs/vague, boss v5 tué ≥ 50 %, 1er tir ≥ 2 blocs ≥ 70 %', () => {
     const deaths: number[] = [];
@@ -57,6 +79,7 @@ describe('sanity d équilibrage', () => {
       deaths.push(sim.state.wave);
     }
     const avg = deaths.reduce((a, b) => a + b, 0) / deaths.length;
+    const sd = stdev(deaths);
     const mean = (w: number): string => {
       const a = dmg.get(w) ?? [];
       return a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1) : '-';
@@ -64,12 +87,13 @@ describe('sanity d équilibrage', () => {
     const shotsPerWave = shotsInCleared / cleared;
     const choice = firstChoice.reduce((a, b) => a + b, 0) / firstChoice.length;
     console.log(
-      `[balance] vagues de mort: ${deaths.join(',')} | moyenne ${avg.toFixed(1)} | tirs/vague ${shotsPerWave.toFixed(1)} | ` +
+      `[balance] vagues de mort: ${deaths.join(',')} | moyenne ${avg.toFixed(1)} | écart-type ${sd.toFixed(2)} | tirs/vague ${shotsPerWave.toFixed(1)} | ` +
         `dégâts/tir v1 ${mean(1)} v3 ${mean(3)} v5 ${mean(5)} | boss v5 tués ${bossKilled}/${bossSeen} | ` +
         `1er tir ≥ 2 blocs ${firstTwo}/10 | 1er choix ${choice.toFixed(1)} s (joueur)`,
     );
     expect(avg).toBeGreaterThanOrEqual(4);
     expect(avg).toBeLessThanOrEqual(5);
+    expect(sd).toBeLessThanOrEqual(1.5);
     expect(shotsPerWave).toBeGreaterThanOrEqual(6);
     expect(shotsPerWave).toBeLessThanOrEqual(8);
     expect(bossKilled / Math.max(1, bossSeen)).toBeGreaterThanOrEqual(0.5);
@@ -77,21 +101,21 @@ describe('sanity d équilibrage', () => {
     expect(choice).toBeLessThan(25);
   }, 60_000);
 
-  it('méta complète (bonusHp 3, +2 balles, pièces ×1,3, tous éléments) : mort moyenne v9-12', () => {
-    const cfg = config();
-    const deaths: number[] = [];
-    for (let i = 0; i < 10; i++) {
-      const sim = newSim(`balance-${i}`, cfg, FULL_META);
-      for (let shots = 0; shots < 600 && sim.state.phase !== 'gameover'; shots++) {
-        settle(sim);
-        shoot(sim, lowestBlockDir(sim));
-      }
-      expect(sim.state.phase).toBe('gameover');
-      deaths.push(sim.state.wave);
-    }
-    const avg = deaths.reduce((a, b) => a + b, 0) / deaths.length;
-    console.log(`[balance méta] vagues de mort: ${deaths.join(',')} | moyenne ${avg.toFixed(1)}`);
+  it('méta « run 2 » (bonusHp 1) : +0,5 à +1,5 vague par rapport à sans méta', () => {
+    const base = avgOf(deathWaves({}));
+    const run2 = deathWaves({ bonusHp: 1 });
+    const delta = avgOf(run2) - base;
+    console.log(`[balance run2] vagues de mort: ${run2.join(',')} | moyenne ${avgOf(run2).toFixed(1)} | delta ${delta.toFixed(1)}`);
+    expect(delta).toBeGreaterThanOrEqual(0.5);
+    expect(delta).toBeLessThanOrEqual(1.5);
+  }, 120_000);
+
+  it('méta complète (bonusHp 3, +2 balles, pièces ×1,3, tous éléments) : mort moyenne v9-12, aucune run au-delà de v25', () => {
+    const deaths = deathWaves(FULL_META);
+    const avg = avgOf(deaths);
+    console.log(`[balance méta] vagues de mort: ${deaths.join(',')} | moyenne ${avg.toFixed(1)} | écart-type ${stdev(deaths).toFixed(2)}`);
     expect(avg).toBeGreaterThanOrEqual(9);
     expect(avg).toBeLessThanOrEqual(12);
+    expect(Math.max(...deaths)).toBeLessThanOrEqual(25);
   }, 120_000);
 });

@@ -89,6 +89,7 @@ export function fire(ctx: Ctx): void {
   it.safetynetUsed = false;
   it.absorbElement = null;
   it.manualRecall = false;
+  it.frozenThisShot = 0;
   if (it.radarUsed) it.radarUsed.length = 0;
   else it.radarUsed = [];
   s.pendingLaunches = it.launchQueue.length;

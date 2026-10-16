@@ -16,7 +16,11 @@ export function ballDamage(ctx: Ctx, b: Ball): number {
   if (b.tier >= 2 && r.catalyst > 0) d *= 1 + r.catalyst;
   if (r.berserk > 0) d *= 1 + r.berserk * Math.max(0, ctx.s.maxHp - ctx.s.hp);
   if (b.element === 'lead') return d * bc.lead.damageMultiplier;
-  return d * (1 + bc.comboDamagePerBounce * b.combo);
+  // plafond doux : au-delà de comboSoftCap, chaque rebond n'ajoute plus que comboDamagePerBounceAfterCap
+  const cap = bc.comboSoftCap;
+  const below = Math.min(b.combo, cap);
+  const above = Math.max(0, b.combo - cap);
+  return d * (1 + bc.comboDamagePerBounce * below + bc.comboDamagePerBounceAfterCap * above);
 }
 
 function centerX(b: Block): number {
@@ -253,11 +257,23 @@ export function onImpact(ctx: Ctx, b: Ball, bi: number, px: number, py: number, 
     }
     if (amount > 0) damageBlock(ctx, bi, amount, b.element, b.combo, crit);
     const thawed = s.internal.thawedIds;
-    if (b.element === 'ice' && isBreakable(blk) && !blk.frozen && !(thawed && thawed.includes(blk.id))) {
-      blk.frozen = true;
-      emit(ctx, { type: 'block:frozen', blockId: blk.id, pos: { x: centerX(blk), y: centerY(blk) } });
+    // glace : gèle seulement au premier impact de la balle, au plus maxFrozenPerShot blocs par tir
+    if (b.element === 'ice' && !b.triggered) {
+      b.triggered = true;
+      const it = s.internal;
+      if (
+        isBreakable(blk) &&
+        !blk.frozen &&
+        !(thawed && thawed.includes(blk.id)) &&
+        (it.frozenThisShot ?? 0) < ctx.cfg.balls.ice.maxFrozenPerShot
+      ) {
+        it.frozenThisShot = (it.frozenThisShot ?? 0) + 1;
+        blk.frozen = true;
+        emit(ctx, { type: 'block:frozen', blockId: blk.id, pos: { x: centerX(blk), y: centerY(blk) } });
+      }
     }
   }
+  if (b.element === 'ice') b.triggered = true; // une cheville consomme aussi le premier impact
   if (b.element === 'lightning') chainLightning(ctx, px, py, bi, dmg * ctx.cfg.balls.lightning.damageRatio);
   else if (b.element === 'fire' && !b.triggered) {
     b.triggered = true;

@@ -55,6 +55,8 @@ describe('combo et dégâts', () => {
   it('dégâts = round(10 × (1 + 0,1 × combo)), entiers, sur chaque impact direct, combo croissant, paliers émis', () => {
     const cfg = config();
     cfg.balls.comboMilestones = [2, 4, 6];
+    // pas de blocs explosifs : leurs explosions (combo 0, dégâts = ratio × PV max) fausseraient la formule
+    for (const d of cfg.blocks.defs) if (d.kind === 'explosive') d.weightByWave = [{ wave: 1, weight: 0 }];
     const sim = newSim('combo', cfg);
     const rng = createRng(3);
     let maxCombo = 0;
@@ -62,6 +64,7 @@ describe('combo et dégâts', () => {
     for (let i = 0; i < 40 && sim.state.phase !== 'gameover'; i++) {
       settle(sim);
       mut(sim).volley = [{ element: 'stone', tier: 1 }];
+      mut(sim).relics = []; // les reliques gagnées en route modifieraient la formule
       const evs = shoot(sim, randomDir(rng));
       for (const h of ofType(evs, 'block:hit')) {
         expect(h.damage).toBe(Math.round(10 * (1 + 0.1 * h.combo)));
@@ -353,8 +356,9 @@ describe('avancée, franchissement, game over', () => {
     setup(sim, [big, peg], [{ element: 'stone', tier: 1 }], { rowsLeft: 3 });
     const evs = shoot(sim, UP);
     const br = ofType(evs, 'block:breached');
-    expect(br).toEqual([{ type: 'block:breached', blockId: bigId, kind: 'normal', damage: 2 }]);
-    expect(ofType(evs, 'player:damaged')).toEqual([{ type: 'player:damaged', amount: 2, hpLeft: 3 }]);
+    // breachDamageCapPerShot = 1 : un franchissement coûte 1 PV
+    expect(br).toEqual([{ type: 'block:breached', blockId: bigId, kind: 'normal', damage: 1 }]);
+    expect(ofType(evs, 'player:damaged')).toEqual([{ type: 'player:damaged', amount: 1, hpLeft: 4 }]);
     expect(sim.state.blocks.some((b) => b.id === pegId)).toBe(false);
     expect(ofType(evs, 'rows:advanced')[0]).toEqual({ type: 'rows:advanced', wave: 1, newRow: true });
     expect(sim.state.rowsLeftInWave).toBe(2);
@@ -455,7 +459,7 @@ describe('vagues, récompense, boutique, boss', () => {
     expect(s.shotInWave).toBe(0);
     expect(s.shop).toBeNull();
     expect(new Set(s.blocks.map((b) => b.row))).toEqual(new Set([0, 1, 2]));
-    expect(s.rowsLeftInWave).toBe(6 - 3); // round(4 + 0,5 × 3) = 6
+    expect(s.rowsLeftInWave).toBe(5 - 3); // round(4 + 0,35 × 3) = 5
   });
 
   it('skipReward donne skipCoins ; freeRerolls de la meta', () => {
@@ -657,6 +661,76 @@ describe('T2d : anti-softlock, perfectWaves', () => {
     shoot(sim, UP);
     expect(sim.state.phase).toBe('reward');
     expect(sim.state.stats.perfectWaves).toBe(1);
+  });
+});
+
+describe('T13b : plafonds', () => {
+  it('franchissement : breachDamageCap par bloc, breachDamageCapPerShot par avancée (hors boss)', () => {
+    const run = (perShot: number | undefined): number[] => {
+      const cfg = config();
+      (cfg.blocks as unknown as Record<string, unknown>).breachDamageCapPerShot = perShot;
+      const sim = newSim('breach-caps', cfg);
+      setup(sim, [block(sim, 'normal', 0, 8, 1000), block(sim, 'normal', 1, 8, 1000), block(sim, 'normal', 6, 8, 1)], [{ element: 'stone', tier: 1 }], { rowsLeft: 3 });
+      return ofType(shoot(sim, UP), 'block:breached').map((e) => e.damage);
+    };
+    expect(run(undefined).sort()).toEqual([1, 2, 2]); // plafond par bloc seul : min(PV, 2)
+    expect(run(1).reduce((a, b) => a + b, 0)).toBe(1);
+  });
+
+  it('plafond doux du combo : au-delà de comboSoftCap, +comboDamagePerBounceAfterCap par rebond', () => {
+    const cfg = config();
+    const bc = cfg.balls;
+    const expected = (c: number): number =>
+      Math.round(10 * (1 + bc.comboDamagePerBounce * Math.min(c, bc.comboSoftCap) + bc.comboDamagePerBounceAfterCap * Math.max(0, c - bc.comboSoftCap)));
+    for (const combo of [0, 10, bc.comboSoftCap, bc.comboSoftCap + 20, 200]) {
+      const sim = newSim('softcap', cfg);
+      setup(sim, [block(sim, 'normal', 3, 4, 100000)], [{ element: 'stone', tier: 1 }]);
+      mut(sim).relics = ['bouncy'];
+      // bouncy porte le combo de départ : on le règle pour cibler `combo`
+      (cfg.relics.defs.find((d) => d.id === 'bouncy')!).value = combo;
+      const hit = ofType(shoot(sim, UP), 'block:hit')[0]!;
+      expect(hit.combo).toBe(combo);
+      expect(hit.damage).toBe(expected(combo));
+    }
+    expect(expected(200)).toBe(Math.round(10 * (1 + 0.1 * 30 + 0.02 * 170)));
+  });
+
+  it('glace : gèle seulement au premier impact de la balle et au plus maxFrozenPerShot blocs par tir', () => {
+    const cfg = config();
+    const speed = cfg.blocks.board.ballSpeed;
+    // balle de glace coincée entre deux blocs : seul le premier impact gèle
+    const sim = newSim('ice-first', cfg);
+    setup(sim, [block(sim, 'normal', 3, 1, 1e6), block(sim, 'normal', 3, 5, 1e6)], [{ element: 'ice', tier: 1 }], { rowsLeft: 3 });
+    sim.aim(UP);
+    sim.fire();
+    sim.step(5);
+    const ball = mut(sim).balls[0]!;
+    ball.pos.x = 3.5;
+    ball.pos.y = 3.5;
+    ball.vel.x = 0;
+    ball.vel.y = -speed;
+    const evs: ReturnType<typeof ofType> = [];
+    for (let i = 0; i < 60; i++) evs.push(...sim.step(1000 / 60));
+    expect(ofType(evs, 'block:hit').length).toBeGreaterThan(3);
+    expect(ofType(evs, 'block:frozen')).toHaveLength(1);
+
+    // 5 balles de glace sur 5 blocs distincts : au plus maxFrozenPerShot gelés
+    const sim2 = newSim('ice-cap', cfg);
+    setup(sim2, [0, 1, 2, 3, 4].map((c) => block(sim2, 'normal', c, 1, 1e6)), Array.from({ length: 5 }, () => ({ element: 'ice' as const, tier: 1 as const })), { rowsLeft: 3 });
+    sim2.aim(UP);
+    sim2.fire();
+    sim2.step(300); // les 5 balles sont lancées, encore loin des blocs
+    const balls = mut(sim2).balls;
+    expect(balls).toHaveLength(5);
+    balls.forEach((bl, i) => {
+      bl.pos.x = i + 0.5;
+      bl.pos.y = 3;
+      bl.vel.x = 0;
+      bl.vel.y = -speed;
+    });
+    const evs2: ReturnType<typeof ofType> = [];
+    for (let i = 0; i < 30; i++) evs2.push(...sim2.step(1000 / 60));
+    expect(ofType(evs2, 'block:frozen')).toHaveLength(cfg.balls.ice.maxFrozenPerShot);
   });
 });
 

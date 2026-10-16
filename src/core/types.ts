@@ -358,6 +358,8 @@ export interface BlocksConfig {
   breachDamageCap: number;
   /** dégâts infligés par un boss qui franchit la ligne (non plafonnés par breachDamageCap) */
   bossBreachDamage: number;
+  /** dégâts max de brèche par avancée, tous blocs confondus (boss exclu) ; absent = pas de plafond */
+  breachDamageCapPerShot?: number;
 }
 
 export interface BossDef {

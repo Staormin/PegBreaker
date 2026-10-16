@@ -44,6 +44,8 @@ export interface SimInternal {
   embers: number[];
   /** radar : ids des balles ayant déjà touché un bloc dans ce tir */
   radarUsed: number[];
+  /** glace : blocs gelés pendant le tir en cours */
+  frozenThisShot: number;
 }
 
 export interface SimState extends RunState {
@@ -74,6 +76,7 @@ export function createInternal(nextId: number): SimInternal {
     damagedThisWave: false,
     embers: [],
     radarUsed: [],
+    frozenThisShot: 0,
   };
 }
 
