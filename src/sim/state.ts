@@ -36,6 +36,10 @@ export interface SimInternal {
   restarts: number;
   /** recall() appelé pendant la volée en cours (désactive l'accélération automatique) */
   manualRecall: boolean;
+  /** blocs dégelés au dernier avancement : immunisés au gel pendant le tour suivant */
+  thawedIds: number[];
+  /** le joueur a perdu des PV pendant la vague courante (stats.perfectWaves) */
+  damagedThisWave: boolean;
 }
 
 export interface SimState extends RunState {
@@ -62,6 +66,8 @@ export function createInternal(nextId: number): SimInternal {
     wavesCleared: 0,
     restarts: 0,
     manualRecall: false,
+    thawedIds: [],
+    damagedThisWave: false,
   };
 }
 
@@ -76,6 +82,7 @@ export function createStats(): RunStats {
     fragmentsEarned: 0,
     fusions: 0,
     bossesKilled: 0,
+    perfectWaves: 0,
     durationMs: 0,
   };
 }

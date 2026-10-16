@@ -105,12 +105,13 @@ Plateau : 7 colonnes × 10 rangées logiques (rangée 0 en haut, rangée 9 = lig
 ```json
 {
   "version": 1,
-  "meta": { "fragments": 120, "nodes": { "hp1": 2, "balls1": 1 }, "unlockedElements": ["stone","fire"], "unlockedRelics": ["bouncy"] },
-  "stats": { "runs": 12, "bestDepth": 9, "bestCombo": 31, "bestShotDamage": 4120, "totalFragments": 600 },
+  "meta": { "fragments": 120, "nodes": { "hp": 2, "balls": 1, "el_fire": 1, "el_lightning": 1 }, "unlockedElements": ["stone","fire","lightning"], "unlockedRelics": ["bouncy","piggy"], "activeRunMods": [] },
+  "stats": { "runs": 12, "bestDepth": 9, "bestWave": 6, "bestCombo": 31, "bestShotDamage": 4120, "bestScore": 5400, "totalFragments": 600, "totalBlocks": 800 },
   "achievements": ["combo10", "fusion2"],
-  "daily": { "2026-10-16": { "depth": 7, "score": 1234 } },
+  "daily": { "2026-10-16": { "depth": 7, "score": 1234, "completedAt": "2026-10-16T18:00:00.000Z" } },
   "currentRun": null,
-  "settings": { "sfx": 0.8, "music": 0.5, "shake": true, "reduceMotion": false }
+  "settings": { "sfx": 0.8, "music": 0.5, "shake": true, "reduceMotion": false },
+  "onboarded": true
 }
 ```
 

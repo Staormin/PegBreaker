@@ -1,10 +1,11 @@
 // main.ts — propriétaire : architecte. Bootstrap, boucle, TimeControl, API de debug.
-import type { DebugApi, GameEvent, MetaModifiers, MetaSystem, TimeControl, AudioSystem } from './core/types';
+import type { DebugApi, GameEvent, MetaSystem, TimeControl, AudioSystem, RunPhase } from './core/types';
 import { createEventBus } from './core/events';
 import { loadConfig } from './core/config';
 import { createSim } from './sim';
 import { createRenderer } from './render';
 import { createUI } from './ui';
+import { createMeta } from './systems';
 
 const VERSION = '0.1.0-j1';
 const FIXED_MS = 1000 / 60;
@@ -35,18 +36,6 @@ function createTimeControl(): TimeControl & { tick(dtReal: number): void; speed:
   return tc;
 }
 
-// --- Modificateurs méta neutres (J1 : pas de systems/) ----------------------
-const NEUTRAL_META: MetaModifiers = {
-  bonusHp: 0,
-  bonusStartBalls: 0,
-  coinMultiplier: 1,
-  fragmentMultiplier: 1,
-  freeRerolls: 0,
-  unlockedElements: ['stone', 'fire', 'lightning', 'split'],
-  unlockedRelics: ['bouncy', 'piggy', 'firstblood', 'bigboom', 'safetynet', 'magnet'],
-  runMods: [],
-};
-
 function boot(): void {
   const canvas = document.getElementById('game') as HTMLCanvasElement | null;
   const uiRoot = document.getElementById('ui');
@@ -60,12 +49,24 @@ function boot(): void {
   const config = loadConfig();
   const bus = createEventBus();
   const time = createTimeControl();
-  const meta: MetaSystem | null = null;
+  const meta: MetaSystem = createMeta(localStorage, config);
   const audio: AudioSystem | null = null;
 
-  const seed = new URLSearchParams(location.search).get('seed') ?? `run-${Date.now().toString(36)}`;
-  const sim = createSim(config, { seed, meta: NEUTRAL_META });
+  const params = new URLSearchParams(location.search);
+  const isDaily = params.get('daily') === '1';
+  const forcedSeed = params.get('seed');
+  const resume = !forcedSeed && !isDaily && meta.data.currentRun ? meta.data.currentRun : undefined;
+  const seed = forcedSeed ?? (isDaily ? meta.dailySeed() : `run-${Date.now().toString(36)}`);
+  const sim = createSim(config, {
+    seed,
+    meta: meta.getModifiers(),
+    ...(resume ? { snapshot: resume } : {}),
+    isDaily,
+    dailyDate: isDaily ? meta.todayKey() : null,
+  });
   const renderer = createRenderer(canvas, bus, time, config);
+  renderer.setShake(meta.data.settings.shake);
+  renderer.setReduceMotion(meta.data.settings.reduceMotion);
   const ui = createUI({ root: uiRoot, canvas, sim, bus, renderer, audio, meta, config });
 
   // --- API de debug / QA ---------------------------------------------------
@@ -77,11 +78,27 @@ function boot(): void {
       firstRewardAt = performance.now();
     }
   });
+  // --- Persistance : reprise de run, fin de run, succès -------------------
+  let lastPhase: RunPhase = sim.state.phase;
+  let sinceSave = 0;
+  const persistRun = (): void => {
+    if (forcedSeed) return; // runs QA/debug : jamais sauvegardées
+    meta.setCurrentRun(sim.state.phase === 'gameover' ? null : sim.snapshot());
+  };
+  bus.on('run:over', (e) => {
+    if (forcedSeed) return;
+    const unlocked = meta.onRunEnd(e.summary);
+    for (const id of unlocked) bus.emit({ type: 'achievement:unlocked', achievementId: id });
+  });
+  bus.on('run:started', () => {
+    sinceSave = 0;
+  });
+
   const debug: DebugApi = {
     sim,
     renderer,
     bus,
-    meta: meta as unknown as MetaSystem,
+    meta,
     eventCounts,
     setSpeed(mult: number) {
       time.speed = Math.max(0.1, Math.min(50, mult));
@@ -139,6 +156,17 @@ function boot(): void {
 
     renderer.draw(sim.state, dtReal);
     ui.update(sim.state);
+
+    // sauvegarde : à chaque changement de phase, et toutes les 5 s en jeu
+    sinceSave += dtReal;
+    if (sim.state.phase !== lastPhase) {
+      lastPhase = sim.state.phase;
+      persistRun();
+      sinceSave = 0;
+    } else if (sinceSave > 5000) {
+      persistRun();
+      sinceSave = 0;
+    }
   };
   requestAnimationFrame(frame);
 }

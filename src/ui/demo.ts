@@ -53,6 +53,7 @@ function freshState(launch: Vec2): RunState {
     stats: {
       shots: 0,
       blocksDestroyed: 0,
+      perfectWaves: 0,
       bestCombo: 0,
       bestShotDamage: 0,
       totalDamage: 0,

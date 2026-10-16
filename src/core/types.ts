@@ -122,6 +122,8 @@ export interface RunStats {
   fragmentsEarned: number;
   fusions: number;
   bossesKilled: number;
+  /** vagues nettoyées sans perdre de PV */
+  perfectWaves: number;
   /** ms simulés */
   durationMs: number;
 }
@@ -234,7 +236,7 @@ export interface MetaModifiers {
   bonusStartBalls: number;
   /** multiplicateur de pièces gagnées (1 = neutre) */
   coinMultiplier: number;
-  /** multiplicateur de fragments gagnés */
+  /** multiplicateur de fragments du Puits UNIQUEMENT : la sim applique elle-même ceux des runMods actifs */
   fragmentMultiplier: number;
   freeRerolls: number;
   /** éléments pouvant apparaître dans les drops/offres ; 'stone' toujours présent */
@@ -441,6 +443,8 @@ export interface AchievementDef {
   name: string;
   description: string;
   rewardFragments: number;
+  /** condition déclarative optionnelle (sinon : table par id dans systems/achievements.ts) */
+  condition?: { stat: 'bestCombo' | 'bestShotDamage' | 'bestDepth' | 'bestWave' | 'bossesKilled' | 'wave' | 'maxTier' | 'isDaily' | 'perfectWaves'; gte: number };
 }
 
 export interface MetaConfig {
