@@ -1,0 +1,32 @@
+{
+  "board": {
+    "cols": 7,
+    "rows": 10,
+    "ballRadius": 0.12,
+    "ballSpeed": 14,
+    "launchIntervalMs": 60,
+    "advanceDurationMs": 250,
+    "minAimAngleDeg": 8,
+    "maxVolleyMs": 9000,
+    "recallSpeed": 3
+  },
+  "breachDamageCap": 2,
+  "defs": [
+    { "kind": "normal", "color": "#4f7cff", "hpRatio": 1, "weightByWave": [{ "wave": 1, "weight": 100 }] },
+    { "kind": "peg", "color": "#e8ecf5", "hpRatio": 0, "weightByWave": [{ "wave": 1, "weight": 18 }, { "wave": 6, "weight": 22 }] },
+    { "kind": "explosive", "color": "#ff5e5e", "hpRatio": 0.6, "explosionRadius": 1.2, "explosionDamageRatio": 0.5, "weightByWave": [{ "wave": 1, "weight": 0 }, { "wave": 2, "weight": 10 }, { "wave": 8, "weight": 16 }] },
+    { "kind": "heart", "color": "#ff7ab8", "hpRatio": 0.5, "weightByWave": [{ "wave": 1, "weight": 0 }, { "wave": 2, "weight": 4 }] },
+    { "kind": "armored", "color": "#8a94a8", "hpRatio": 1.4, "weightByWave": [{ "wave": 1, "weight": 0 }, { "wave": 4, "weight": 8 }, { "wave": 10, "weight": 14 }] }
+  ],
+  "drops": {
+    "dropChance": 0.35,
+    "weights": [
+      { "kind": "coin", "weight": 60 },
+      { "kind": "ball", "weight": 25 },
+      { "kind": "fragment", "weight": 15 }
+    ],
+    "coinValue": { "min": 2, "max": 5 },
+    "fragmentValue": { "min": 1, "max": 2 },
+    "guaranteedBallEvery": 6
+  }
+}

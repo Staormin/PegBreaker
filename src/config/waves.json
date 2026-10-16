@@ -1,0 +1,23 @@
+{
+  "baseHp": 10,
+  "growthPerWave": 1.18,
+  "growthPerShot": 0.04,
+  "hpVariance": { "min": 0.6, "max": 1.4 },
+  "rowsBase": 5,
+  "rowsPerWave": 0.5,
+  "rowsMax": 9,
+  "densityByWave": [
+    { "wave": 1, "blocks": 3 },
+    { "wave": 5, "blocks": 4 },
+    { "wave": 10, "blocks": 5 },
+    { "wave": 20, "blocks": 6 }
+  ],
+  "bossEvery": 5,
+  "shopEvery": 3,
+  "bosses": [
+    { "id": "regen", "name": "Le Dévoreur", "width": 3, "hpMultiplier": 25, "behavior": "regen", "param": 0.05 },
+    { "id": "spawner", "name": "La Ruche", "width": 3, "hpMultiplier": 20, "behavior": "spawner", "param": 2 },
+    { "id": "absorb", "name": "Le Miroir", "width": 3, "hpMultiplier": 22, "behavior": "absorb", "param": 0.5 }
+  ],
+  "start": { "hp": 5, "balls": 3, "elements": ["stone", "stone", "stone"] }
+}

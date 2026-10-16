@@ -1,0 +1,19 @@
+{
+  "tierDamageMultiplier": 2.5,
+  "comboDamagePerBounce": 0.1,
+  "comboMilestones": [5, 10, 20],
+  "maxVolley": 30,
+  "fire": { "radius": 1.1, "damageRatio": 0.6 },
+  "lightning": { "chainRange": 2.5, "damageRatio": 0.5 },
+  "split": { "maxSplitsPerShot": 12 },
+  "lead": { "damageMultiplier": 3 },
+  "defs": [
+    { "id": "stone", "name": "Pierre", "description": "Une balle honnête.", "baseDamage": 1, "weight": 10, "color": "#cfd6e6" },
+    { "id": "fire", "name": "Feu", "description": "Explose au premier impact.", "baseDamage": 1, "weight": 6, "color": "#ff7a3d" },
+    { "id": "lightning", "name": "Foudre", "description": "Chaque impact frappe aussi le bloc le plus proche.", "baseDamage": 1, "weight": 6, "color": "#ffe95c" },
+    { "id": "ice", "name": "Glace", "description": "Gèle le bloc touché : il ne descend pas.", "baseDamage": 1, "weight": 5, "color": "#7fe4ff" },
+    { "id": "ghost", "name": "Fantôme", "description": "Traverse les blocs, rebondit sur les murs.", "baseDamage": 1, "weight": 4, "color": "#c08cff" },
+    { "id": "lead", "name": "Plomb", "description": "Dégâts ×3, pas de combo.", "baseDamage": 1, "weight": 4, "color": "#6b7280" },
+    { "id": "split", "name": "Scission", "description": "Se divise en deux au premier impact.", "baseDamage": 1, "weight": 5, "color": "#5cff9d" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "shop": {
+    "itemCount": 4,
+    "prices": { "ball": 15, "relicByRarity": { "common": 20, "rare": 35, "epic": 60 }, "heal": 12 },
+    "rerollBase": 8,
+    "rerollGrowth": 4,
+    "healAmount": 2
+  },
+  "reward": { "skipCoins": 15, "optionCount": 3, "relicChance": 0.4 },
+  "score": { "perDepth": 100, "perBlock": 10, "perDamage": 1, "perBoss": 1000 },
+  "fragments": { "perWave": 3, "perBoss": 10, "perDepth": 0.5 }
+}

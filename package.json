@@ -1,0 +1,20 @@
+{
+  "name": "pegbreaker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.0"
+  }
+}
