@@ -134,7 +134,7 @@
       "family": "greed",
       "baseDamage": 10,
       "weight": 6,
-      "color": "#ff4fd8",
+      "color": "#e0218a",
       "params": {
         "radius": [
           1.2,
@@ -192,12 +192,12 @@
       "family": "tricky",
       "baseDamage": 10,
       "weight": 4,
-      "color": "#ff9cf5",
+      "color": "#ffc4e6",
       "params": {
         "maxDeg": [
-          12,
-          20,
-          30
+          8,
+          14,
+          20
         ]
       }
     },
@@ -234,7 +234,7 @@
       "family": "swarm",
       "baseDamage": 10,
       "weight": 4,
-      "color": "#d4ff5c",
+      "color": "#b8b800",
       "params": {
         "chance": [
           0.25,
@@ -378,9 +378,9 @@
           3
         ],
         "afterMs": [
-          1500,
-          1500,
-          1500
+          900,
+          900,
+          900
         ]
       }
     },
@@ -432,7 +432,7 @@
       "family": "heavy",
       "baseDamage": 10,
       "weight": 4,
-      "color": "#ffe066",
+      "color": "#ffb020",
       "params": {
         "perBlock": [
           1,
@@ -495,7 +495,7 @@
       "family": "arcane",
       "baseDamage": 10,
       "weight": 3,
-      "color": "#ff6ad5",
+      "color": "#ff7ad9",
       "params": {
         "radius": [
           1.2,
@@ -503,9 +503,9 @@
           1.2
         ],
         "comboMult": [
-          3,
-          4,
-          6
+          8,
+          10,
+          14
         ],
         "cap": [
           600,
@@ -542,7 +542,7 @@
       "family": "greed",
       "baseDamage": 10,
       "weight": 4,
-      "color": "#4dff88",
+      "color": "#1fbf75",
       "params": {
         "critChance": [
           0.2,
