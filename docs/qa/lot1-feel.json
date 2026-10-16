@@ -1,0 +1,510 @@
+{
+  "ev": {
+    "volley:start": {
+      "n": 25,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ball:launched": {
+      "n": 187,
+      "withParticles": 25,
+      "particleSum": 111,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "block:hit": {
+      "n": 338,
+      "withParticles": 304,
+      "particleSum": 304,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ball:bounce:block": {
+      "n": 252,
+      "withParticles": 252,
+      "particleSum": 456,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ball:bounce:wall": {
+      "n": 616,
+      "withParticles": 616,
+      "particleSum": 1120,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "block:destroyed": {
+      "n": 40,
+      "withParticles": 40,
+      "particleSum": 271,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "contract:progress": {
+      "n": 14,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "drop:spawned": {
+      "n": 19,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "drop:collected": {
+      "n": 19,
+      "withParticles": 19,
+      "particleSum": 69,
+      "domOk": 0,
+      "domChecked": 19,
+      "saturated": 0
+    },
+    "block:explode": {
+      "n": 28,
+      "withParticles": 28,
+      "particleSum": 175,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "contract:completed": {
+      "n": 3,
+      "withParticles": 3,
+      "particleSum": 30,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ball:grounded": {
+      "n": 195,
+      "withParticles": 175,
+      "particleSum": 175,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "combo:milestone": {
+      "n": 32,
+      "withParticles": 32,
+      "particleSum": 196,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "volley:end": {
+      "n": 25,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "rows:advanced": {
+      "n": 22,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ball:bounce:peg": {
+      "n": 72,
+      "withParticles": 72,
+      "particleSum": 134,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ball:split": {
+      "n": 8,
+      "withParticles": 8,
+      "particleSum": 21,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "wave:cleared": {
+      "n": 3,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "ui:screen": {
+      "n": 8,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "reward:offered": {
+      "n": 3,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "reward:chosen": {
+      "n": 3,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "contract:offered": {
+      "n": 3,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "lightning:chain": {
+      "n": 15,
+      "withParticles": 15,
+      "particleSum": 26,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "contract:failed": {
+      "n": 1,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "block:frozen": {
+      "n": 1,
+      "withParticles": 1,
+      "particleSum": 3,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "shop:opened": {
+      "n": 1,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "shop:left": {
+      "n": 1,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "block:breached": {
+      "n": 3,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 0,
+      "saturated": 0
+    },
+    "player:damaged": {
+      "n": 2,
+      "withParticles": 0,
+      "particleSum": 0,
+      "domOk": 0,
+      "domChecked": 2,
+      "saturated": 0
+    }
+  },
+  "milestoneByLevel": {
+    "1": 22,
+    "2": 9,
+    "3": 1
+  },
+  "triggers": [
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "combo:milestone:3",
+      "frozenAfter": false,
+      "level": 3
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "combo:milestone:2",
+      "frozenAfter": false,
+      "level": 2
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "player:damaged",
+      "frozenAfter": false
+    },
+    {
+      "type": "block:explode",
+      "frozenAfter": false
+    },
+    {
+      "type": "player:damaged",
+      "frozenAfter": false
+    }
+  ],
+  "frozenFrames": 0,
+  "frozenUnexplained": 0,
+  "firingFrozen": 0,
+  "firingFrames": 1374,
+  "advanceSamples": [
+    0.03,
+    0.17,
+    0.3,
+    0.43,
+    0.57,
+    0.7,
+    0.83,
+    0.97,
+    0.03,
+    0.17,
+    0.3,
+    0.43,
+    0.57,
+    0.7,
+    0.83,
+    0.97,
+    0.08,
+    0.22,
+    0.35,
+    0.48,
+    0.62,
+    0.75,
+    0.88,
+    0.07,
+    0.2,
+    0.33,
+    0.47,
+    0.6,
+    0.73,
+    0.87,
+    0.05,
+    0.18,
+    0.32,
+    0.45,
+    0.58,
+    0.72,
+    0.85,
+    0.98,
+    0.1,
+    0.23,
+    0.37,
+    0.5,
+    0.63,
+    0.77,
+    0.9,
+    0.18,
+    0.58,
+    0.98,
+    0.15,
+    0.55,
+    0.95,
+    0.3,
+    0.7,
+    0.25,
+    0.65,
+    0.25,
+    0.65,
+    0.13,
+    0.53,
+    0.93,
+    0.22,
+    0.62,
+    0.32,
+    0.72,
+    0.18,
+    0.58,
+    0.98,
+    0.12,
+    0.52,
+    0.92,
+    0.18,
+    0.58,
+    0.98,
+    0.12,
+    0.52,
+    0.92,
+    0.02,
+    0.42,
+    0.82,
+    0.08,
+    0.48,
+    0.88,
+    0.32,
+    0.72,
+    0.28,
+    0.68
+  ],
+  "slowmo": {
+    "level3": 1,
+    "ratioMin": 0.6745034857486109
+  },
+  "maxParticles": 196
+}

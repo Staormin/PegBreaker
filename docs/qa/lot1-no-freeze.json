@@ -1,0 +1,14 @@
+{
+  "firingFrames": 984,
+  "firingFrozen": 0,
+  "triggers": 15,
+  "milestones": {
+    "1": 32
+  },
+  "maxParticles": 129,
+  "slowmo": {
+    "level3": 0,
+    "ratioMin": null
+  },
+  "timeScale": 6
+}

@@ -10,7 +10,7 @@
 //  C. perf : volée de 30 balles injectée dans l'état (debug), CPU 4×, fps pendant la volée.
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import {
+import { QA_OUT,
   SHOTS_DIR,
   FINAL_SHOTS,
   configureBot,
@@ -27,7 +27,7 @@ import {
   type QaWindow,
 } from './bots';
 
-const OUT = 'docs/qa/final-metrics.json';
+const OUT = `${QA_OUT}-metrics.json`;
 const SHOTS = SHOTS_DIR;
 const SEEDS = ['qa-1', 'qa-2', 'qa-3', 'qa-4', 'qa-5'];
 const AIM_MS = 1500;

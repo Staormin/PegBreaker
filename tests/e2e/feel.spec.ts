@@ -12,7 +12,7 @@
 // → couverts par les captures.
 import { expect, test, type Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
-import { SHOTS_DIR, installBot, play, setSpeed, waitReady, watchErrors, type QaWindow } from './bots';
+import { QA_OUT, SHOTS_DIR, installBot, play, setSpeed, waitReady, watchErrors, type QaWindow } from './bots';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -261,7 +261,7 @@ test('feedback visuel par événement (table game-feel)', async ({ page }) => {
   await setSpeed(page, 6);
   await passiveShots(page, 30);
   const rep = await page.evaluate(() => (window as unknown as FeelWindow).__feel.report());
-  writeFileSync('docs/qa/j2-feel.json', JSON.stringify(rep, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-feel.json`, JSON.stringify(rep, null, 2) + '\n');
   test.info().annotations.push({ type: 'feel', description: JSON.stringify({ ...rep, advanceSamples: rep.advanceSamples.length }) });
 
   const share = (k: string): number => {
@@ -315,7 +315,7 @@ test('non-régression : la sim ne se fige jamais pendant une volée (hit-stop re
     slowmo: rep.slowmo,
     timeScale: await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.timeScale),
   };
-  writeFileSync('docs/qa/final-no-freeze.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-no-freeze.json`, JSON.stringify(out, null, 2) + '\n');
   test.info().annotations.push({ type: 'no-freeze', description: JSON.stringify(out) });
   expect(rep.firingFrames, 'frames de volée observées').toBeGreaterThan(100);
   expect(out.triggers, 'anciens déclencheurs de hit-stop présents (explosions, paliers 2+, dégâts)').toBeGreaterThan(0);
@@ -361,7 +361,7 @@ test('audio : nœuds créés, pic < 0,99, SFX à 0 → plus aucune voix ni nœud
   await page.waitForTimeout(300);
   const s3 = await stats();
   const out = { atUnlock: s0, after20Shots: s1, afterMute: s2, after3MutedShots: s3 };
-  writeFileSync('docs/qa/j2-audio.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-audio.json`, JSON.stringify(out, null, 2) + '\n');
   test.info().annotations.push({ type: 'audio', description: JSON.stringify(out) });
   expect(s1.unlocked, 'AudioContext déverrouillé par le geste').toBe(true);
   expect(s1.nodes - s0.nodes, 'nœuds créés pendant 20 tirs').toBeGreaterThan(0);

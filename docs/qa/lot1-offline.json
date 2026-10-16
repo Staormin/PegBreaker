@@ -1,0 +1,14 @@
+{
+  "cached": {
+    "keys": [
+      "pegbreaker-v2"
+    ],
+    "entries": 7
+  },
+  "navigatorOnLineAfterSetOffline": false,
+  "afterOfflineReload": {
+    "phase": "aiming",
+    "errors": [],
+    "controlled": true
+  }
+}

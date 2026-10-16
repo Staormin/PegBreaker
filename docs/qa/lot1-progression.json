@@ -1,0 +1,363 @@
+{
+  "generatedAt": "2026-10-16T20:20:56.398Z",
+  "seed": "prog",
+  "rows": [
+    {
+      "run": 1,
+      "modifiers": {
+        "bonusHp": 0,
+        "bonusStartBalls": 0,
+        "coinMultiplier": 1,
+        "freeRerolls": 0,
+        "unlockedElements": [
+          "stone",
+          "fire",
+          "lightning"
+        ]
+      },
+      "start": {
+        "maxHp": 5,
+        "volley": 5
+      },
+      "stopReason": "gameover",
+      "depth": 25,
+      "wave": 4,
+      "bestShotDamage": 527,
+      "bestCombo": 11,
+      "finalVolley": 14,
+      "durationSimMs": 65579,
+      "bossesKilled": 0,
+      "perfectWaves": 3,
+      "deadMoments": 0,
+      "softlocks": [],
+      "fragmentsAfterRun": 37,
+      "fragmentsLeft": 7,
+      "bought": [
+        "hp:30"
+      ],
+      "runs": 1,
+      "achievements": [
+        "fusion2",
+        "perfectwave"
+      ],
+      "nodes": {
+        "el_fire": 1,
+        "el_lightning": 1,
+        "hp": 1
+      },
+      "newAchievements": [
+        "fusion2",
+        "perfectwave"
+      ]
+    },
+    {
+      "run": 2,
+      "modifiers": {
+        "bonusHp": 1,
+        "bonusStartBalls": 0,
+        "coinMultiplier": 1,
+        "freeRerolls": 0,
+        "unlockedElements": [
+          "stone",
+          "fire",
+          "lightning"
+        ]
+      },
+      "start": {
+        "maxHp": 6,
+        "volley": 5
+      },
+      "stopReason": "gameover",
+      "depth": 140,
+      "wave": 15,
+      "bestShotDamage": 31082,
+      "bestCombo": 67,
+      "finalVolley": 28,
+      "durationSimMs": 469642,
+      "bossesKilled": 2,
+      "perfectWaves": 9,
+      "deadMoments": 0,
+      "softlocks": [],
+      "fragmentsAfterRun": 511,
+      "fragmentsLeft": 81,
+      "bought": [
+        "coins:30",
+        "balls:50",
+        "el_split:50",
+        "hp:65",
+        "coins:65",
+        "mod_glass:80",
+        "rel_alchimie:90"
+      ],
+      "runs": 2,
+      "achievements": [
+        "fusion2",
+        "perfectwave",
+        "combo15",
+        "combo50",
+        "fusion3",
+        "wave5",
+        "wave10",
+        "wave15",
+        "shot5000",
+        "depth80",
+        "relic6",
+        "volley24",
+        "score20k",
+        "contracts3"
+      ],
+      "nodes": {
+        "el_fire": 1,
+        "el_lightning": 1,
+        "hp": 2,
+        "coins": 2,
+        "balls": 1,
+        "el_split": 1,
+        "mod_glass": 1,
+        "rel_alchimie": 1
+      },
+      "newAchievements": [
+        "combo15",
+        "combo50",
+        "fusion3",
+        "wave5",
+        "wave10",
+        "wave15",
+        "shot5000",
+        "depth80",
+        "relic6",
+        "volley24",
+        "score20k",
+        "contracts3"
+      ]
+    },
+    {
+      "run": 3,
+      "modifiers": {
+        "bonusHp": 2,
+        "bonusStartBalls": 1,
+        "coinMultiplier": 1.2,
+        "freeRerolls": 0,
+        "unlockedElements": [
+          "stone",
+          "fire",
+          "lightning",
+          "split"
+        ]
+      },
+      "start": {
+        "maxHp": 7,
+        "volley": 6
+      },
+      "stopReason": "gameover",
+      "depth": 67,
+      "wave": 8,
+      "bestShotDamage": 4484,
+      "bestCombo": 61,
+      "finalVolley": 22,
+      "durationSimMs": 235525,
+      "bossesKilled": 1,
+      "perfectWaves": 4,
+      "deadMoments": 0,
+      "softlocks": [],
+      "fragmentsAfterRun": 168,
+      "fragmentsLeft": 68,
+      "bought": [
+        "reroll:100"
+      ],
+      "runs": 3,
+      "achievements": [
+        "fusion2",
+        "perfectwave",
+        "combo15",
+        "combo50",
+        "fusion3",
+        "wave5",
+        "wave10",
+        "wave15",
+        "shot5000",
+        "depth80",
+        "relic6",
+        "volley24",
+        "score20k",
+        "contracts3"
+      ],
+      "nodes": {
+        "el_fire": 1,
+        "el_lightning": 1,
+        "hp": 2,
+        "coins": 2,
+        "balls": 1,
+        "el_split": 1,
+        "mod_glass": 1,
+        "rel_alchimie": 1,
+        "reroll": 1
+      },
+      "newAchievements": []
+    },
+    {
+      "run": 4,
+      "modifiers": {
+        "bonusHp": 2,
+        "bonusStartBalls": 1,
+        "coinMultiplier": 1.2,
+        "freeRerolls": 1,
+        "unlockedElements": [
+          "stone",
+          "fire",
+          "lightning",
+          "split"
+        ]
+      },
+      "start": {
+        "maxHp": 7,
+        "volley": 6
+      },
+      "stopReason": "gameover",
+      "depth": 67,
+      "wave": 8,
+      "bestShotDamage": 4484,
+      "bestCombo": 61,
+      "finalVolley": 22,
+      "durationSimMs": 235508,
+      "bossesKilled": 1,
+      "perfectWaves": 4,
+      "deadMoments": 0,
+      "softlocks": [],
+      "fragmentsAfterRun": 155,
+      "fragmentsLeft": 55,
+      "bought": [
+        "rel_mitose:100"
+      ],
+      "runs": 4,
+      "achievements": [
+        "fusion2",
+        "perfectwave",
+        "combo15",
+        "combo50",
+        "fusion3",
+        "wave5",
+        "wave10",
+        "wave15",
+        "shot5000",
+        "depth80",
+        "relic6",
+        "volley24",
+        "score20k",
+        "contracts3"
+      ],
+      "nodes": {
+        "el_fire": 1,
+        "el_lightning": 1,
+        "hp": 2,
+        "coins": 2,
+        "balls": 1,
+        "el_split": 1,
+        "mod_glass": 1,
+        "rel_alchimie": 1,
+        "reroll": 1,
+        "rel_mitose": 1
+      },
+      "newAchievements": []
+    },
+    {
+      "run": 5,
+      "modifiers": {
+        "bonusHp": 2,
+        "bonusStartBalls": 1,
+        "coinMultiplier": 1.2,
+        "freeRerolls": 1,
+        "unlockedElements": [
+          "stone",
+          "fire",
+          "lightning",
+          "split"
+        ]
+      },
+      "start": {
+        "maxHp": 7,
+        "volley": 6
+      },
+      "stopReason": "gameover",
+      "depth": 61,
+      "wave": 8,
+      "bestShotDamage": 5071,
+      "bestCombo": 37,
+      "finalVolley": 24,
+      "durationSimMs": 205746,
+      "bossesKilled": 1,
+      "perfectWaves": 4,
+      "deadMoments": 0,
+      "softlocks": [],
+      "fragmentsAfterRun": 133,
+      "fragmentsLeft": 33,
+      "bought": [
+        "rel_radar:100"
+      ],
+      "runs": 5,
+      "achievements": [
+        "fusion2",
+        "perfectwave",
+        "combo15",
+        "combo50",
+        "fusion3",
+        "wave5",
+        "wave10",
+        "wave15",
+        "shot5000",
+        "depth80",
+        "relic6",
+        "volley24",
+        "score20k",
+        "contracts3"
+      ],
+      "nodes": {
+        "el_fire": 1,
+        "el_lightning": 1,
+        "hp": 2,
+        "coins": 2,
+        "balls": 1,
+        "el_split": 1,
+        "mod_glass": 1,
+        "rel_alchimie": 1,
+        "reroll": 1,
+        "rel_mitose": 1,
+        "rel_radar": 1
+      },
+      "newAchievements": []
+    }
+  ],
+  "trend": {
+    "depth": {
+      "values": [
+        25,
+        140,
+        67,
+        67,
+        61
+      ],
+      "nonDecreasing": false,
+      "run5MinusRun1": 36
+    },
+    "bestShotDamage": {
+      "values": [
+        527,
+        31082,
+        4484,
+        4484,
+        5071
+      ],
+      "nonDecreasing": false
+    },
+    "finalVolley": {
+      "values": [
+        14,
+        28,
+        22,
+        22,
+        24
+      ],
+      "nonDecreasing": false
+    }
+  }
+}

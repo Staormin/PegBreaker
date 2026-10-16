@@ -2,7 +2,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import type { Vec2 } from '../../src/core/types';
-import { FINAL_SHOTS, boardToClient, lowestBlockTarget, openGame, type QaWindow } from './bots';
+import { QA_OUT, FINAL_SHOTS, boardToClient, lowestBlockTarget, openGame, type QaWindow } from './bots';
 
 interface Box {
   sel: string;
@@ -89,7 +89,7 @@ async function measure(page: Page, vp: { width: number; height: number }, shots:
   const m = { dpr, restOverlaps: ov(L.hud), firingOverlaps: ov(Lf.hud), small, L, consoleErrors };
   if (shots) {
     writeFileSync(
-      `docs/qa/final-mobile-${vp.width}x${vp.height}.json`,
+      `${QA_OUT}-mobile-${vp.width}x${vp.height}.json`,
       JSON.stringify({ viewport: vp, rendererDpr: dpr, board: L.board, hud: L.hud, hudFiring: Lf.hud, buttons: [...L.buttons, ...Lf.buttons], restOverlaps: m.restOverlaps, firingOverlaps: m.firingOverlaps, small, scroll: L.scroll }, null, 2) + '\n',
     );
   }

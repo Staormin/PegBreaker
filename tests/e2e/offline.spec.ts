@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { FINAL_SHOTS, watchErrors, type QaWindow } from './bots';
+import { QA_OUT, FINAL_SHOTS, watchErrors, type QaWindow } from './bots';
 
 const ORIGIN = 'http://127.0.0.1:4176';
 let server: ChildProcess | null = null;
@@ -67,7 +67,7 @@ test('hors ligne : SW actif, rechargement sans réseau → jeu en phase aiming, 
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${FINAL_SHOTS}/08-hors-ligne.png` });
   const out = { cached, navigatorOnLineAfterSetOffline: online, afterOfflineReload: st };
-  writeFileSync('docs/qa/final-offline.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-offline.json`, JSON.stringify(out, null, 2) + '\n');
   test.info().annotations.push({ type: 'offline', description: JSON.stringify(out) });
   expect(online).toBe(false);
   expect(st.phase).toBe('aiming');

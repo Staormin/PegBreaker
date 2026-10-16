@@ -5,7 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import type { Vec2 } from '../../src/core/types';
-import { FINAL_SHOTS, boardToClient, installBot, lowestBlockTarget, play, setSpeed, watchErrors, type QaWindow } from './bots';
+import { QA_OUT, FINAL_SHOTS, boardToClient, installBot, lowestBlockTarget, play, setSpeed, watchErrors, type QaWindow } from './bots';
 
 type HintWindow = QaWindow & { __hints: { reward: number; combo: number; fuse: number; fuseOffers: number; milestones: number; offers: number } };
 
@@ -90,7 +90,7 @@ test('premier lancement : logo + fantôme, jouable sans rien fermer, 1re récomp
     return { firstRewardAt: api.firstRewardAt, onboarded: api.meta.data.onboarded, ghost: document.querySelector('.ghost')?.classList.contains('on') ?? false };
   });
   const out = { firstRewardMs: first.firstRewardAt === null ? null : Math.round(first.firstRewardAt), shotsFiredAtMs: shots, shotsNeeded: shots.length };
-  writeFileSync('docs/qa/final-onboarding.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-onboarding.json`, JSON.stringify(out, null, 2) + '\n');
   test.info().annotations.push({ type: 'onboarding', description: JSON.stringify(out) });
   expect(first.onboarded, 'onboarded → true après le premier tir').toBe(true);
   expect(first.ghost, 'le fantôme disparaît après le premier tir').toBe(false);
@@ -119,7 +119,7 @@ test('indices one-shot : récompense, combo, fusion — une seule fois chacun', 
   // rechargement : les indices sont mémorisés (localStorage 'pegbreaker.hints') et ne reviennent pas
   const stored = await page.evaluate(() => localStorage.getItem('pegbreaker.hints'));
   test.info().annotations.push({ type: 'hints', description: JSON.stringify({ ...h, stored }) });
-  writeFileSync('docs/qa/final-hints.json', JSON.stringify({ ...h, stored }, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-hints.json`, JSON.stringify({ ...h, stored }, null, 2) + '\n');
   expect(h.offers, 'au moins 2 écrans de récompense').toBeGreaterThanOrEqual(2);
   expect(h.reward, 'indice récompense montré une fois').toBe(1);
   expect(h.milestones, 'au moins 2 paliers de combo').toBeGreaterThanOrEqual(2);

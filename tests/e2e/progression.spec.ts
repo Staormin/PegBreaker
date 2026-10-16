@@ -4,7 +4,7 @@
 // N'échoue que sur crash / softlock / erreur console / méta non créditée (pas sur une cible de fun).
 import { expect, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
-import { installBot, play, setSpeed, waitReady, watchErrors, type QaWindow } from './bots';
+import { QA_OUT, installBot, play, setSpeed, waitReady, watchErrors, type QaWindow } from './bots';
 
 const SEED = 'prog';
 /** vitesse de sim (runs longues avec la méta) et plafond réel par run : au-delà, la run est notée « timeout » (survie > plafond) */
@@ -96,7 +96,7 @@ test('progression méta : 5 runs greedy, achat du nœud le moins cher', async ({
       finalVolley: { values: series('finalVolley'), nonDecreasing: monotonic(series('finalVolley')) },
     },
   };
-  writeFileSync('docs/qa/final-progression.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync(`${QA_OUT}-progression.json`, JSON.stringify(out, null, 2) + '\n');
   test.info().annotations.push({ type: 'progression', description: JSON.stringify(out.trend) });
   for (const x of rows) {
     expect(x['softlocks'], `softlock run ${String(x['run'])}`).toEqual([]);

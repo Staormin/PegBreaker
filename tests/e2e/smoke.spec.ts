@@ -130,10 +130,15 @@ test.describe('smoke J1', () => {
     await expect.poll(() => uiScreen(page), { timeout: 2000 }).toBe('game');
 
     // --- jusqu'au game over (bot naïf, choix par la sim) ----------------------
-    await configureBot(page, { bot: 'naive', handleChoices: true });
+    // lot 1 : la mort ouvre « Revanche ? » ; on abandonne au DOM
+    await configureBot(page, { bot: 'naive', handleChoices: true, onLost: 'none' });
     r = await play(page, { stopOnPhases: ['gameover'], maxRealMs: 90_000 });
     expect(r.state.phase, `game over atteint (arrêt : ${r.stopReason})`).toBe('gameover');
+    await expect(page.locator('#ui[data-screen="revive"]')).toBeVisible({ timeout: 3000 });
+    expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.eventCounts['run:over'] ?? 0), 'pas de run:over avant la décision').toBe(0);
+    await page.locator('[data-action="give-up"]').click();
     await expect(page.locator('.screen-gameover')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.eventCounts['run:over'] ?? 0)).toBe(1);
     await page.waitForTimeout(1300); // compteur de fragments
     await page.screenshot({ path: `${SHOTS}/05-fin-de-run.png` });
     const depthTxt = await page.locator('.screen-gameover .stat-val').first().textContent();

@@ -8,7 +8,13 @@
 import type { Page } from '@playwright/test';
 import type { Block, DebugApi, RewardOption, RunPhase, RunState, Vec2 } from '../../src/core/types';
 
-export type BotKind = 'naive' | 'greedy';
+export type BotKind = 'naive' | 'greedy' | 'contracts';
+/** à la mort (run:lost) : abandon immédiat (sim.giveUp), rien (le test pilote l'écran « Revanche ? »),
+ *  ou seconde chance via le DOM si elle est possible et payable (sinon abandon) */
+export type LostPolicy = 'giveUp' | 'none' | 'reviveIfAffordable';
+/** ouverture de l'éventail : 'none' = jamais touchée (0, comportement d'avant le lot 1) ;
+ *  'drag' = longueur de geste d'un débutant tirée uniformément dans [40, 320] px CSS → spreadFromDrag */
+export type SpreadMode = 'none' | 'drag';
 
 export interface QaInstallOptions {
   bot: BotKind;
@@ -18,6 +24,10 @@ export interface QaInstallOptions {
   humanDelayMs: number;
   /** le bot agit-il aussi sur les écrans récompense/boutique ? (false = smoke : le test clique le DOM) */
   handleChoices: boolean;
+  /** comportement à la mort (défaut 'giveUp') */
+  onLost?: LostPolicy;
+  /** ouverture de l'éventail pour naive/contracts (défaut 'none') */
+  spreadMode?: SpreadMode;
 }
 
 export interface PlayCondition {
@@ -51,6 +61,30 @@ export interface ShotRecord {
   destroyed: number;
   volley: number;
   firingMs: number;
+  /** ouverture de l'éventail au tir */
+  spread: number;
+  /** contrat actif au tir (kind) ou null */
+  contract: string | null;
+  /** dégâts et blocs cassés par la balle dorée sur ce tir */
+  goldenDamage: number;
+  goldenKills: number;
+}
+
+export interface LostRecord {
+  wave: number;
+  depth: number;
+  canRevive: boolean;
+  /** ms simulées (durationMs) au moment de la mort */
+  simMs: number;
+  /** action du bot : 'revive' | 'giveUp' | 'none' */
+  action: string;
+}
+
+export interface ContractTally {
+  offered: number;
+  completed: number;
+  failed: number;
+  byKind: Record<string, { offered: number; completed: number; failed: number }>;
 }
 
 export interface QaReport {
@@ -85,6 +119,17 @@ export interface QaReport {
   /** dégâts subis par type de bloc ayant franchi la ligne */
   breachDamageByKind: Record<string, number>;
   bossesSpawned: number;
+  /** lot 1 */
+  lost: LostRecord[];
+  revives: number;
+  runOverCount: number;
+  contracts: ContractTally;
+  golden: { launches: number; damage: number; kills: number; hits: number };
+  /** dégâts totaux de block:hit (pour la part de la balle dorée) */
+  hitDamage: number;
+  rewardSources: Record<string, number>;
+  /** premier reward:offered (source) */
+  firstOfferSource: string | null;
   pageErrors: string[];
   state: {
     phase: RunPhase;
@@ -158,6 +203,8 @@ export function qaInstall(opt: QaInstallOptions): void {
     shotLog: [] as ShotRecord[],
     rewardsTaken: [] as string[],
     destroyedAtFire: 0,
+    shotSpread: 0,
+    shotContract: null as string | null,
     nextFireAt: -1,
     stopReason: '',
     violationKeys: new Set<string>(),
@@ -168,7 +215,38 @@ export function qaInstall(opt: QaInstallOptions): void {
     breachesByKind: {} as Record<string, number>,
     breachDamageByKind: {} as Record<string, number>,
     bossesSpawned: 0,
+    overSeen: false,
+    runOverCount: 0,
+    lost: [] as LostRecord[],
+    revives: 0,
+    lostSince: -1,
+    lostAction: '' as string,
+    contracts: { offered: 0, completed: 0, failed: 0, byKind: {} } as ContractTally,
+    contractKind: new Map<string, string>(),
+    goldenIds: new Set<number>(),
+    golden: { launches: 0, damage: 0, kills: 0, hits: 0 },
+    shotGoldenDamage: 0,
+    shotGoldenKills: 0,
+    hitDamage: 0,
+    rewardSources: {} as Record<string, number>,
+    firstOfferSource: null as string | null,
   };
+  for (const d of sim.config.contracts?.defs ?? []) rec.contractKind.set(d.id, d.kind);
+  const tallyKind = (kind: string, k: 'offered' | 'completed' | 'failed'): void => {
+    const b = (rec.contracts.byKind[kind] ??= { offered: 0, completed: 0, failed: 0 });
+    b[k]++;
+    rec.contracts[k]++;
+  };
+  // contrat de la vague courante déjà tiré avant l'installation du bot (vague 1 : tiré au chargement)
+  {
+    const c0 = sim.state.contract;
+    if (c0) {
+      const k0 = rec.contractKind.get(c0.id) ?? c0.id;
+      tallyKind(k0, 'offered');
+      if (c0.status === 'done') tallyKind(k0, 'completed');
+      else if (c0.status === 'failed') tallyKind(k0, 'failed');
+    }
+  }
 
   const isChoice = (p: RunPhase): boolean => CHOICE.indexOf(p) >= 0;
 
@@ -208,8 +286,41 @@ export function qaInstall(opt: QaInstallOptions): void {
       rec.breachesByKind[e.kind] = (rec.breachesByKind[e.kind] ?? 0) + 1;
       rec.breachDamageByKind[e.kind] = (rec.breachDamageByKind[e.kind] ?? 0) + e.damage;
     } else if (e.type === 'boss:spawned') rec.bossesSpawned++;
-    else if (e.type === 'reward:offered' && !rec.firstOffer) {
-      rec.firstOffer = { perfNow: Math.round(performance.now()), simMs: Math.round(sim.state.stats.durationMs), shots: rec.shots, aimingMs: Math.round(rec.aimingMs) };
+    else if (e.type === 'reward:offered') {
+      const src = (e as { source?: string }).source ?? 'none';
+      rec.rewardSources[src] = (rec.rewardSources[src] ?? 0) + 1;
+      if (!rec.firstOffer) {
+        rec.firstOffer = { perfNow: Math.round(performance.now()), simMs: Math.round(sim.state.stats.durationMs), shots: rec.shots, aimingMs: Math.round(rec.aimingMs) };
+        rec.firstOfferSource = src;
+      }
+    } else if (e.type === 'run:over') {
+      rec.overSeen = true;
+      rec.runOverCount++;
+    } else if (e.type === 'run:started') {
+      rec.overSeen = false;
+      rec.lostSince = -1;
+    } else if (e.type === 'run:lost') {
+      rec.lost.push({ wave: e.wave, depth: e.depth, canRevive: e.canRevive, simMs: Math.round(sim.state.stats.durationMs), action: '' });
+    } else if (e.type === 'run:revived') rec.revives++;
+    else if (e.type === 'contract:offered') tallyKind(e.def.kind, 'offered');
+    else if (e.type === 'contract:completed') tallyKind(e.def.kind, 'completed');
+    else if (e.type === 'contract:failed') tallyKind(e.def.kind, 'failed');
+    else if (e.type === 'ball:launched') {
+      if (e.golden) {
+        rec.goldenIds.add(e.ballId);
+        rec.golden.launches++;
+      }
+    } else if (e.type === 'block:hit') {
+      rec.hitDamage += e.damage;
+      if (rec.goldenIds.has(e.ballId)) {
+        rec.golden.hits++;
+        rec.golden.damage += e.damage;
+        rec.shotGoldenDamage += e.damage;
+        if (e.hpLeft <= 0) {
+          rec.golden.kills++;
+          rec.shotGoldenKills++;
+        }
+      }
     }
     for (let i = 0; i < FEEDBACK.length; i++) {
       if (e.type.startsWith(FEEDBACK[i] as string)) {
@@ -355,6 +466,84 @@ export function qaInstall(opt: QaInstallOptions): void {
     return bestDir;
   }
 
+  // --- éventail (F1) et bot « contrats » ----------------------------------------------
+  /** débutant : longueur de geste uniforme 40–320 px CSS, convertie comme ui/input.ts (90 px morts, 220 px de plage) */
+  function dragSpread(): number {
+    if ((opt.spreadMode ?? 'none') !== 'drag') return sim.state.aimSpread ?? 0;
+    const len = 40 + rand() * 280;
+    const v = (len - 90) / 220;
+    return v <= 0 ? 0 : v >= 1 ? 1 : v;
+  }
+
+  function dirTo(x: number, y: number, jitterDeg: number): Vec2 {
+    const lp = sim.state.launchPos;
+    let ang = Math.atan2(-(y - lp.y), x - lp.x);
+    ang += ((rand() * 2 - 1) * jitterDeg * Math.PI) / 180;
+    return { x: Math.cos(ang), y: -Math.sin(ang) };
+  }
+
+  function activeContractKind(): string | null {
+    const c = sim.state.contract;
+    if (!c || c.status !== 'active') return null;
+    return rec.contractKind.get(c.id) ?? null;
+  }
+
+  /** naïf qui lit le contrat : mur + rafale serrée pour combo/casse ; blocs près des drops pour pièces/balles ;
+   *  éventail à 1 si ≥ 4 blocs sur une même rangée pour « nettoie en N tirs » */
+  function aimContracts(): { dir: Vec2; spread: number } {
+    const kind = activeContractKind();
+    const s = sim.state;
+    if (kind === 'reachCombo' || kind === 'destroyInOneShot') {
+      let wallB: Block | null = null;
+      let left = 0;
+      let right = 0;
+      for (const b of s.blocks) {
+        if (!breakable(b)) continue;
+        if (b.col + b.width / 2 < cols / 2) left++;
+        else right++;
+        const nearWall = b.col === 0 || b.col + b.width >= cols;
+        if (nearWall && (!wallB || b.row > wallB.row)) wallB = b;
+      }
+      if (wallB) {
+        const x = wallB.col === 0 ? 0.05 : cols - 0.05;
+        return { dir: dirTo(x, wallB.row + 0.5, 3), spread: 0 };
+      }
+      const lo = lowest();
+      const x = left >= right ? 0.05 : cols - 0.05;
+      return { dir: dirTo(x, lo ? lo.row + 1.2 : rows / 2, 3), spread: 0 };
+    }
+    if ((kind === 'collectCoins' || kind === 'collectBalls') && s.drops.length > 0) {
+      let best: Block | null = null;
+      let bd = Infinity;
+      for (const d of s.drops) {
+        if (kind === 'collectBalls' && d.kind !== 'ball') continue;
+        if (kind === 'collectCoins' && d.kind !== 'coin') continue;
+        for (const b of s.blocks) {
+          if (!breakable(b)) continue;
+          const dd = Math.hypot(d.pos.x - (b.col + b.width / 2), d.pos.y - (b.row + 0.5));
+          if (dd < bd) {
+            bd = dd;
+            best = b;
+          }
+        }
+      }
+      if (best) return { dir: dirTo(best.col + best.width / 2, best.row + 0.5, 5), spread: dragSpread() };
+    }
+    if (kind === 'clearUnderShots') {
+      const byRow = new Map<number, Block[]>();
+      for (const b of s.blocks) if (breakable(b)) (byRow.get(b.row) ?? byRow.set(b.row, []).get(b.row)!).push(b);
+      let row = -1;
+      for (const [r, bs] of byRow) if (bs.length >= 4 && r > row) row = r;
+      if (row >= 0) {
+        const bs = byRow.get(row)!;
+        let cx = 0;
+        for (const b of bs) cx += b.col + b.width / 2;
+        return { dir: dirTo(cx / bs.length, row + 0.5, 4), spread: 1 };
+      }
+    }
+    return { dir: aimNaive(), spread: dragSpread() };
+  }
+
   // --- choix --------------------------------------------------------------------
   function optKey(o: RewardOption): string {
     switch (o.kind) {
@@ -377,7 +566,7 @@ export function qaInstall(opt: QaInstallOptions): void {
   }
 
   function chooseRewardIndex(offer: readonly RewardOption[]): number {
-    if (opt.bot === 'naive') return Math.floor(rand() * offer.length);
+    if (opt.bot === 'naive' || opt.bot === 'contracts') return Math.floor(rand() * offer.length);
     const s = sim.state;
     const find = (pred: (o: RewardOption) => boolean): number => offer.findIndex(pred);
     let i = -1;
@@ -420,6 +609,11 @@ export function qaInstall(opt: QaInstallOptions): void {
     if (next === 'firing') {
       rec.firingStart = s.stats.durationMs;
       rec.destroyedAtFire = s.stats.blocksDestroyed;
+      rec.shotGoldenDamage = 0;
+      rec.shotGoldenKills = 0;
+      rec.shotSpread = Number.isFinite(s.aimSpread) ? s.aimSpread : 0;
+      const c = s.contract;
+      rec.shotContract = c && c.status === 'active' ? (rec.contractKind.get(c.id) ?? c.id) : null;
     }
     if (prev === 'firing') {
       const ms = s.stats.durationMs - rec.firingStart;
@@ -431,6 +625,10 @@ export function qaInstall(opt: QaInstallOptions): void {
         destroyed: s.stats.blocksDestroyed - rec.destroyedAtFire,
         volley: s.volley.length,
         firingMs: Math.round(ms),
+        spread: Math.round(rec.shotSpread * 1000) / 1000,
+        contract: rec.shotContract,
+        goldenDamage: rec.shotGoldenDamage,
+        goldenKills: rec.shotGoldenKills,
       });
       rec.firingStart = -1;
     }
@@ -466,6 +664,14 @@ export function qaInstall(opt: QaInstallOptions): void {
       breachesByKind: { ...rec.breachesByKind },
       breachDamageByKind: { ...rec.breachDamageByKind },
       bossesSpawned: rec.bossesSpawned,
+      lost: rec.lost.map((x) => ({ ...x })),
+      revives: rec.revives,
+      runOverCount: rec.runOverCount,
+      contracts: JSON.parse(JSON.stringify(rec.contracts)) as ContractTally,
+      golden: { ...rec.golden },
+      hitDamage: rec.hitDamage,
+      rewardSources: { ...rec.rewardSources },
+      firstOfferSource: rec.firstOfferSource,
       pageErrors: api.errors.slice(startErrors),
       state: {
         phase: s.phase,
@@ -546,6 +752,38 @@ export function qaInstall(opt: QaInstallOptions): void {
         rec.stopReason = 'page-error';
         break;
       }
+      // mort (run:lost) : run:over n'arrive qu'après abandon ou revanche + seconde mort
+      const pol: LostPolicy = opt.onLost ?? 'giveUp';
+      if (s.phase === 'gameover' && !rec.overSeen && pol !== 'none') {
+        const last = rec.lost[rec.lost.length - 1];
+        if (rec.lostSince < 0) {
+          rec.lostSince = now;
+          const r = sim.config.economy.revive;
+          const canRev = (s.revivesUsed ?? 0) < r.maxPerRun;
+          const cost = r.freeOnFirstRun && api.meta.data.stats.runs === 0 ? 0 : r.cost;
+          const affordable = cost === 0 || api.meta.data.meta.fragments >= cost;
+          rec.lostAction = pol === 'reviveIfAffordable' && canRev && affordable ? 'revive' : 'giveUp';
+          if (last) last.action = rec.lostAction;
+          if (rec.lostAction === 'giveUp') sim.giveUp();
+        } else if (rec.lostAction === 'revive') {
+          // clic réel sur « Seconde chance » (débit des fragments par l'UI), écran ouvert ~700 ms après run:lost
+          const btn = document.querySelector<HTMLButtonElement>('#ui[data-screen="revive"] [data-action="revive"]');
+          if (btn && !btn.disabled) {
+            btn.click();
+            rec.lostSince = -1;
+          } else if (now - rec.lostSince > 4000) {
+            if (last) last.action = 'giveUp(revive-indisponible)';
+            rec.lostAction = 'giveUp';
+            sim.giveUp();
+          }
+        }
+        if (c.maxRealMs !== undefined && now - t0 > c.maxRealMs) {
+          rec.stopReason = 'timeout';
+          break;
+        }
+        continue;
+      }
+      if (s.phase !== 'gameover') rec.lostSince = -1;
       // conditions d'arrêt
       if (c.stopOnPhases && c.stopOnPhases.indexOf(s.phase) >= 0) {
         rec.stopReason = `phase:${s.phase}`;
@@ -572,7 +810,13 @@ export function qaInstall(opt: QaInstallOptions): void {
         if (rec.nextFireAt < 0) rec.nextFireAt = now + opt.humanDelayMs;
         if (now >= rec.nextFireAt) {
           rec.nextFireAt = -1;
-          sim.aim(opt.bot === 'naive' ? aimNaive() : aimGreedy());
+          if (opt.bot === 'contracts') {
+            const a = aimContracts();
+            sim.aim(a.dir, a.spread);
+          } else if (opt.bot === 'naive') {
+            if ((opt.spreadMode ?? 'none') === 'drag') sim.aim(aimNaive(), dragSpread());
+            else sim.aim(aimNaive());
+          } else sim.aim(aimGreedy());
           sim.fire();
           if (sim.state.phase === 'firing') rec.shots++;
         }
@@ -593,6 +837,8 @@ export function qaInstall(opt: QaInstallOptions): void {
     if (p.bot !== undefined) opt.bot = p.bot;
     if (p.humanDelayMs !== undefined) opt.humanDelayMs = p.humanDelayMs;
     if (p.handleChoices !== undefined) opt.handleChoices = p.handleChoices;
+    if (p.onLost !== undefined) opt.onLost = p.onLost;
+    if (p.spreadMode !== undefined) opt.spreadMode = p.spreadMode;
     rec.nextFireAt = -1;
   }
 
@@ -661,6 +907,8 @@ export async function installBot(page: Page, o: Partial<QaInstallOptions> & { bo
     rngSeed: o.rngSeed ?? hashSeed(`${o.bot}:${o.seed}`),
     humanDelayMs: o.humanDelayMs ?? 0,
     handleChoices: o.handleChoices ?? true,
+    onLost: o.onLost ?? 'giveUp',
+    spreadMode: o.spreadMode ?? 'none',
   };
   await page.evaluate(qaInstall, opts);
 }
@@ -716,8 +964,14 @@ export function mean(xs: number[]): number {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN;
 }
 
-/** dossier des captures du jalon courant */
-export const SHOTS_DIR = 'docs/qa/final-shots/suite';
+/** dossier des captures du jalon courant (lot 1 du plan fun) ; docs/qa/final-shots reste la référence « avant » */
+export const SHOTS_DIR = 'docs/qa/fun-shots/suite';
 
-/** captures finales (J4/J5, Definition of Done) */
-export const FINAL_SHOTS = 'docs/qa/final-shots';
+/** captures du passage courant (anciennement docs/qa/final-shots) */
+export const FINAL_SHOTS = 'docs/qa/fun-shots/suite';
+
+/** préfixe des sorties JSON du passage courant (les fichiers final-*.json restent la référence « avant ») */
+export const QA_OUT = 'docs/qa/lot1';
+
+/** captures du rapport fun-lot1 */
+export const FUN_SHOTS = 'docs/qa/fun-shots';
