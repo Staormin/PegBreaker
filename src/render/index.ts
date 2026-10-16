@@ -75,53 +75,84 @@ export function createRenderer(
     vfx.addShake(2 + tier);
   });
 
-  // Qualité adaptative (J2-02) : si 12 des 20 dernières frames dépassent 18,5 ms, on baisse la
-  // résolution interne d'un cran (2 → 1,5 → 1), y compris PENDANT la volée : c'est un simple
-  // changement de taille du backing store + régénération des sprites entre deux frames.
-  // Jamais de remontée automatique (pas d'oscillation) ; un resize() explicite garde le cran.
-  // Plafond initial : 1,5 sur mobile haute densité (DPR ≥ 2 et canvas ≤ 600 px CSS).
+  // Qualité adaptative. La résolution interne effective = min(DPR de l'écran, plafond surface,
+  // plafond mobile, cran de qualité), arrondie au 0,25 inférieur.
+  // - Plafond surface (J5-01) : backing store ≤ ~1,6 Mpx (720×1280 CSS → 1,25 ; 540×960 → 1,75).
+  // - Plafond mobile (J2-02) : 1,5 si DPR ≥ 2 et canvas ≤ 600 px CSS.
+  // - Bascule préventive (J5-01) : sur volley:start d'au moins 18 balles, si le dernier tir
+  //   comparable a eu une frame moyenne > 17,5 ms, on baisse d'un cran (0,25) AVANT la 1re balle.
+  // - Bascule réactive (secours, J2-02) : 12 frames > 18,5 ms sur 20 → −0,5, même en pleine volée.
+  // Jamais de remontée automatique (pas d'oscillation) ; un resize() garde le cran de qualité.
   const SLOW_FRAME_MS = 18.5;
   const SLOW_WINDOW = 20;
   const SLOW_TRIGGER = 12;
   const MOBILE_MAX_CSS_W = 600;
-  let dprCap = MAX_DPR;
-  let dprCapInit = false;
+  const MAX_BACKING_PX = 1.6e6;
+  const BIG_VOLLEY = 18;
+  // Le dt de rAF est calé sur la vsync : à 60 fps parfaits il vaut 16,7 ms, donc un seuil de 15 ms
+  // déclencherait toujours. 17,5 ms ≈ moyenne < 57 fps (au moins une frame sautée sur ~20).
+  const PREVENTIVE_AVG_MS = 17.5;
+  /** cran de qualité (baisses adaptatives) ; MAX_DPR = aucun */
+  let qualityCap = MAX_DPR;
   const slowRing = new Uint8Array(SLOW_WINDOW);
   let slowIdx = 0;
   let slowCount = 0;
   let qualityCooldown = 0;
   /** durée (ms) de la dernière régénération pour changement de qualité (QA) */
   let lastQualitySwitchMs = 0;
+  // mesure par volée (pour la bascule préventive)
+  let volleyCount = 0;
+  let volleyFrames = 0;
+  let volleyMs = 0;
+  /** frame moyenne (ms) du dernier tir d'au moins BIG_VOLLEY balles ; 0 = inconnu */
+  let lastBigVolleyAvg = 0;
 
-  function initDprCap(): void {
-    dprCapInit = true;
+  const quarterFloor = (v: number): number => Math.floor(v * 4 + 1e-6) / 4;
+
+  /** plafond de résolution hors cran de qualité, pour la taille CSS courante */
+  function structuralCap(): number {
     const parent = canvas.parentElement;
     const cssW = parent ? parent.clientWidth : canvas.clientWidth;
+    const cssH = parent ? parent.clientHeight : canvas.clientHeight;
     const devDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    dprCap = devDpr >= 2 && cssW > 0 && cssW <= MOBILE_MAX_CSS_W ? 1.5 : MAX_DPR;
+    let cap = MAX_DPR;
+    if (cssW > 0 && cssH > 0) cap = Math.min(cap, Math.sqrt(MAX_BACKING_PX / (cssW * cssH)));
+    if (devDpr >= 2 && cssW > 0 && cssW <= MOBILE_MAX_CSS_W) cap = Math.min(cap, 1.5);
+    return cap;
+  }
+
+  function effectiveCap(): number {
+    const devDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    const c = Math.min(devDpr, structuralCap(), qualityCap);
+    return c <= 1 ? 1 : quarterFloor(c);
+  }
+
+  /** baisse la résolution de `step` et régénère (renvoie false si déjà au minimum) */
+  function lowerQuality(step: number): boolean {
+    if (layout.dpr <= 1) return false;
+    qualityCap = Math.max(1, quarterFloor(layout.dpr - step));
+    const t0 = performance.now();
+    doResize();
+    lastQualitySwitchMs = performance.now() - t0;
+    slowRing.fill(0);
+    slowCount = 0;
+    qualityCooldown = 30; // laisse retomber la frame de régénération avant de re-mesurer
+    return true;
   }
 
   function trackFrame(dtMs: number, state: Readonly<RunState>): void {
+    if (state.phase === 'firing' && dtMs > 0 && dtMs < 100) { volleyFrames++; volleyMs += dtMs; }
     if (qualityCooldown > 0) { qualityCooldown--; return; }
     if (dtMs <= 0 || dtMs >= 100 || frame <= 60) return;
     const slow = dtMs > SLOW_FRAME_MS ? 1 : 0;
     slowCount += slow - (slowRing[slowIdx] ?? 0);
     slowRing[slowIdx] = slow;
     slowIdx = (slowIdx + 1) % SLOW_WINDOW;
-    if (slowCount >= SLOW_TRIGGER && dprCap > 1 && layout.dpr > 1 && state.phase !== 'gameover') {
-      dprCap = Math.max(1, Math.min(dprCap, layout.dpr) - 0.5);
-      const t0 = performance.now();
-      doResize(); // régénère les sprites à la nouvelle résolution
-      lastQualitySwitchMs = performance.now() - t0;
-      slowRing.fill(0);
-      slowCount = 0;
-      qualityCooldown = 30; // laisse retomber la frame de régénération avant de re-mesurer
-    }
+    if (slowCount >= SLOW_TRIGGER && state.phase !== 'gameover') lowerQuality(0.5);
   }
 
   function doResize(): Sprites {
-    if (!dprCapInit) initDprCap();
-    computeLayout(layout, canvas, dprCap);
+    computeLayout(layout, canvas, effectiveCap());
     const s = buildSprites(layout, colors, config);
     sprites = s;
     numbers.rebuildFonts(layout);
@@ -312,6 +343,16 @@ export function createRenderer(
 
   subs.push(bus.on('run:started', () => {
     particles.clear(); numbers.clear(); vfx.clear(); fusions.clear(); drawer.clearTrails(); drawer.suppressSpawnPop();
+  }));
+  // mesure par volée + bascule préventive (avant la 1re balle : la rafale part ~60 ms après)
+  subs.push(bus.on('volley:start', (e) => {
+    volleyCount = e.count;
+    volleyFrames = 0;
+    volleyMs = 0;
+    if (e.count >= BIG_VOLLEY && lastBigVolleyAvg > PREVENTIVE_AVG_MS && sprites) lowerQuality(0.25);
+  }));
+  subs.push(bus.on('volley:end', () => {
+    if (volleyCount >= BIG_VOLLEY && volleyFrames >= 20) lastBigVolleyAvg = volleyMs / volleyFrames;
   }));
   // rows:advanced : volontairement rien — l'interpolation easeOutBack dans draw suffit.
 
