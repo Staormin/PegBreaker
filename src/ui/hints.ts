@@ -2,7 +2,7 @@
 // Persistance : localStorage['pegbreaker.hints'] (clé propre à l'UI), tolérant aux erreurs.
 const KEY = 'pegbreaker.hints';
 
-export type HintId = 'reward' | 'combo' | 'fuse';
+export type HintId = 'reward' | 'combo' | 'fuse' | 'spread';
 
 export interface Hints {
   /** true si l'indice n'a jamais été montré ; le marque alors comme vu */

@@ -24,6 +24,7 @@ import type { EventBus } from '../core/events';
 import type { AudioSystem, GameConfig, MetaSystem, RewardOption, RunPhase, RunState, RunSummary, Renderer, Sim, UI, UiScreen } from '../core/types';
 import { createHud } from './hud';
 import { createHints } from './hints';
+import { createSpreadControl } from './spread';
 import { createInput } from './input';
 import { createOnboarding } from './onboarding';
 import { registerServiceWorker } from './pwa';
@@ -97,6 +98,12 @@ export function createUI(deps: UiDeps): UI {
     audio?.setMusicVolume(meta.data.settings.music);
   }
 
+  // ouverture de la volée : sélecteur explicite, persistant d'un tir à l'autre, remis à 0 par run
+  const spread = createSpreadControl();
+  spread.onChange(() => {
+    const d = sim.state.aimDir;
+    if (sim.state.phase === 'aiming' && d) sim.aim({ x: d.x, y: d.y }, spread.value);
+  });
   const hud = createHud({
     root,
     canvas,
@@ -112,6 +119,7 @@ export function createUI(deps: UiDeps): UI {
     bestWave: () => bestWaveBefore,
     onNewRecord: (wave) => toasts.notice('Nouveau record', 'RECORD !', `V${wave}`, 'record'),
     isGameScreen: () => screen === 'game',
+    spread,
   });
   createInput({
     canvas,
@@ -119,6 +127,7 @@ export function createUI(deps: UiDeps): UI {
     renderer,
     audio,
     isGameScreen: () => screen === 'game' || screen === 'title',
+    spread,
     onDragChange: (d) => {
       dragging = d;
     },
@@ -362,6 +371,7 @@ export function createUI(deps: UiDeps): UI {
     clearTimeout(lostTimer);
     gaveUp = false;
     hud.reset();
+    spread.reset();
     bestDepthBefore = meta ? meta.data.stats.bestDepth : null;
     bestWaveBefore = meta ? meta.data.stats.bestWave : null;
     if (screen !== 'title') show('game');
@@ -371,6 +381,14 @@ export function createUI(deps: UiDeps): UI {
   bus.on('volley:start', () => {
     if (meta && !meta.data.onboarded) meta.setOnboarded();
   });
+  // indice one-shot du sélecteur d'ouverture : premier contrat « en N tirs » ou première vague ≥ 3
+  const spreadHintOnce = (): void => {
+    if (hints.take('spread')) hud.spreadHint();
+  };
+  bus.on('contract:offered', (e) => {
+    if (e.def.kind === 'clearUnderShots') spreadHintOnce();
+  });
+  let spreadHintChecked = false;
   bus.on('combo:milestone', (e) => {
     if (hints.take('combo')) hud.comboHint(e.combo);
   });
@@ -427,6 +445,10 @@ export function createUI(deps: UiDeps): UI {
       shop.refreshAffordability(state.coins);
     }
     if (screen === 'settings') settingsScreen?.tick(state);
+    if (!spreadHintChecked && state.wave >= 3) {
+      spreadHintChecked = true;
+      spreadHintOnce();
+    }
     hud.update(state);
     onboarding.update(state, (screen === 'game' || screen === 'title') && !dragging);
   }

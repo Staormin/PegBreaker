@@ -1407,66 +1407,61 @@ body {
   filter: grayscale(1);
 }
 
-/* --- jauge d'éventail sous le point de lancement (F1) ; left/top calculés par hud.ts */
-.hud-spread {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
-  width: 172px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(11, 15, 26, 0.8);
-  box-sizing: border-box;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  --sp: 0;
-}
-.hud-spread.on {
-  visibility: visible;
-  opacity: 1;
-}
-.hs-label {
-  color: var(--text-dim);
-}
-/* spread = 0 : « rafale » en évidence ; ouvert : « éventail » */
-.hud-spread[data-mode='burst'] .hs-min,
-.hud-spread[data-mode='fan'] .hs-max {
-  color: var(--accent);
-}
-.hs-track {
-  position: relative;
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--wall);
-}
-.hs-fill {
+/* --- sélecteur d'ouverture à 3 positions (F1-02) ; left/top calculés par hud.ts */
+.pb-ui button.hud-spread {
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
-  width: calc(var(--sp) * 100%);
-  border-radius: 3px;
-  background: var(--accent);
+  min-width: 48px;
+  min-height: 48px;
+  padding: 4px 10px 4px 8px;
+  box-sizing: border-box;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: rgba(11, 15, 26, 0.9);
+  border: 2px solid var(--wall);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
 }
-.hs-knob {
-  position: absolute;
-  left: calc(var(--sp) * 100%);
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  transform: translate(-50%, -50%);
+.pb-ui button.hud-spread.on {
+  display: flex;
+}
+.hud-spread[data-level='1'],
+.hud-spread[data-level='2'] {
+  border-color: var(--accent);
+}
+.hs-ico {
+  font-size: 22px;
+  width: 22px;
+  text-align: center;
+  color: var(--accent);
+}
+.hud-spread[data-level='0'] .hs-ico {
+  color: var(--text);
+}
+.hs-label {
+  min-width: 3.6em;
+  text-align: left;
+}
+.hs-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hs-dot {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--text);
-  box-shadow: 0 0 0 2px var(--bg0);
+  background: var(--wall);
+}
+.hs-dot.on {
+  background: var(--accent);
 }
 
 /* --- toast « RECORD ! » */

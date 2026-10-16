@@ -1,26 +1,16 @@
 // ui/input.ts — drag-to-aim (souris + tactile) et clavier desktop.
 // Visée DIRECTE : la balle part vers le point touché (dir = point plateau − launchPos).
 // Seul endroit de ui/ qui manipule des pixels (coordonnées CSS relatives au canvas).
-// Éventail (F1) : la longueur du geste (px CSS depuis le point d'appui) règle l'ouverture
-//   spread = clamp((len − 150) / 220, 0, 1) (zone morte large : un geste court reste en rafale), mêmes seuils souris et tactile.
-// Clavier : ← → visent, A/Q ferment (rafale) et E/D ouvrent (éventail) par pas de 0,1, Espace tire.
+// Ouverture (F1-02) : choisie au sélecteur (ui/spread.ts), jamais par le geste ; renvoyée à chaque
+//   sim.aim(dir, spread). Clavier : ← → visent, Tab / E cyclent l'ouverture (Maj+Tab / A en arrière), Espace tire.
 import type { AudioSystem, Renderer, Sim, Vec2 } from '../core/types';
+import type { SpreadControl } from './spread';
 
 /** distance minimale de drag (px CSS) pour qu'un relâchement tire */
 const DRAG_THRESHOLD_PX = 12;
 /** pas angulaire des flèches (degrés) ; Maj = pas fin */
 const KEY_STEP_DEG = 2;
 const KEY_STEP_FINE_DEG = 0.5;
-/** éventail : longueur de geste (px CSS) sans ouverture, puis plage jusqu'à l'ouverture max */
-export const SPREAD_DEAD_PX = 150;
-export const SPREAD_RANGE_PX = 220;
-const KEY_SPREAD_STEP = 0.1;
-
-/** ouverture 0..1 depuis la longueur du geste en px CSS */
-export function spreadFromDrag(lenPx: number): number {
-  const v = (lenPx - SPREAD_DEAD_PX) / SPREAD_RANGE_PX;
-  return v <= 0 ? 0 : v >= 1 ? 1 : v;
-}
 
 export interface InputDeps {
   canvas: HTMLCanvasElement;
@@ -29,6 +19,8 @@ export interface InputDeps {
   audio: AudioSystem | null;
   /** l'input de jeu n'est actif que si l'écran courant est 'game' */
   isGameScreen: () => boolean;
+  /** ouverture choisie au sélecteur (renvoyée à chaque sim.aim) */
+  spread: SpreadControl;
   /** notifié au début / à la fin d'un geste de visée (masque l'indice d'onboarding) */
   onDragChange?: (dragging: boolean) => void;
 }
@@ -69,10 +61,9 @@ export function createInput(deps: InputDeps): Input {
   }
 
   /** copie défensive : la sim peut conserver la référence ; on réutilise `dir` côté UI.
-   *  `spread` absent = ouverture inchangée (flèches du clavier). */
-  function aimCopy(d: Vec2, spread?: number): void {
-    if (spread === undefined) sim.aim({ x: d.x, y: d.y });
-    else sim.aim({ x: d.x, y: d.y }, spread);
+   *  L'ouverture vient toujours du sélecteur. */
+  function aimCopy(d: Vec2): void {
+    sim.aim({ x: d.x, y: d.y }, deps.spread.value);
   }
 
   function syncKeyAngle(d: Vec2): void {
@@ -99,7 +90,7 @@ export function createInput(deps: InputDeps): Input {
       /* capture indisponible (pointeur synthétique) : on continue sans */
     }
     const d = computeDir(e.clientX, e.clientY);
-    if (d.y < 0) aimCopy(d, 0);
+    if (d.y < 0) aimCopy(d);
     setDragging(true);
   }
 
@@ -111,7 +102,7 @@ export function createInput(deps: InputDeps): Input {
     const m = Math.hypot(dx, dy);
     if (m > moved) moved = m;
     if (sim.state.phase !== 'aiming') return;
-    aimCopy(computeDir(e.clientX, e.clientY), spreadFromDrag(m));
+    aimCopy(computeDir(e.clientX, e.clientY));
   }
 
   function end(e: PointerEvent, cancelled: boolean): void {
@@ -129,7 +120,7 @@ export function createInput(deps: InputDeps): Input {
     const m = Math.hypot(e.clientX - startX, e.clientY - startY);
     if (m > moved) moved = m;
     if (!cancelled && moved > DRAG_THRESHOLD_PX && d.y < 0) {
-      aimCopy(d, spreadFromDrag(m));
+      aimCopy(d);
       syncKeyAngle(d);
       sim.fire();
     } else {
@@ -148,12 +139,13 @@ export function createInput(deps: InputDeps): Input {
     aimCopy(dir);
   }
 
-  /** −1 : fermer (A / Q), +1 : ouvrir (E / D), 0 : autre touche */
-  function isSpreadKey(e: KeyboardEvent): -1 | 0 | 1 {
+  /** +1 : Tab / E, −1 : Maj+Tab / A, 0 : autre touche */
+  function spreadKey(e: KeyboardEvent): -1 | 0 | 1 {
     if (e.ctrlKey || e.metaKey || e.altKey) return 0;
+    if (e.key === 'Tab') return e.shiftKey ? -1 : 1;
     const k = e.key.toLowerCase();
-    if (k === 'a' || k === 'q') return -1;
-    if (k === 'e' || k === 'd') return 1;
+    if (k === 'a') return -1;
+    if (k === 'e') return 1;
     return 0;
   }
 
@@ -172,18 +164,9 @@ export function createInput(deps: InputDeps): Input {
       keyAngle += e.key === 'ArrowLeft' ? step : -step;
       keyAngle = Math.min(180 - minDeg, Math.max(minDeg, keyAngle));
       aimFromKeyAngle();
-    } else if (isSpreadKey(e)) {
+    } else if (phase === 'aiming' && spreadKey(e) !== 0) {
       e.preventDefault();
-      if (phase !== 'aiming') return;
-      const cur = sim.state.aimDir;
-      if (cur) syncKeyAngle(cur);
-      const sign = isSpreadKey(e);
-      const curSpread = Number.isFinite(sim.state.aimSpread) ? sim.state.aimSpread : 0;
-      const next = Math.round((curSpread + sign * KEY_SPREAD_STEP) * 10) / 10;
-      const a = (keyAngle * Math.PI) / 180;
-      dir.x = Math.cos(a);
-      dir.y = -Math.sin(a);
-      aimCopy(dir, next < 0 ? 0 : next > 1 ? 1 : next);
+      deps.spread.cycle(spreadKey(e) === 1 ? 1 : -1);
     } else if (e.key === ' ' || e.code === 'Space') {
       e.preventDefault();
       if (e.repeat) return;

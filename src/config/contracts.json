@@ -1,16 +1,141 @@
 {
   "chance": 0.85,
   "defs": [
-    { "id": "smash3", "kind": "destroyInOneShot", "target": 3, "text": "Casse {n} blocs en un tir", "reward": { "kind": "coins", "amount": 12 }, "minWave": 1, "weight": 10 },
-    { "id": "smash5", "kind": "destroyInOneShot", "target": 4, "text": "Casse {n} blocs en un tir", "reward": { "kind": "ball", "element": "stone", "tier": 1 }, "minWave": 3, "weight": 8 },
-    { "id": "combo8", "kind": "reachCombo", "target": 8, "text": "Atteins un combo de {n}", "reward": { "kind": "coins", "amount": 15 }, "minWave": 1, "weight": 10 },
-    { "id": "combo16", "kind": "reachCombo", "target": 10, "text": "Atteins un combo de {n}", "reward": { "kind": "ball", "element": "stone", "tier": 1 }, "minWave": 3, "weight": 7 },
-    { "id": "clean", "kind": "noDamage", "target": 1, "text": "Vague sans perdre de PV", "reward": { "kind": "heal", "amount": 1 }, "minWave": 2, "weight": 8 },
-    { "id": "coins20", "kind": "collectCoins", "target": 10, "text": "Ramasse {n} pièces", "reward": { "kind": "coins", "amount": 10 }, "minWave": 1, "weight": 8 },
-    { "id": "fast6", "kind": "clearUnderShots", "target": 8, "text": "Nettoie la vague en {n} tirs", "reward": { "kind": "coins", "amount": 20 }, "minWave": 2, "weight": 7 },
-    { "id": "balls2", "kind": "collectBalls", "target": 2, "text": "Ramasse {n} balles", "reward": { "kind": "coins", "amount": 10 }, "minWave": 1, "weight": 6 },
-    { "id": "gold2", "kind": "goldenKill", "target": 2, "text": "Casse {n} blocs avec la balle dorée", "reward": { "kind": "coins", "amount": 15 }, "minWave": 2, "weight": 7 },
-    { "id": "fire3", "kind": "killWithElement", "target": 3, "element": "fire", "text": "Casse {n} blocs avec le feu", "reward": { "kind": "coins", "amount": 15 }, "minWave": 2, "weight": 5 },
-    { "id": "bolt3", "kind": "killWithElement", "target": 3, "element": "lightning", "text": "Casse {n} blocs avec la foudre", "reward": { "kind": "coins", "amount": 15 }, "minWave": 2, "weight": 5 }
+    {
+      "id": "smash3",
+      "kind": "destroyInOneShot",
+      "target": 3,
+      "text": "Casse {n} blocs en un tir",
+      "reward": {
+        "kind": "coins",
+        "amount": 12
+      },
+      "minWave": 1,
+      "weight": 10
+    },
+    {
+      "id": "smash5",
+      "kind": "destroyInOneShot",
+      "target": 4,
+      "text": "Casse {n} blocs en un tir",
+      "reward": {
+        "kind": "ball",
+        "element": "stone",
+        "tier": 1
+      },
+      "minWave": 3,
+      "weight": 8
+    },
+    {
+      "id": "combo8",
+      "kind": "reachCombo",
+      "target": 8,
+      "text": "Atteins un combo de {n}",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 1,
+      "weight": 10
+    },
+    {
+      "id": "combo16",
+      "kind": "reachCombo",
+      "target": 10,
+      "text": "Atteins un combo de {n}",
+      "reward": {
+        "kind": "ball",
+        "element": "stone",
+        "tier": 1
+      },
+      "minWave": 3,
+      "weight": 7
+    },
+    {
+      "id": "clean",
+      "kind": "noDamage",
+      "target": 1,
+      "text": "Vague sans perdre de PV",
+      "reward": {
+        "kind": "heal",
+        "amount": 1
+      },
+      "minWave": 2,
+      "weight": 8
+    },
+    {
+      "id": "coins20",
+      "kind": "collectCoins",
+      "target": 10,
+      "text": "Ramasse {n} pièces",
+      "reward": {
+        "kind": "coins",
+        "amount": 10
+      },
+      "minWave": 1,
+      "weight": 8
+    },
+    {
+      "id": "fast6",
+      "kind": "clearUnderShots",
+      "target": 8,
+      "text": "Nettoie la vague en {n} tirs",
+      "reward": {
+        "kind": "coins",
+        "amount": 20
+      },
+      "minWave": 2,
+      "weight": 7
+    },
+    {
+      "id": "balls2",
+      "kind": "collectBalls",
+      "target": 2,
+      "text": "Ramasse {n} balles",
+      "reward": {
+        "kind": "coins",
+        "amount": 10
+      },
+      "minWave": 1,
+      "weight": 6
+    },
+    {
+      "id": "gold2",
+      "kind": "goldenKill",
+      "target": 2,
+      "text": "Casse {n} blocs avec la balle dorée",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 2,
+      "weight": 7
+    },
+    {
+      "id": "fire3",
+      "kind": "killWithElement",
+      "target": 3,
+      "element": "fire",
+      "text": "Casse {n} blocs avec le feu",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 2,
+      "weight": 5
+    },
+    {
+      "id": "bolt3",
+      "kind": "killWithElement",
+      "target": 3,
+      "element": "lightning",
+      "text": "Casse {n} blocs avec la foudre",
+      "reward": {
+        "kind": "coins",
+        "amount": 15
+      },
+      "minWave": 2,
+      "weight": 5
+    }
   ]
 }

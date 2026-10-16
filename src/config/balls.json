@@ -8,7 +8,7 @@
   "lastBallMultiplier": 2,
   "lastBallMultiplierPerBall": 0.12,
   "lastBallMultiplierMax": 5,
-  "spreadDamagePenalty": 0.15,
+  "spreadDamagePenalty": 0.2,
   "fire": { "radius": 1.1, "damageRatio": 0.6 },
   "lightning": { "chainRange": 2.5, "damageRatio": 0.5 },
   "ice": { "maxFrozenPerShot": 3 },

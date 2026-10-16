@@ -623,6 +623,34 @@ describe('reward:offered source', () => {
       if (o.kind === 'relic') expect(rarity(boss.config, o.relicId)).not.toBe('common');
     }
     expect(boss.state.rewardOffer).toEqual(off.options);
+    // épique garantie (F9-01) dès qu'une épique débloquée n'est pas possédée
+    expect(off.options.some((o) => o.kind === 'relic' && rarity(boss.config, o.relicId) === 'epic')).toBe(true);
+  });
+
+  it('coffre de boss : une épique sur 20 seeds, à une position variable ; épiques toutes possédées → rares', () => {
+    const cfg = config();
+    const positions = new Set<number>();
+    for (let i = 0; i < 20; i++) {
+      const sim = newSim(`chest-${i}`, cfg);
+      mut(sim).wave = 5;
+      const b = block(sim, 'boss', 2, 4, 1, 3);
+      b.bossId = 'regen';
+      setup(sim, [b], stones(1), { rowsLeft: 0, launchX: 3.5 });
+      const opts = ofType(shoot(sim, UP), 'reward:offered')[0]!.options;
+      const k = opts.findIndex((o) => o.kind === 'relic' && rarity(cfg, o.relicId) === 'epic');
+      expect(k).toBeGreaterThanOrEqual(0);
+      positions.add(k);
+    }
+    expect(positions.size).toBeGreaterThan(1);
+    const sim = newSim('chest-owned', cfg);
+    mut(sim).wave = 5;
+    mut(sim).relics = cfg.relics.defs.filter((d) => d.rarity === 'epic').map((d) => d.id);
+    const b = block(sim, 'boss', 2, 4, 1, 3);
+    b.bossId = 'regen';
+    setup(sim, [b], stones(1), { rowsLeft: 0, launchX: 3.5 });
+    const opts = ofType(shoot(sim, UP), 'reward:offered')[0]!.options;
+    expect(opts).toHaveLength(3);
+    for (const o of opts) expect(o.kind === 'relic' && rarity(cfg, o.relicId)).toBe('rare');
   });
 
   it('boss sans relique rare disponible : reliques communes, puis pièces/soin, jamais de balle', () => {

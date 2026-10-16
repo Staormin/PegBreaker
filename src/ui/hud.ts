@@ -2,14 +2,15 @@
 // bouton Rappel, indice d'onboarding. `update` est appelé chaque frame mais ne touche le DOM
 // que si une valeur affichée a changé (valeurs mises en cache).
 // Lot 1 : record « Record V<n> » dans la pastille de vague (F5), bande sous la barre du haut
-// (badges Quotidien / Défi + bandeau contrat, F2/F6), jauge « rafale ⟷ éventail » sous le
-// point de lancement pendant la visée (F1).
+// (badges Quotidien / Défi + bandeau contrat, F2/F6), sélecteur d'ouverture à 3 positions à côté
+// du point de lancement, visible pendant toute la phase 'aiming' (F1-02).
 import type { EventBus } from '../core/events';
 import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, VolleyBall } from '../core/types';
 import { createContractBanner } from './contract';
 import { modChip, type ModView } from './dailyInfo';
 import { coinIcon, el, fmt } from './dom';
 import { ballColor, ballName } from './options';
+import { SPREAD_ICONS, SPREAD_LABELS, type SpreadControl, type SpreadLevel } from './spread';
 
 const MAX_HEARTS = 10;
 /** délai d'affichage des dégâts du tir après volley:end (ms) */
@@ -37,8 +38,10 @@ export interface HudDeps {
   bestWave?: () => number | null;
   /** appelé une seule fois par run quand la vague dépasse le record */
   onNewRecord?: (wave: number) => void;
-  /** la jauge d'éventail n'apparaît que sur l'écran de jeu */
+  /** le sélecteur d'ouverture n'apparaît que sur l'écran de jeu */
   isGameScreen?: () => boolean;
+  /** ouverture choisie (sélecteur 3 positions) ; absent = pas de sélecteur */
+  spread?: SpreadControl | null;
 }
 
 export interface Hud {
@@ -46,6 +49,8 @@ export interface Hud {
   update(state: Readonly<RunState>): void;
   /** gros pop du compteur + icône « ↻ ×combo » pendant 2 s (indice du premier palier) */
   comboHint(combo: number): void;
+  /** indice one-shot : le sélecteur d'ouverture se met en évidence une fois (dès qu'il est visible) */
+  spreadHint(): void;
   /** recale le cadre du HUD sur le rectangle du canvas */
   layout(): void;
   reset(): void;
@@ -151,15 +156,34 @@ export function createHud(deps: HudDeps): Hud {
   const contract = createContractBanner(config, bus, () => layout());
   band.append(contract.el);
 
-  // --- jauge d'éventail (visée seulement) --------------------------------
-  const spreadBox = el('div', 'hud-spread');
-  spreadBox.setAttribute('role', 'img');
-  const spreadTrack = el('span', 'hs-track');
-  const spreadFill = el('span', 'hs-fill');
-  const spreadKnob = el('span', 'hs-knob');
-  spreadTrack.append(spreadFill, spreadKnob);
-  spreadTrack.setAttribute('aria-hidden', 'true');
-  spreadBox.append(el('span', 'hs-label hs-min', 'rafale'), spreadTrack, el('span', 'hs-label hs-max', 'éventail'));
+  // --- sélecteur d'ouverture (phase 'aiming') : un tap le fait tourner ----
+  const spreadBox = el('button', 'hud-spread');
+  spreadBox.type = 'button';
+  spreadBox.dataset.action = 'spread-cycle';
+  const spreadIco = el('span', 'hs-ico');
+  spreadIco.setAttribute('aria-hidden', 'true');
+  const spreadLabel = el('span', 'hs-label');
+  const spreadDots = el('span', 'hs-dots');
+  spreadDots.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 3; i++) spreadDots.append(el('span', 'hs-dot'));
+  spreadBox.append(spreadIco, spreadLabel, spreadDots);
+  spreadBox.addEventListener('pointerdown', (e) => e.stopPropagation());
+  spreadBox.addEventListener('click', () => {
+    if (!deps.spread) return;
+    bus.emit({ type: 'ui:click' });
+    deps.spread.cycle(1);
+  });
+  function renderSpread(level: SpreadLevel): void {
+    spreadBox.dataset.level = String(level);
+    spreadIco.textContent = SPREAD_ICONS[level];
+    spreadLabel.textContent = SPREAD_LABELS[level];
+    for (let i = 0; i < spreadDots.children.length; i++) spreadDots.children[i]?.classList.toggle('on', i === level);
+    spreadBox.setAttribute('aria-label', `Ouverture de la volée : ${SPREAD_LABELS[level]} (toucher pour changer)`);
+  }
+  renderSpread(deps.spread?.level ?? 0);
+  deps.spread?.onChange(renderSpread);
+  let spreadHintPending = false;
+  let spreadHintTimer = 0;
 
   frame.append(top, band, shot, comboHint, spreadBox, volleyBox, recall, gear);
   root.append(frame);
@@ -182,7 +206,6 @@ export function createHud(deps: HudDeps): Hud {
   let shotLingering = false;
   let cRecord = '';
   let recordToastDone = false;
-  let cSpread = -1;
   let spreadVisible = false;
   let cLaunchX = NaN;
   let cLaunchY = NaN;
@@ -436,32 +459,38 @@ export function createHud(deps: HudDeps): Hud {
     }
   }
 
-  /** jauge rafale ⟷ éventail sous le point de lancement, pendant la visée seulement */
+  /** sélecteur à côté du point de lancement, visible pendant toute la phase 'aiming' */
   function updateSpread(s: Readonly<RunState>): void {
-    const want = s.phase === 'aiming' && s.aimDir !== null && (deps.isGameScreen?.() ?? true);
+    const want = !!deps.spread && s.phase === 'aiming' && (deps.isGameScreen?.() ?? true);
     if (want !== spreadVisible) {
       spreadVisible = want;
       setVisible(spreadBox, want);
+      if (want) cLaunchX = NaN;
     }
     if (!want) return;
+    if (spreadHintPending) {
+      spreadHintPending = false;
+      spreadBox.classList.add('hint-pulse');
+      clearTimeout(spreadHintTimer);
+      spreadHintTimer = window.setTimeout(() => spreadBox.classList.remove('hint-pulse'), 2400);
+    }
     const lp = s.launchPos;
     if (lp.x !== cLaunchX || lp.y !== cLaunchY) {
       cLaunchX = lp.x;
       cLaunchY = lp.y;
       const p = deps.renderer?.boardToScreen(lp);
       if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-        const half = spreadBox.offsetWidth / 2 || 84;
-        const x = Math.max(half + 4, Math.min((frameW || half * 2 + 8) - half - 4, p.x));
+        // à droite du lanceur (à gauche s'il est trop près du bord droit), centré sur sa hauteur
+        const w = spreadBox.offsetWidth || 96;
+        const h = spreadBox.offsetHeight || 48;
+        const gap = 22;
+        const fw = frameW || w * 2;
+        let x = p.x + gap;
+        if (x + w > fw - 4) x = p.x - gap - w;
+        x = Math.max(4, Math.min(fw - w - 4, x));
         spreadBox.style.left = `${x}px`;
-        spreadBox.style.top = `${p.y + 10}px`;
+        spreadBox.style.top = `${p.y - h / 2}px`;
       }
-    }
-    const v = Number.isFinite(s.aimSpread) ? Math.max(0, Math.min(1, s.aimSpread)) : 0;
-    if (v !== cSpread) {
-      cSpread = v;
-      spreadBox.style.setProperty('--sp', String(v));
-      spreadBox.dataset.mode = v === 0 ? 'burst' : 'fan';
-      spreadBox.setAttribute('aria-label', `Ouverture de la volée : ${Math.round(v * 100)} %`);
     }
   }
 
@@ -486,5 +515,9 @@ export function createHud(deps: HudDeps): Hud {
     contract.reset();
   }
 
-  return { el: frame, update, layout, reset, comboHint: showComboHint };
+  function spreadHint(): void {
+    spreadHintPending = true;
+  }
+
+  return { el: frame, update, layout, reset, comboHint: showComboHint, spreadHint };
 }

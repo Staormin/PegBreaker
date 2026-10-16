@@ -2,17 +2,29 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import { contractText } from './contract';
-import { spreadFromDrag, SPREAD_DEAD_PX, SPREAD_RANGE_PX } from './input';
+import { createSpreadControl, cycleLevel, SPREAD_VALUES } from './spread';
 import { readChallenge } from './share';
 
-describe('éventail : longueur du geste → spread', () => {
-  it('0 sous 150 px, 1 au-delà de 370 px, linéaire entre', () => {
-    expect(spreadFromDrag(0)).toBe(0);
-    expect(spreadFromDrag(120)).toBe(0);
-    expect(spreadFromDrag(SPREAD_DEAD_PX)).toBe(0);
-    expect(spreadFromDrag(SPREAD_DEAD_PX + SPREAD_RANGE_PX / 2)).toBeCloseTo(0.5);
-    expect(spreadFromDrag(SPREAD_DEAD_PX + SPREAD_RANGE_PX)).toBe(1);
-    expect(spreadFromDrag(1000)).toBe(1);
+describe('sélecteur d’ouverture (3 positions)', () => {
+  it('valeurs 0 / 0,5 / 1 et cycle en boucle dans les deux sens', () => {
+    expect(SPREAD_VALUES).toEqual([0, 0.5, 1]);
+    expect(cycleLevel(0)).toBe(1);
+    expect(cycleLevel(2)).toBe(0);
+    expect(cycleLevel(0, -1)).toBe(2);
+  });
+  it('persistant entre les tirs, remis à 0 par reset, notifie les changements', () => {
+    const c = createSpreadControl();
+    const seen: number[] = [];
+    c.onChange((l) => seen.push(l));
+    expect(c.value).toBe(0);
+    c.cycle();
+    c.cycle();
+    expect(c.level).toBe(2);
+    expect(c.value).toBe(1);
+    c.reset();
+    expect(c.value).toBe(0);
+    c.reset(); // déjà à 0 : pas de notification
+    expect(seen).toEqual([1, 2, 0]);
   });
 });
 

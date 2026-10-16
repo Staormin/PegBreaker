@@ -60,8 +60,15 @@ function hasOption(list: readonly RewardOption[], o: RewardOption): boolean {
   return false;
 }
 
-/** Relique tirée parmi les débloquées, non possédées, absentes de `exclude` (option : rares et épiques seulement). */
-function pickRelic(ctx: Ctx, exclude: readonly RewardOption[], rareOrBetter = false): RewardOption | null {
+type RarityFilter = 'any' | 'rareOrBetter' | 'epic';
+
+/** Relique tirée parmi les débloquées, non possédées, absentes de `exclude`, filtrée par rareté. */
+function pickRelic(ctx: Ctx, exclude: readonly RewardOption[], filter: RarityFilter = 'any'): RewardOption | null {
+  const rarityOk = (id: string): boolean => {
+    if (filter === 'any') return true;
+    const r = relicDef(ctx, id)?.rarity;
+    return filter === 'epic' ? r === 'epic' : r !== undefined && r !== 'common';
+  };
   const rw = ctx.cfg.relics.rarityWeights;
   let total = 0;
   // une relique d'élément n'est proposée que si la volée contient cet élément
@@ -71,7 +78,7 @@ function pickRelic(ctx: Ctx, exclude: readonly RewardOption[], rareOrBetter = fa
     return !el || ctx.s.volley.some((v) => v.element === el);
   };
   const ok = (id: string): boolean =>
-    (!rareOrBetter || relicDef(ctx, id)?.rarity !== 'common') &&
+    rarityOk(id) &&
     ctx.meta.unlockedRelics.includes(id) &&
     elementOk(id) &&
     !ctx.s.relics.includes(id) &&
@@ -142,14 +149,17 @@ export function makeOptions(ctx: Ctx, count: number, allowCoins: boolean, fuse: 
 }
 
 /**
- * Offre après un boss tué : `count` reliques rares/épiques distinctes si possible, sinon reliques
- * communes, sinon pièces puis soin. Jamais de balle ni de fusion.
+ * Coffre de boss : `count` reliques distinctes, dont au moins une épique si une épique débloquée n'est pas
+ * possédée (placée à une position tirée au sort, les cartes étant face cachée) ; les autres rares/épiques
+ * si possible, sinon communes, sinon pièces puis soin. Jamais de balle ni de fusion.
  */
 export function makeBossOptions(ctx: Ctx, count: number): RewardOption[] {
   const out: RewardOption[] = [];
   const eco = ctx.cfg.economy;
-  for (let i = 0; i < count; i++) {
-    const o = pickRelic(ctx, out, true) ?? pickRelic(ctx, out, false);
+  const epic = count > 0 ? pickRelic(ctx, out, 'epic') : null;
+  if (epic) out.push(epic);
+  for (let i = out.length; i < count; i++) {
+    const o = pickRelic(ctx, out, 'rareOrBetter') ?? pickRelic(ctx, out, 'any');
     if (o) {
       out.push(o);
       continue;
@@ -158,6 +168,11 @@ export function makeBossOptions(ctx: Ctx, count: number): RewardOption[] {
     const heal: RewardOption = { kind: 'heal', amount: eco.shop.healAmount };
     if (!hasOption(out, coins)) out.push(coins);
     else if (!hasOption(out, heal)) out.push(heal);
+  }
+  if (epic && out.length > 1) {
+    const j = ctx.rng.int(0, out.length - 1);
+    out[0] = out[j] as RewardOption;
+    out[j] = epic;
   }
   return out;
 }
