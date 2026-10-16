@@ -1,23 +1,34 @@
 // render/draw.ts — dessin d'une frame. AUCUNE allocation ici : pas de new / {} / [] / closures /
 // map / filter / template strings. Tout l'état mutable est pré-alloué dans createFrameDrawer.
+// Le fond (dégradé, panneau du plateau, lumière de puissance) est en CSS : voir backdrop.ts.
 import type { Block, RunState } from '../core/types';
-import { easeOutBack } from '../core/math';
+import { easeOutBack, easeOutCubic } from '../core/math';
 import type { Layout } from './layout';
 import type { Sprites } from './sprites';
-import { BALL_EXTENT, DROP_EXTENT, HALO_EXTENT, PEG_RADIUS } from './sprites';
+import { BALL_EXTENT, ballVisualRadius, damageLevel, DMG_LEVELS, DROP_EXTENT, HALO_EXTENT, PEG_RADIUS } from './sprites';
 import type { Particles } from './particles';
+import { P_CRYSTAL, P_SPARK } from './particles';
 import type { DamageNumbers } from './damageNumbers';
 import { formatNumber } from './damageNumbers';
-import type { Vfx } from './vfx';
-import { ELEMENT_INDEX, KIND_INDEX, PALETTE } from './palette';
+import type { BlockFx, Vfx } from './vfx';
+import type { Fusions } from './fusion';
+import { POWER_LEVELS, powerTarget } from './backdrop';
+import { ELEMENT_INDEX, KIND_INDEX, PALETTE, type Colors } from './palette';
 
-const TRAIL_LEN = 6;
+const TRAIL_CAP = 14;
 const MAX_TRAILS = 96;
-const DUST = 20;
+const DUST = 24;
+const SPEED_LINES = 22;
 const AIM_REFLECT_LEN = 1.5;
 const DASH: number[] = [0.14, 0.11];
 const DASH_FINE: number[] = [0.07, 0.09];
 const NO_DASH: number[] = [];
+/** au-delà, les traînées sont raccourcies (budget perf) */
+const MANY_BALLS = 20;
+/** longueur de traînée de base par élément (stone, fire, lightning, ice, ghost, lead, split) */
+const TRAIL_BASE: readonly number[] = [6, 7, 6, 6, 12, 3, 6];
+const EL_FIRE = ELEMENT_INDEX.fire, EL_LIGHTNING = ELEMENT_INDEX.lightning, EL_ICE = ELEMENT_INDEX.ice;
+const EL_GHOST = ELEMENT_INDEX.ghost, EL_LEAD = ELEMENT_INDEX.lead;
 
 interface Trail {
   active: boolean;
@@ -27,6 +38,11 @@ interface Trail {
   ys: Float32Array;
   head: number;
   count: number;
+  /** minuterie d'émission de particules d'ambiance (braises, étincelles, cristaux) */
+  emitT: number;
+  /** mode « beaucoup de balles » : élément et nombre de points à tracer cette frame */
+  el: number;
+  n: number;
 }
 
 /** Résultat d'un raycast (objet unique réutilisé). */
@@ -46,22 +62,32 @@ export interface DrawDeps {
   particles: Particles;
   numbers: DamageNumbers;
   vfx: Vfx;
+  fusions: Fusions;
+  colors: Colors;
   ballRadius: number;
+  /** appelé quand le niveau de « lumière » (0..POWER_LEVELS-1) change */
+  onPowerLevel(level: number): void;
 }
 
 export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   const { ctx, layout: l, particles, numbers, vfx } = d;
   const R = d.ballRadius;
+  const elColors = d.colors.element;
 
   const trails: Trail[] = [];
   for (let i = 0; i < MAX_TRAILS; i++) {
-    trails.push({ active: false, id: -1, seen: 0, xs: new Float32Array(TRAIL_LEN), ys: new Float32Array(TRAIL_LEN), head: 0, count: 0 });
+    trails.push({ active: false, id: -1, seen: 0, xs: new Float32Array(TRAIL_CAP), ys: new Float32Array(TRAIL_CAP), head: 0, count: 0, emitT: 0, el: 0, n: 0 });
   }
   const dust = new Float32Array(DUST * 3); // x, y, vitesse
   for (let i = 0; i < DUST; i++) {
     dust[i * 3] = Math.random() * l.cols;
     dust[i * 3 + 1] = Math.random() * l.rows;
     dust[i * 3 + 2] = 0.05 + Math.random() * 0.12;
+  }
+  const speedLines = new Float32Array(SPEED_LINES * 2); // angle, phase
+  for (let i = 0; i < SPEED_LINES; i++) {
+    speedLines[i * 2] = (i / SPEED_LINES) * Math.PI * 2 + Math.random() * 0.2;
+    speedLines[i * 2 + 1] = Math.random();
   }
   const hit: RayHit = { t: 0, nx: 0, ny: 0 };
   /** chaînes « ×N » mises en cache (allocation uniquement à la 1re apparition de N) */
@@ -71,6 +97,24 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   let bossFont = '';
   let smallFont = '';
   let time = 0;
+  let power = 0;
+  let powerLevel = -1;
+  let speedFx = 0;
+  /** transform plateau → pixels physiques de la frame courante (shake inclus) */
+  let K = 1, OX = 0, OY = 0;
+
+  /**
+   * Blit d'un sprite en pixels physiques ENTIERS, sans mise à l'échelle quand s = 1.
+   * Mesuré à CPU 4× (raster logiciel) : 75 blits fractionnaires mis à l'échelle = 25,6 ms,
+   * 75 blits entiers = 5,8 ms. Le contexte doit être en transform identité.
+   */
+  function blit(img: CanvasImageSource & { width: number; height: number }, bx: number, by: number, s: number): void {
+    const px = Math.round(OX + bx * K), py = Math.round(OY + by * K);
+    if (s === 1) ctx.drawImage(img, px, py);
+    else ctx.drawImage(img, px, py, Math.round(img.width * s), Math.round(img.height * s));
+  }
+  function boardTransform(): void { ctx.setTransform(K, 0, 0, K, OX, OY); }
+  function pixelTransform(): void { ctx.setTransform(1, 0, 0, 1, 0, 0); }
 
   function rebuildFonts(): void {
     const px = l.scale * l.dpr;
@@ -79,6 +123,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     hpFontSmall = `800 ${Math.max(7, Math.round(px * 0.3))}px ${fam}`;
     bossFont = `800 ${Math.max(10, Math.round(px * 0.5))}px ${fam}`;
     smallFont = `700 ${Math.max(8, Math.round(px * 0.28))}px ${fam}`;
+    powerLevel = -1; // ré-applique le fond CSS
+    vfx.invalidateLabels();
   }
 
   function countLabel(n: number): string {
@@ -182,49 +228,70 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   }
 
   // ------------------------------------------------------------------
-  // Blocs
+  // Blocs : squash, respiration à PV bas, fissures, assombrissement, flash, PV qui « pop »
   // ------------------------------------------------------------------
   function drawBlocks(state: Readonly<RunState>, frame: number): void {
     const sp = d.getSprites();
     const blocks = state.blocks;
     const advancing = state.phase === 'advancing';
+    // la sim incrémente row à la FIN de 'advancing' : on interpole row → row + 1
     const shift = advancing ? easeOutBack(state.advanceProgress < 0 ? 0 : state.advanceProgress > 1 ? 1 : state.advanceProgress) : 0;
+    const calm = vfx.reduceMotion;
+    pixelTransform();
 
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]!;
       const fx = vfx.blockFx(b.id);
       fx.seenFrame = frame;
-      if (fx.hp !== b.hp) { fx.hp = b.hp; fx.label = formatNumber(Math.ceil(b.hp - 1e-6)); }
+      if (fx.hp !== b.hp) {
+        if (!Number.isNaN(fx.hp)) fx.popT = 0;
+        fx.hp = b.hp;
+        fx.label = formatNumber(b.hp);
+        fx.labelDirty = true;
+      }
+      const lowNow = b.maxHp > 0 && b.hp < b.maxHp * 0.3;
+      if (lowNow !== fx.labelLow) { fx.labelLow = lowNow; fx.labelDirty = true; }
+      if (fx.labelDirty && b.kind !== 'peg') renderLabel(fx, b.kind === 'boss', b.width);
       const kind = KIND_INDEX[b.kind];
       // un bloc gelé ne descend pas : pas d'interpolation
       const y = b.row + (b.frozen ? 0 : shift);
       fx.x = b.col; fx.y = y; fx.w = b.width; fx.kind = kind;
 
       const row = sp.block[kind];
-      const img = (row && (row[b.width] ?? row[1])) ?? undefined;
+      const img = row ? (row[b.width] ?? row[1]) : undefined;
       if (!img) continue;
+      const isPeg = b.kind === 'peg';
+      const ratio = !isPeg && b.maxHp > 0 ? (b.hp > b.maxHp ? 1 : b.hp / b.maxHp) : 1;
+      const lv = isPeg ? 0 : damageLevel(ratio);
+      const low = lv === DMG_LEVELS - 1;
       const s = vfx.squashScale(fx);
-      const w = b.width * s, h = s;
-      const x0 = b.col + (b.width - w) * 0.5, y0 = y + (1 - h) * 0.5;
-      ctx.drawImage(img, x0, y0, w, h);
-      if (fx.squashT < 0.07) {
-        // éclair blanc à l'impact : ré-dessin additif du sprite
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.55 * (1 - fx.squashT / 0.07);
-        ctx.drawImage(img, x0, y0, w, h);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
+      const x0 = b.col + b.width * (1 - s) * 0.5, y0 = y + (1 - s) * 0.5;
+      // sprite pré-composé (assombri / fissuré) : un seul blit
+      const dm = lv > 0 ? sp.damaged[kind] : undefined;
+      blit((dm ? dm[b.width * DMG_LEVELS + lv] : undefined) ?? img, x0, y0, s);
+      // PV bas : le bloc « respire » (pulsation lumineuse)
+      const breath = low && !calm ? 0.16 * (0.5 + 0.5 * Math.sin(time * 9 + b.id * 1.3)) : 0;
+      const flash = fx.squashT < 0.08 ? 0.7 * (1 - fx.squashT / 0.08) : 0;
+      if (flash > 0 || breath > 0.01) {
+        const wh = sp.white[kind];
+        const wimg = wh ? (wh[b.width] ?? wh[1]) : undefined;
+        if (wimg) {
+          ctx.globalAlpha = flash > breath ? flash : breath;
+          blit(wimg, x0, y0, s);
+          ctx.globalAlpha = 1;
+        }
       }
       if (b.frozen) {
         const fz = sp.frozen[b.width] ?? sp.frozen[1];
         if (fz) {
           ctx.globalAlpha = 0.9;
-          ctx.drawImage(fz, x0, y0, w, h);
+          blit(fz, x0, y0, s);
           ctx.globalAlpha = 1;
         }
       }
-      if (b.kind === 'boss') drawBossEyes(state, b.col + b.width * 0.5, y + 0.3, b.width);
+      if (b.kind === 'boss') { boardTransform(); drawBossEyes(state, b.col + b.width * 0.5, y + 0.3, b.width); pixelTransform(); }
     }
+    boardTransform();
   }
 
   function drawBossEyes(state: Readonly<RunState>, cx: number, cy: number, width: number): void {
@@ -253,36 +320,51 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     }
   }
 
+  /**
+   * Pré-rend le libellé de PV d'un bloc dans un petit canvas propre au BlockFx (créé une fois par
+   * objet du pool, puis réutilisé). Appelé seulement quand hp change (ou au resize) : strokeText
+   * à 60 px coûtait ~1 ms par bloc et par frame en raster logiciel.
+   */
+  function renderLabel(fx: BlockFx, boss: boolean, width: number): void {
+    fx.labelDirty = false;
+    const k = l.scale * l.dpr;
+    const w = Math.ceil(width * k + 8 * l.dpr), h = Math.ceil(k * 0.8);
+    let c = fx.labelCanvas;
+    if (!c) { c = document.createElement('canvas'); fx.labelCanvas = c; }
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const g = c.getContext('2d');
+    if (!g) return;
+    g.clearRect(0, 0, w, h);
+    g.font = boss ? bossFont : fx.label.length >= 4 ? hpFontSmall : hpFont;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.strokeStyle = PALETTE.outline;
+    g.lineWidth = 3 * l.dpr;
+    g.fillStyle = fx.labelLow ? '#ffd6d6' : '#ffffff';
+    g.strokeText(fx.label, w / 2, h / 2);
+    g.fillText(fx.label, w / 2, h / 2);
+  }
+
   function drawHpLabels(state: Readonly<RunState>): void {
     const blocks = state.blocks;
     const k = l.scale * l.dpr;
     const ox = (l.offX + vfx.shakeX) * l.dpr, oy = (l.offY + vfx.shakeY) * l.dpr;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = PALETTE.outline;
-    ctx.lineWidth = 3 * l.dpr;
-    ctx.fillStyle = '#ffffff';
-    let font = '';
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]!;
       if (b.kind === 'peg') continue;
       const fx = vfx.peekBlockFx(b.id);
-      if (!fx) continue;
+      const c = fx ? fx.labelCanvas : null;
+      if (!fx || !c) continue;
       const boss = b.kind === 'boss';
-      // libellés longs (≥ 4 caractères) en police réduite pour tenir dans la cellule
-      const f = boss ? bossFont : fx.label.length >= 4 ? hpFontSmall : hpFont;
-      if (f !== font) { ctx.font = f; font = f; }
-      const px = ox + (fx.x + fx.w * 0.5) * k;
-      const py = oy + (fx.y + (boss ? 0.66 : 0.53)) * k;
-      ctx.strokeText(fx.label, px, py);
-      ctx.fillText(fx.label, px, py);
+      const pop = fx.popT < 0.16 ? 1 + 0.38 * (1 - fx.popT / 0.16) : 1;
+      const w = c.width * pop, h = c.height * pop;
+      const cx = ox + (fx.x + fx.w * 0.5) * k, cy = oy + (fx.y + (boss ? 0.66 : 0.53)) * k;
+      if (pop === 1) ctx.drawImage(c, Math.round(cx - w * 0.5), Math.round(cy - h * 0.5));
+      else ctx.drawImage(c, cx - w * 0.5, cy - h * 0.5, w, h);
     }
   }
 
-  // ------------------------------------------------------------------
-  // Drops, balles, traînées
-  // ------------------------------------------------------------------
   function drawDrops(state: Readonly<RunState>): void {
     const sp = d.getSprites();
     const drops = state.drops;
@@ -296,7 +378,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (dr.kind === 'ball') {
         const img = sp.ball[ELEMENT_INDEX[dr.element ?? 'stone'] * 3];
         if (img) {
-          const e = R * BALL_EXTENT * 1.35;
+          const e = (sp.ballExt[ELEMENT_INDEX[dr.element ?? 'stone'] * 3] ?? R) * 1.35;
           ctx.drawImage(img, x - e, y - e, e * 2, e * 2);
         }
         ctx.strokeStyle = PALETTE.text;
@@ -319,53 +401,151 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (!t.active && !free) free = t;
     }
     const t = free ?? trails[0]!;
-    t.active = true; t.id = id; t.head = 0; t.count = 1; t.seen = frame;
+    t.active = true; t.id = id; t.head = 0; t.count = 1; t.seen = frame; t.emitT = Math.random() * 0.05;
     t.xs[0] = x; t.ys[0] = y;
     return t;
   }
 
-  function drawBalls(state: Readonly<RunState>, frame: number): void {
+  /** Traînée effilée : une passe large et pâle, une passe cœur plus vive (2 strokes par balle). */
+  function strokeTrail(tr: Trail, n: number, width: number, alpha: number): void {
+    if (n < 2) return;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(tr.xs[tr.head]!, tr.ys[tr.head]!);
+    for (let k = 1; k < n; k++) {
+      const idx = (tr.head - k + TRAIL_CAP) % TRAIL_CAP;
+      ctx.lineTo(tr.xs[idx]!, tr.ys[idx]!);
+    }
+    ctx.stroke();
+  }
+
+  function drawBalls(state: Readonly<RunState>, frame: number, dt: number): void {
     const sp = d.getSprites();
     const balls = state.balls;
-    const e = R * BALL_EXTENT;
-    // 1) échantillonne et dessine les traînées
+    let alive = 0;
+    for (let i = 0; i < balls.length; i++) if (balls[i]!.alive) alive++;
+    const many = alive > MANY_BALLS;
+    const rs = state.recallSpeed > 1 ? state.recallSpeed : 1;
+    const boost = rs > 1 ? Math.round((rs - 1) * 2.5) : 0;
+    const ambient = particles.count < 380;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // 1) échantillonne + traînées (+ particules d'ambiance par élément)
     for (let i = 0; i < balls.length; i++) {
       const b = balls[i]!;
       if (!b.alive) continue;
       const tr = trailFor(b.id, frame, b.pos.x, b.pos.y);
       if (tr.seen !== frame) {
-        tr.head = (tr.head + 1) % TRAIL_LEN;
+        tr.head = (tr.head + 1) % TRAIL_CAP;
         tr.xs[tr.head] = b.pos.x; tr.ys[tr.head] = b.pos.y;
-        if (tr.count < TRAIL_LEN) tr.count++;
+        if (tr.count < TRAIL_CAP) tr.count++;
         tr.seen = frame;
       }
-      const img = sp.ball[ELEMENT_INDEX[b.element] * 3];
-      if (!img) continue;
-      for (let k = 1; k < tr.count; k++) {
-        const idx = (tr.head - k + TRAIL_LEN) % TRAIL_LEN;
-        const f = 1 - k / TRAIL_LEN;
-        const s = e * (0.45 + 0.5 * f);
-        ctx.globalAlpha = 0.35 * f;
-        ctx.drawImage(img, tr.xs[idx]! - s, tr.ys[idx]! - s, s * 2, s * 2);
+      const e = ELEMENT_INDEX[b.element];
+      const vr = ballVisualRadius(b.radius, e, b.tier);
+      let len = (TRAIL_BASE[e] ?? 6) + (e === EL_LEAD ? (boost > 2 ? 2 : boost) : boost);
+      if (many) len = e === EL_GHOST ? 6 : len > 4 ? 4 : len;
+      if (len > TRAIL_CAP) len = TRAIL_CAP;
+      const n = tr.count < len ? tr.count : len;
+      const color = elColors[e] ?? PALETTE.stone;
+      if (!many) ctx.strokeStyle = color;
+      if (e === EL_FIRE && !many) ctx.globalCompositeOperation = 'lighter';
+      const ghost = e === EL_GHOST;
+      tr.el = e; tr.n = n;
+      if (many) {
+        // tracé groupé par élément plus bas (≤ 7 strokes au lieu de 30)
+      } else {
+        strokeTrail(tr, n, vr * (ghost ? 1.7 : 1.5), ghost ? 0.16 : e === EL_LEAD ? 0.3 : 0.2);
+        strokeTrail(tr, (n + 1) >> 1, vr * 0.7, ghost ? 0.3 : 0.45);
+      }
+      if (e === EL_FIRE && !many) ctx.globalCompositeOperation = 'source-over';
+
+      // particules d'ambiance
+      tr.emitT -= dt;
+      if (tr.emitT <= 0 && ambient) {
+        const slow = many ? 2 : 1;
+        if (e === EL_FIRE) {
+          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? color : PALETTE.accent, P_SPARK, 0.3, 1.0, -Math.PI / 2, 0.7, 0.18, 0.32, vr * 0.35, vr * 0.6, -2.5);
+          tr.emitT = 0.035 * slow;
+        } else if (e === EL_LIGHTNING) {
+          particles.burst(b.pos.x, b.pos.y, 1, '#ffffff', P_SPARK, 2.5, 4.5, 0, Math.PI, 0.05, 0.1, vr * 0.25, vr * 0.4, 0);
+          tr.emitT = 0.07 * slow;
+        } else if (e === EL_ICE) {
+          particles.burst(b.pos.x, b.pos.y, 1, color, P_CRYSTAL, 0.1, 0.4, 0, Math.PI, 0.25, 0.4, vr * 0.35, vr * 0.5, 0.5);
+          tr.emitT = 0.11 * slow;
+        } else {
+          tr.emitT = 1;
+        }
+      }
+    }
+    if (many) {
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'bevel';
+      ctx.lineWidth = R * 1.2;
+      for (let e = 0; e < TRAIL_BASE.length; e++) {
+        let any = false;
+        for (let i = 0; i < MAX_TRAILS; i++) {
+          const tr = trails[i]!;
+          if (!tr.active || tr.seen !== frame || tr.el !== e || tr.n < 2) continue;
+          if (!any) { ctx.beginPath(); any = true; }
+          ctx.moveTo(tr.xs[tr.head]!, tr.ys[tr.head]!);
+          for (let k = 1; k < tr.n; k++) {
+            const idx = (tr.head - k + TRAIL_CAP) % TRAIL_CAP;
+            ctx.lineTo(tr.xs[idx]!, tr.ys[idx]!);
+          }
+        }
+        if (!any) continue;
+        ctx.strokeStyle = elColors[e] ?? PALETTE.stone;
+        ctx.globalAlpha = e === EL_GHOST ? 0.2 : 0.32;
+        ctx.stroke();
       }
     }
     ctx.globalAlpha = 1;
-    // 2) balles
+    // 2) balles (blits entiers)
+    pixelTransform();
     for (let i = 0; i < balls.length; i++) {
       const b = balls[i]!;
       if (!b.alive) continue;
-      const img = sp.ball[ELEMENT_INDEX[b.element] * 3 + (b.tier - 1)];
+      const e = ELEMENT_INDEX[b.element];
+      const img = sp.ball[e * 3 + (b.tier - 1)];
       if (!img) continue;
-      const s = e * (b.radius / R);
-      if (b.element === 'ghost') ctx.globalAlpha = 0.7;
-      ctx.drawImage(img, b.pos.x - s, b.pos.y - s, s * 2, s * 2);
+      const ext = (sp.ballExt[e * 3 + (b.tier - 1)] ?? R * BALL_EXTENT) * (b.radius / R);
+      if (e === EL_GHOST) ctx.globalAlpha = 0.6;
+      blit(img, b.pos.x - ext, b.pos.y - ext, 1);
       ctx.globalAlpha = 1;
     }
+    boardTransform();
     // 3) libère les traînées des balles disparues
     for (let i = 0; i < MAX_TRAILS; i++) {
       const t = trails[i]!;
       if (t.active && t.seen !== frame) t.active = false;
     }
+  }
+
+  /** Lignes de vitesse radiales très discrètes quand la volée accélère (recallSpeed > 1). */
+  function drawSpeedLines(state: Readonly<RunState>, dt: number): void {
+    const target = state.phase === 'firing' && state.recallSpeed > 1 && !vfx.reduceMotion ? (state.recallSpeed - 1) / 2 : 0;
+    speedFx += ((target > 1 ? 1 : target) - speedFx) * (dt * 4 > 1 ? 1 : dt * 4);
+    if (speedFx < 0.02) return;
+    const cx = l.cols / 2, cy = l.rows * 0.55;
+    const maxR = 6.5;
+    ctx.strokeStyle = PALETTE.text;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.025;
+    ctx.globalAlpha = 0.09 * speedFx;
+    ctx.beginPath();
+    for (let i = 0; i < SPEED_LINES; i++) {
+      const a = speedLines[i * 2]!;
+      const ph = (speedLines[i * 2 + 1]! + time * (0.9 + 0.6 * speedFx)) % 1;
+      const r0 = 1.2 + ph * maxR, r1 = r0 + 0.5 + 0.9 * speedFx;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      ctx.moveTo(cx + ca * r0, cy + sa * r0);
+      ctx.lineTo(cx + ca * r1, cy + sa * r1);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   function drawLaunch(state: Readonly<RunState>): void {
@@ -381,11 +561,13 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     ctx.beginPath(); ctx.arc(x, y, R * (1.9 + 0.5 * pulse), 0, Math.PI * 2); ctx.stroke();
     if (state.phase === 'aiming') {
       const v = state.volley[0];
-      const img = sp.ball[ELEMENT_INDEX[v ? v.element : 'stone'] * 3 + (v ? v.tier - 1 : 0)];
+      const e = ELEMENT_INDEX[v ? v.element : 'stone'];
+      const tier = v ? v.tier : 1;
+      const img = sp.ball[e * 3 + (tier - 1)];
       if (img) {
-        const e = R * BALL_EXTENT;
+        const ext = sp.ballExt[e * 3 + (tier - 1)] ?? R * BALL_EXTENT;
         ctx.globalAlpha = 1;
-        ctx.drawImage(img, x - e, y - e, e * 2, e * 2);
+        ctx.drawImage(img, x - ext, y - ext, ext * 2, ext * 2);
       }
     }
     ctx.globalAlpha = 1;
@@ -413,17 +595,44 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   // ------------------------------------------------------------------
   // Plateau
   // ------------------------------------------------------------------
-  function drawDust(dt: number): void {
+  function drawGrid(state: Readonly<RunState>): void {
+    // pendant l'avancée, la grille glisse d'une cellule vers le bas (période 1 → sans couture)
+    const p = state.advanceProgress < 0 ? 0 : state.advanceProgress > 1 ? 1 : state.advanceProgress;
+    const gy = state.phase === 'advancing' ? easeOutCubic(p) : 0;
+    ctx.strokeStyle = 'rgba(232,236,245,0.06)';
+    ctx.lineWidth = 0.022;
+    ctx.beginPath();
+    for (let i = 1; i < l.cols; i++) { ctx.moveTo(i, 0); ctx.lineTo(i, l.rows); }
+    for (let j = 0; j < l.rows; j++) { const y = j + gy; ctx.moveTo(0, y); ctx.lineTo(l.cols, y); }
+    ctx.stroke();
+    // rangée du joueur : teinte danger très discrète
+    ctx.fillStyle = 'rgba(255,94,94,0.05)';
+    ctx.fillRect(0, l.rows - 1, l.cols, 1);
+  }
+
+  function drawDust(state: Readonly<RunState>, dt: number): void {
+    const fall = state.phase === 'advancing' ? 3.2 : 0;
     ctx.fillStyle = PALETTE.text;
     ctx.globalAlpha = 0.07;
     for (let i = 0; i < DUST; i++) {
-      let y = dust[i * 3 + 1]! - dust[i * 3 + 2]! * dt;
+      let y = dust[i * 3 + 1]! + (fall - dust[i * 3 + 2]!) * dt;
       if (y < -0.1) { y = l.rows + 0.1; dust[i * 3] = Math.random() * l.cols; }
+      else if (y > l.rows + 0.1) { y = -0.1; dust[i * 3] = Math.random() * l.cols; }
       dust[i * 3 + 1] = y;
       const x = dust[i * 3]! + Math.sin(time * 0.5 + i) * 0.1;
-      ctx.fillRect(x, y, 0.04, 0.04);
+      const h = fall > 0 ? 0.12 : 0.04;
+      ctx.fillRect(x, y, 0.04, h);
     }
     ctx.globalAlpha = 1;
+  }
+
+  function updatePower(state: Readonly<RunState>, dt: number): void {
+    const active = state.phase === 'firing' || state.phase === 'advancing';
+    const target = active ? powerTarget(state.currentShotDamage) : 0;
+    const rate = target > power ? 2.5 : 0.8;
+    power += (target - power) * (dt * rate > 1 ? 1 : dt * rate);
+    const lvl = Math.round(power * (POWER_LEVELS - 1));
+    if (lvl !== powerLevel) { powerLevel = lvl; d.onPowerLevel(lvl); }
   }
 
   function drawFrame(state: Readonly<RunState>, dt: number, frame: number): void {
@@ -432,22 +641,27 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     const dpr = l.dpr;
     const W = ctx.canvas.width, H = ctx.canvas.height;
     const cols = l.cols, rows = l.rows;
+    updatePower(state, dt);
 
-    // fond (pixels physiques, sans shake)
+    // canvas transparent : le fond est en CSS (backdrop.ts)
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(sp.bg, 0, 0, W, H);
+    ctx.clearRect(0, 0, W, H);
 
     // unités plateau
-    const k = l.scale * dpr;
-    ctx.setTransform(k, 0, 0, k, (l.offX + vfx.shakeX) * dpr, (l.offY + vfx.shakeY) * dpr);
+    K = l.scale * dpr;
+    OX = (l.offX + vfx.shakeX) * dpr;
+    OY = (l.offY + vfx.shakeY) * dpr;
+    // clip aligné sur les pixels physiques (un clip fractionnaire force le chemin anti-aliasé)
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, cols, rows);
+    ctx.rect(Math.round(OX), Math.round(OY), Math.round(cols * K), Math.round(rows * K));
     ctx.clip();
-    ctx.drawImage(sp.grid, 0, 0, cols, rows);
-    drawDust(dt);
+    boardTransform();
+    drawGrid(state);
+    drawDust(state, dt);
+    drawSpeedLines(state, dt);
 
     // ligne du joueur : trait danger discret (franchie = dégâts)
     ctx.strokeStyle = PALETTE.danger;
@@ -462,9 +676,12 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     drawBlocks(state, frame);
     drawDrops(state);
     drawAim(state);
-    drawBalls(state, frame);
-    particles.draw(ctx);
-    vfx.drawWorld(ctx);
+    drawBalls(state, frame, dt);
+    d.fusions.draw(ctx, sp, R);
+    pixelTransform();
+    particles.draw(ctx, K, OX, OY);
+    boardTransform();
+    vfx.drawWorld(ctx, K, OX, OY);
     ctx.restore();
     // point de lancement hors clip : il est posé sur le sol
     drawLaunch(state);

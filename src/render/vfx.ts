@@ -11,9 +11,12 @@ const MAX_RINGS = 24;
 const MAX_BOLTS = 16;
 const MAX_FLASHES = 48;
 const BOLT_POINTS = 9;
+const MAX_RAYS = 3;
+const RAY_COUNT = 24;
 
 interface Ring { active: boolean; x: number; y: number; r0: number; r1: number; t: number; dur: number; color: string; width: number; }
 interface Bolt { active: boolean; pts: Float32Array; t: number; dur: number; color: string; }
+interface Rays { active: boolean; x: number; y: number; t: number; dur: number; color: string; n: number; len: number; ang: Float32Array; }
 interface LocalFlash { active: boolean; x: number; y: number; w: number; h: number; t: number; dur: number; color: string; circle: boolean; }
 
 /** État visuel d'un bloc, indexé par blockId. */
@@ -22,9 +25,15 @@ export interface BlockFx {
   id: number;
   /** temps écoulé depuis le dernier impact (s) ; ≥ SQUASH_DUR = pas de squash */
   squashT: number;
+  /** temps écoulé depuis le dernier changement de PV (s) : « pop » du libellé */
+  popT: number;
   /** cache de la chaîne de PV */
   hp: number;
   label: string;
+  /** libellé de PV pré-rendu (bitmap), re-dessiné seulement quand hp change */
+  labelCanvas: HTMLCanvasElement | null;
+  labelDirty: boolean;
+  labelLow: boolean;
   /** dernière géométrie dessinée (pour les effets de destruction) */
   x: number; y: number; w: number; kind: number;
   seenFrame: number;
@@ -45,17 +54,21 @@ export interface Vfx {
   bolt(x0: number, y0: number, x1: number, y1: number, ms: number, color: string): void;
   flashRect(x: number, y: number, w: number, h: number, ms: number, color: string): void;
   flashCircle(x: number, y: number, r: number, ms: number, color: string): void;
+  /** gerbe de rayons qui partent de (x, y) : palier de combo fort */
+  rays(x: number, y: number, ms: number, color: string, count: number, length: number): void;
 
   /** état visuel par bloc */
   blockFx(id: number): BlockFx;
   peekBlockFx(id: number): BlockFx | undefined;
   releaseBlockFx(id: number): void;
   sweepBlockFx(frame: number): void;
+  /** force le re-rendu des libellés (resize) */
+  invalidateLabels(): void;
   squashScale(fx: BlockFx): number;
 
   update(dt: number): void;
-  /** contexte en unités plateau */
-  drawWorld(ctx: CanvasRenderingContext2D): void;
+  /** k = px physiques par unité, (ox, oy) = origine du plateau ; laisse le contexte en unités plateau */
+  drawWorld(ctx: CanvasRenderingContext2D, k: number, ox: number, oy: number): void;
   /** contexte en pixels physiques, sans shake */
   drawOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, vignette: CanvasImageSource, redEdge: CanvasImageSource): void;
   clear(): void;
@@ -77,11 +90,14 @@ export function createVfx(): Vfx {
   const flashes: LocalFlash[] = [];
   for (let i = 0; i < MAX_FLASHES; i++) flashes.push({ active: false, x: 0, y: 0, w: 0, h: 0, t: 0, dur: 1, color: '#fff', circle: false });
 
+  const rays: Rays[] = [];
+  for (let i = 0; i < MAX_RAYS; i++) rays.push({ active: false, x: 0, y: 0, t: 0, dur: 1, color: '#fff', n: 0, len: 1, ang: new Float32Array(RAY_COUNT) });
+
   const fxPool: BlockFx[] = [];
   const fxMap = new Map<number, BlockFx>();
   let lastFrame = 0;
   function newFx(): BlockFx {
-    return { inUse: false, id: -1, squashT: SQUASH_DUR, hp: Number.NaN, label: '', x: 0, y: 0, w: 1, kind: 0, seenFrame: 0 };
+    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0 };
   }
   for (let i = 0; i < 128; i++) fxPool.push(newFx());
 
@@ -150,12 +166,20 @@ export function createVfx(): Vfx {
       f.active = true; f.x = x; f.y = y; f.w = r; f.h = r; f.t = 0; f.dur = ms / 1000; f.color = color; f.circle = true;
     },
 
+    rays(x, y, ms, color, count, length) {
+      const r = freeSlot(rays);
+      r.active = true; r.x = x; r.y = y; r.t = 0; r.dur = ms / 1000; r.color = color;
+      r.n = count > RAY_COUNT ? RAY_COUNT : count; r.len = length;
+      const off = Math.random() * Math.PI * 2;
+      for (let i = 0; i < r.n; i++) r.ang[i] = off + (i / r.n) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
+    },
+
     blockFx(id) {
       let fx = fxMap.get(id);
       if (fx) return fx;
       for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (!f.inUse) { fx = f; break; } }
       if (!fx) { fx = newFx(); fxPool.push(fx); } // rare : plus de 128 blocs vivants
-      fx.inUse = true; fx.id = id; fx.squashT = SQUASH_DUR; fx.hp = Number.NaN; fx.label = ''; fx.seenFrame = lastFrame;
+      fx.inUse = true; fx.id = id; fx.squashT = SQUASH_DUR; fx.popT = 1; fx.hp = Number.NaN; fx.label = ''; fx.labelDirty = true; fx.seenFrame = lastFrame;
       fxMap.set(id, fx);
       return fx;
     },
@@ -173,6 +197,9 @@ export function createVfx(): Vfx {
         const f = fxPool[i]!;
         if (f.inUse && frame - f.seenFrame > 2) { f.inUse = false; fxMap.delete(f.id); }
       }
+    },
+    invalidateLabels() {
+      for (let i = 0; i < fxPool.length; i++) fxPool[i]!.labelDirty = true;
     },
     squashScale(fx) {
       const t = fx.squashT / SQUASH_DUR;
@@ -200,22 +227,30 @@ export function createVfx(): Vfx {
       for (let i = 0; i < MAX_RINGS; i++) { const r = rings[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
       for (let i = 0; i < MAX_BOLTS; i++) { const b = bolts[i]!; if (b.active && (b.t += dt) >= b.dur) b.active = false; }
       for (let i = 0; i < MAX_FLASHES; i++) { const f = flashes[i]!; if (f.active && (f.t += dt) >= f.dur) f.active = false; }
-      for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse && f.squashT < SQUASH_DUR) f.squashT += dt; }
+      for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse) { if (f.squashT < SQUASH_DUR) f.squashT += dt; if (f.popT < 1) f.popT += dt; } }
+      for (let i = 0; i < MAX_RAYS; i++) { const r = rays[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
     },
 
-    drawWorld(ctx) {
+    drawWorld(ctx, k, ox, oy) {
+      // flashs rectangulaires en pixels entiers (chemin rapide), le reste en unités plateau
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       for (let i = 0; i < MAX_FLASHES; i++) {
         const f = flashes[i]!;
-        if (!f.active) continue;
+        if (!f.active || f.circle) continue;
         ctx.globalAlpha = 1 - f.t / f.dur;
         ctx.fillStyle = f.color;
-        if (f.circle) {
-          ctx.beginPath();
-          ctx.arc(f.x, f.y, f.w * (0.6 + 0.4 * (f.t / f.dur)), 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.fillRect(f.x, f.y, f.w, f.h);
-        }
+        const x0 = Math.round(ox + f.x * k), y0 = Math.round(oy + f.y * k);
+        ctx.fillRect(x0, y0, Math.round(ox + (f.x + f.w) * k) - x0, Math.round(oy + (f.y + f.h) * k) - y0);
+      }
+      ctx.setTransform(k, 0, 0, k, ox, oy);
+      for (let i = 0; i < MAX_FLASHES; i++) {
+        const f = flashes[i]!;
+        if (!f.active || !f.circle) continue;
+        ctx.globalAlpha = 1 - f.t / f.dur;
+        ctx.fillStyle = f.color;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.w * (0.6 + 0.4 * (f.t / f.dur)), 0, Math.PI * 2);
+        ctx.fill();
       }
       for (let i = 0; i < MAX_RINGS; i++) {
         const r = rings[i]!;
@@ -227,6 +262,25 @@ export function createVfx(): Vfx {
         ctx.lineWidth = r.width * (1 - 0.6 * t);
         ctx.beginPath();
         ctx.arc(r.x, r.y, r.r0 + (r.r1 - r.r0) * e, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'round';
+      for (let j = 0; j < MAX_RAYS; j++) {
+        const r = rays[j]!;
+        if (!r.active) continue;
+        const t = r.t / r.dur;
+        const e = 1 - (1 - t) * (1 - t) * (1 - t);
+        ctx.globalAlpha = 1 - t;
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 0.06 * (1 - t) + 0.01;
+        ctx.beginPath();
+        for (let i = 0; i < r.n; i++) {
+          const a = r.ang[i]!;
+          const ca = Math.cos(a), sa = Math.sin(a);
+          const r0 = 0.3 + r.len * e * 0.55, r1 = 0.3 + r.len * e;
+          ctx.moveTo(r.x + ca * r0, r.y + sa * r0);
+          ctx.lineTo(r.x + ca * r1, r.y + sa * r1);
+        }
         ctx.stroke();
       }
       ctx.lineJoin = 'round';
@@ -271,6 +325,7 @@ export function createVfx(): Vfx {
       for (const r of rings) r.active = false;
       for (const b of bolts) b.active = false;
       for (const f of flashes) f.active = false;
+      for (const r of rays) r.active = false;
     },
   };
   return api;

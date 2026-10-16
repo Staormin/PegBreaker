@@ -3,19 +3,26 @@
 // pour hit-stop / slow-mo. Ne touche jamais à la sim.
 import type { EventBus, Unsubscribe } from '../core/events';
 import type { GameConfig, Renderer, RunState, TimeControl, Vec2 } from '../core/types';
-import { boardToScreen, computeLayout, createLayout, screenToBoard } from './layout';
+import { boardToScreen, computeLayout, createLayout, MAX_DPR, screenToBoard } from './layout';
 import { buildSprites, type Sprites } from './sprites';
 import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK } from './particles';
 import { createDamageNumbers, formatNumber, FONT_BUCKETS } from './damageNumbers';
 import { createVfx } from './vfx';
 import { createFrameDrawer } from './draw';
+import { createFusions } from './fusion';
+import { buildBackdrops } from './backdrop';
 import { buildColors, ELEMENT_INDEX, KIND_INDEX, PALETTE } from './palette';
 
 export { PALETTE } from './palette';
 
+/** slot unique pour le libellé « COMBO ×N » (évite l'empilement quand plusieurs balles franchissent un palier) */
+const COMBO_SLOT = -2;
+
 export interface PegRenderer extends Renderer {
   /** désabonne le renderer du bus (démo, hot reload). Hors interface Renderer. */
   dispose(): void;
+  /** résolution interne courante (≤ 2, baisse si la machine rame) */
+  readonly dpr: number;
 }
 
 export function createRenderer(
@@ -24,7 +31,9 @@ export function createRenderer(
   time: TimeControl,
   config: GameConfig,
 ): PegRenderer {
-  const ctx = canvas.getContext('2d', { alpha: false });
+  // canvas transparent : le fond statique est posé en CSS (backdrop.ts), bien moins cher
+  // que de re-remplir tout le canvas à chaque frame
+  const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('render: contexte 2D indisponible');
   const board = config.blocks.board;
   const colors = buildColors(config);
@@ -36,13 +45,48 @@ export function createRenderer(
   let frame = 0;
   let lastState: Readonly<RunState> | null = null;
   let reduceMotion = false;
+  let backdrops: string[] = [];
+  let backdropWave = -1;
+  let backdropLevel = 0;
+  let appliedBackdrop = '';
+
+  function applyBackdrop(): void {
+    const s = backdrops[backdropLevel] ?? backdrops[0];
+    if (s !== undefined && s !== appliedBackdrop) {
+      canvas.style.background = s;
+      appliedBackdrop = s;
+    }
+  }
+  function rebuildBackdrops(wave: number): void {
+    backdropWave = wave;
+    backdrops = buildBackdrops(layout, wave);
+    appliedBackdrop = '';
+    applyBackdrop();
+  }
+
+  const fusions = createFusions((x, y, element, tier) => {
+    const c = colors.element[element] ?? PALETTE.stone;
+    vfx.flashCircle(x, y, 0.5 + 0.1 * tier, 170, '#ffffff');
+    vfx.ring(x, y, 0.1, 0.8 + 0.2 * tier, 280, c, 0.09);
+    vfx.ring(x, y, 0.05, 0.5, 200, '#ffffff', 0.04);
+    particles.burst(x, y, 10 + 4 * tier, c, P_SPARK, 2, 6, 0, Math.PI, 0.2, 0.4, 0.04, 0.08, 0);
+    vfx.addShake(2 + tier);
+  });
+
+  // Qualité adaptative : si la frame moyenne dépasse 18,5 ms pendant ~2 s, on baisse la résolution
+  // interne d'un cran (2 → 1,5 → 1). Jamais de remontée automatique (pas d'oscillation) ;
+  // un resize() explicite garde le cran courant.
+  let dprCap = MAX_DPR;
+  let frameEma = 16.7;
+  let slowFrames = 0;
 
   function doResize(): Sprites {
-    computeLayout(layout, canvas);
+    computeLayout(layout, canvas, dprCap);
     const s = buildSprites(layout, colors, config);
     sprites = s;
     numbers.rebuildFonts(layout);
     drawer.rebuildFonts();
+    rebuildBackdrops(backdropWave < 1 ? 1 : backdropWave);
     return s;
   }
 
@@ -51,7 +95,8 @@ export function createRenderer(
   }
 
   const drawer = createFrameDrawer({
-    ctx, layout, particles, numbers, vfx,
+    ctx, layout, particles, numbers, vfx, fusions, colors,
+    onPowerLevel(level) { backdropLevel = level; applyBackdrop(); },
     ballRadius: board.ballRadius,
     getSprites: ensureSprites,
   });
@@ -116,17 +161,42 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('combo:milestone', (e) => {
+    // gradation nette : le niveau 3 doit se sentir dans les mains, le 1 rester un clin d'œil
     const lvl = e.level;
-    vfx.screenFlash(lvl === 1 ? 0.16 : lvl === 2 ? 0.22 : 0.3, lvl === 3 ? PALETTE.accent : '#ffffff');
-    vfx.addShake(lvl === 1 ? 4 : lvl === 2 ? 5 : 7);
-    vfx.ring(e.pos.x, e.pos.y, 0.1, 0.8 + 0.4 * lvl, 300, PALETTE.accent, 0.08);
-    particles.burst(e.pos.x, e.pos.y, 6 + 4 * lvl, PALETTE.accent, P_SPARK, 3, 7, 0, Math.PI, 0.2, 0.4, 0.04, 0.07, 0);
-    numbers.addLabel(e.pos.x, e.pos.y - 0.35, `COMBO ×${e.combo}`, PALETTE.accent, Math.min(FONT_BUCKETS - 1, 4 + 2 * lvl));
-    if (lvl === 2) time.requestHitStop(40);
-    if (lvl === 3) {
+    const label = `COMBO ×${e.combo}`;
+    // libellé gardé à l'intérieur du plateau (il est large)
+    const lx = Math.min(board.cols - 1.3, Math.max(1.3, e.pos.x));
+    if (lvl === 1) {
+      vfx.screenFlash(0.08, '#ffffff');
+      vfx.addShake(3);
+      vfx.ring(e.pos.x, e.pos.y, 0.1, 0.9, 260, PALETTE.accent, 0.06);
+      particles.burst(e.pos.x, e.pos.y, 8, PALETTE.accent, P_SPARK, 2.5, 6, 0, Math.PI, 0.15, 0.3, 0.04, 0.06, 0);
+      numbers.addLabel(lx, e.pos.y - 0.35, label, PALETTE.accent, 5, COMBO_SLOT);
+    } else if (lvl === 2) {
+      vfx.screenFlash(0.18, '#ffffff');
+      vfx.addShake(5);
+      vfx.ring(e.pos.x, e.pos.y, 0.1, 1.5, 320, PALETTE.accent, 0.1);
+      vfx.rays(e.pos.x, e.pos.y, 260, PALETTE.accent, 12, 1.2);
+      particles.burst(e.pos.x, e.pos.y, 18, PALETTE.accent, P_SPARK, 3, 8, 0, Math.PI, 0.2, 0.4, 0.05, 0.08, 0);
+      numbers.addLabel(lx, e.pos.y - 0.4, label, PALETTE.accent, 8, COMBO_SLOT);
+      time.requestHitStop(40);
+    } else {
+      vfx.screenFlash(0.35, PALETTE.accent);
+      vfx.addShake(9);
+      vfx.ring(e.pos.x, e.pos.y, 0.2, 3.2, 450, PALETTE.accent, 0.16);
+      vfx.ring(e.pos.x, e.pos.y, 0.1, 2.0, 350, '#ffffff', 0.07);
+      vfx.rays(e.pos.x, e.pos.y, 420, '#ffffff', 24, 2.6);
+      particles.burst(e.pos.x, e.pos.y, 36, PALETTE.accent, P_SPARK, 4, 11, 0, Math.PI, 0.25, 0.5, 0.06, 0.1, 0);
+      particles.burst(e.pos.x, e.pos.y, 12, '#ffffff', P_SHARD, 3, 7, 0, Math.PI, 0.3, 0.5, 0.05, 0.09, 4);
+      numbers.addLabel(lx, e.pos.y - 0.45, label, PALETTE.accent, FONT_BUCKETS - 1, COMBO_SLOT);
+      // onde : tous les blocs « sautent »
+      if (lastState) {
+        const blocks = lastState.blocks;
+        for (let i = 0; i < blocks.length; i++) vfx.blockFx(blocks[i]!.id).squashT = 0;
+      }
       time.requestHitStop(70);
       if (!reduceMotion) time.requestSlowMo(0.3, 200);
-      vfx.vignette(600);
+      vfx.vignette(650);
     }
   }));
 
@@ -145,12 +215,14 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('volley:fusion', (e) => {
+    fusions.start(e.pos.x, e.pos.y, ELEMENT_INDEX[e.element], e.tier);
+  }));
+
+  subs.push(bus.on('reward:chosen', (e) => {
+    if (e.option.kind !== 'fuse') return;
     const x = lastState ? lastState.launchPos.x : board.cols / 2;
-    const y = lastState ? lastState.launchPos.y : board.rows - 0.2;
-    const c = elemColor(e.element);
-    vfx.flashCircle(x, y, 0.55, 160, '#ffffff');
-    vfx.ring(x, y, 0.1, 0.9, 260, c, 0.08);
-    particles.burst(x, y, 10, c, P_SPARK, 2, 6, -Math.PI / 2, Math.PI * 0.7, 0.2, 0.4, 0.04, 0.07, 0);
+    const y = lastState ? lastState.launchPos.y - 0.6 : board.rows - 0.8;
+    fusions.start(x, y, ELEMENT_INDEX[e.option.element], e.option.tier);
   }));
 
   subs.push(bus.on('lightning:chain', (e) => {
@@ -193,7 +265,7 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('run:started', () => {
-    particles.clear(); numbers.clear(); vfx.clear(); drawer.clearTrails();
+    particles.clear(); numbers.clear(); vfx.clear(); fusions.clear(); drawer.clearTrails();
   }));
   // rows:advanced : volontairement rien — l'interpolation easeOutBack dans draw suffit.
 
@@ -204,10 +276,24 @@ export function createRenderer(
     draw(state, dtMs) {
       lastState = state;
       ensureSprites();
+      if (state.wave !== backdropWave) rebuildBackdrops(state.wave); // changement de vague : rare
       const dt = (dtMs > 100 ? 100 : dtMs < 0 ? 0 : dtMs) / 1000;
       frame++;
+      if (dtMs > 0 && dtMs < 100 && frame > 60) {
+        frameEma += (dtMs - frameEma) * 0.05;
+        // < 54 fps soutenu ; une frame rapide isolée ne remet pas le compteur à zéro
+        slowFrames = frameEma > 18.5 ? slowFrames + 1 : slowFrames > 2 ? slowFrames - 2 : 0;
+        // appliqué seulement pendant la visée : le petit à-coup de régénération passe inaperçu
+        if (slowFrames > 120 && dprCap > 1 && layout.dpr > 1 && state.phase === 'aiming') {
+          dprCap = Math.max(1, Math.min(dprCap, layout.dpr) - 0.5);
+          slowFrames = 0;
+          frameEma = 16.7;
+          doResize(); // rare : régénère les sprites à la nouvelle résolution
+        }
+      }
       vfx.update(dt);
       particles.update(dt);
+      fusions.update(dt);
       numbers.update(dt);
       drawer.draw(state, dt, frame);
     },
@@ -229,6 +315,10 @@ export function createRenderer(
     },
     setShake(v: boolean) {
       vfx.shakeEnabled = v;
+    },
+    /** résolution interne courante (qualité adaptative), pour QA */
+    get dpr() {
+      return layout.dpr;
     },
     get particleCount() {
       return particles.count;

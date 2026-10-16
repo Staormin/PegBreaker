@@ -12,6 +12,12 @@ const MERGE_WINDOW = 0.1; // s
 const MERGE_DIST2 = 0.35 * 0.35;
 const POP = 0.12; // s
 export const FONT_BUCKETS = 12;
+/** les nombres de dégâts ne dépassent pas ce seau (les grands réservés aux libellés de combo) */
+const MAX_DAMAGE_BUCKET = 8;
+/** au-delà, un nouveau coup ouvre un nouveau nombre (évite un nombre géant qui ne meurt jamais) */
+const MAX_MERGE_AGE = 0.45;
+/** les nombres ne montent pas dans la bande du HUD */
+const MIN_Y = 0.35;
 
 interface DamageNumber {
   active: boolean;
@@ -27,7 +33,8 @@ interface DamageNumber {
 export interface DamageNumbers {
   /** id de bloc −1 = pas de fusion par bloc (étiquettes de combo) */
   add(x: number, y: number, value: number, crit: boolean, blockId: number): void;
-  addLabel(x: number, y: number, label: string, color: string, bucket: number): void;
+  /** slot < −1 : un seul libellé vivant par slot (remplacé plutôt qu'empilé) */
+  addLabel(x: number, y: number, label: string, color: string, bucket: number, slot?: number): void;
   update(dt: number): void;
   /** contexte en pixels physiques (transform = dpr + shake) ; l = layout courant */
   draw(ctx: CanvasRenderingContext2D, l: Layout, shakeX: number, shakeY: number): void;
@@ -44,8 +51,9 @@ export function formatNumber(v: number): string {
 }
 
 function bucketFor(value: number, crit: boolean): number {
-  const b = Math.round(Math.log10(Math.max(1, value)) * 2.2) + (crit ? 3 : 0);
-  return b < 0 ? 0 : b > FONT_BUCKETS - 1 ? FONT_BUCKETS - 1 : b;
+  // croissance volontairement douce et plafonnée : les dégâts vont de 10 à 16 000
+  const b = Math.round(Math.log10(Math.max(1, value)) * 1.6) + (crit ? 2 : 0);
+  return b < 0 ? 0 : b > MAX_DAMAGE_BUCKET ? MAX_DAMAGE_BUCKET : b;
 }
 
 export function createDamageNumbers(): DamageNumbers {
@@ -71,13 +79,13 @@ export function createDamageNumbers(): DamageNumbers {
       fonts.length = 0;
       const base = l.scale * l.dpr;
       for (let i = 0; i < FONT_BUCKETS; i++) {
-        fonts.push(`800 ${Math.max(8, Math.round(base * (0.28 + 0.055 * i)))}px system-ui, -apple-system, "Segoe UI", sans-serif`);
+        fonts.push(`800 ${Math.max(8, Math.round(base * (0.24 + 0.05 * i)))}px system-ui, -apple-system, "Segoe UI", sans-serif`);
       }
     },
     add(x, y, value, crit, blockId) {
       // cumul
       for (const n of pool) {
-        if (!n.active || n.sinceHit > MERGE_WINDOW) continue;
+        if (!n.active || n.sinceHit > MERGE_WINDOW || n.age > MAX_MERGE_AGE || n.blockId < -1) continue;
         const dx = n.x - x, dy = n.y - y;
         if ((blockId >= 0 && n.blockId === blockId) || dx * dx + dy * dy < MERGE_DIST2) {
           n.value += value;
@@ -92,20 +100,31 @@ export function createDamageNumbers(): DamageNumbers {
       }
       const n = acquire();
       n.active = true;
-      n.x = x + (Math.random() - 0.5) * 0.15; n.y = y;
+      n.x = x + (Math.random() - 0.5) * 0.3; n.y = y < MIN_Y + RISE ? MIN_Y + RISE : y;
       n.value = value; n.label = formatNumber(value);
       n.age = 0; n.life = LIFE; n.sinceHit = 0;
       n.bucket = bucketFor(value, crit);
       n.color = crit ? PALETTE.accent : PALETTE.text;
       n.blockId = blockId;
     },
-    addLabel(x, y, label, color, bucket) {
+    addLabel(x, y, label, color, bucket, slot = -1) {
+      const b0 = bucket < 0 ? 0 : bucket > FONT_BUCKETS - 1 ? FONT_BUCKETS - 1 : bucket;
+      if (slot < -1) {
+        // un seul libellé vivant par slot (ex. combo) : on le remplace au lieu d'empiler
+        for (let i = 0; i < MAX_NUMBERS; i++) {
+          const m = pool[i]!;
+          if (!m.active || m.blockId !== slot) continue;
+          m.label = label; m.color = color; m.age = 0; m.life = LIFE; m.sinceHit = 0;
+          if (b0 > m.bucket) m.bucket = b0;
+          return;
+        }
+      }
       const n = acquire();
       n.active = true;
-      n.x = x; n.y = y; n.value = 0; n.label = label;
+      n.x = x; n.y = y < MIN_Y + RISE ? MIN_Y + RISE : y; n.value = 0; n.label = label;
       n.age = 0; n.life = LIFE; n.sinceHit = 1;
-      n.bucket = bucket < 0 ? 0 : bucket > FONT_BUCKETS - 1 ? FONT_BUCKETS - 1 : bucket;
-      n.color = color; n.blockId = -1;
+      n.bucket = b0;
+      n.color = color; n.blockId = slot < -1 ? slot : -1;
     },
     update(dt) {
       live = 0;

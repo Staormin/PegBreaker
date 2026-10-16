@@ -2,7 +2,7 @@
 // Tout est dessiné par code : aucune image, aucune police externe.
 import type { GameConfig } from '../core/types';
 import type { Layout } from './layout';
-import { ELEMENTS, KIND_INDEX, KINDS, PALETTE, shade, type Colors } from './palette';
+import { ELEMENT_INDEX, ELEMENTS, KIND_INDEX, KINDS, PALETTE, shade, type Colors } from './palette';
 
 /** Marge intérieure d'un bloc dans sa cellule (unités plateau). */
 export const BLOCK_INSET = 0.05;
@@ -10,18 +10,39 @@ export const BLOCK_INSET = 0.05;
 export const PEG_RADIUS = 0.3;
 /** Demi-étendue d'un sprite de balle, en multiples du rayon. */
 export const BALL_EXTENT = 2.4;
+/**
+ * Demi-étendue serrée par sprite (en multiples du rayon visuel) : un sprite plus petit = moins
+ * de pixels à blitter. Le glow (feu, rang 3) a besoin de marge, le reste non.
+ */
+export function ballExtent(element: number, tier: number): number {
+  if (tier === 3 || element === ELEMENT_INDEX.fire) return BALL_EXTENT;
+  if (tier === 2) return 1.75;
+  return element === ELEMENT_INDEX.lightning ? 1.7 : 1.3;
+}
+/** niveaux d'endommagement pré-composés et assombrissement associé */
+export const DMG_LEVELS = 5;
+const DMG_DARK: readonly number[] = [0, 0.1, 0.2, 0.3, 0.42];
+/** niveau d'endommagement pour un ratio de PV (le dernier = fissures, PV < 30 %) */
+export function damageLevel(ratio: number): number {
+  return ratio >= 0.9 ? 0 : ratio >= 0.7 ? 1 : ratio >= 0.5 ? 2 : ratio >= 0.3 ? 3 : 4;
+}
 /** Demi-étendue d'un sprite de drop (unités plateau). */
 export const DROP_EXTENT = 0.26;
 /** Demi-étendue du halo (unités plateau). */
 export const HALO_EXTENT = 0.5;
 
 export interface Sprites {
-  /** fond plein canvas (pixels physiques) */
-  bg: HTMLCanvasElement;
-  /** grille du plateau (cols × rows unités) */
-  grid: HTMLCanvasElement;
   /** blocs : [kindIndex][largeur] */
   block: (HTMLCanvasElement | undefined)[][];
+  /**
+   * blocs endommagés pré-composés (teinte assombrie, fissures au dernier niveau) :
+   * [kindIndex][largeur * DMG_LEVELS + niveau]. Un seul blit par bloc au lieu de 3.
+   */
+  damaged: (HTMLCanvasElement | undefined)[][];
+  /** silhouettes blanches (flash d'impact) : [kindIndex][largeur] */
+  white: (HTMLCanvasElement | undefined)[][];
+  /** demi-étendue de chaque sprite de balle (unités plateau), même index que ball */
+  ballExt: number[];
   /** surcouche gelée : [largeur] */
   frozen: (HTMLCanvasElement | undefined)[];
   /** balles : elementIndex * 3 + (tier − 1) */
@@ -168,6 +189,63 @@ function makeBlock(kind: number, width: number, cell: number, colors: Colors): H
   return c;
 }
 
+/** Contour extérieur d'un bloc (même géométrie que makeBlock). */
+function blockShapePath(g: CanvasRenderingContext2D, kind: number, width: number, cell: number): void {
+  const ins = BLOCK_INSET * cell;
+  const W = width * cell, H = cell;
+  const h = H - 2 * ins;
+  if (kind === KIND_INDEX.peg) {
+    g.beginPath(); g.arc(W / 2, H / 2, PEG_RADIUS * cell, 0, Math.PI * 2);
+  } else if (kind === KIND_INDEX.heart) {
+    heartPath(g, W / 2, H / 2 + h * 0.02, h * 0.5);
+  } else {
+    roundRectPath(g, ins, ins, W - 2 * ins, h, cell * 0.12);
+  }
+}
+
+function makeMask(kind: number, width: number, cell: number, color: string): HTMLCanvasElement {
+  const [c, g] = makeCanvas(width * cell, cell);
+  g.fillStyle = color;
+  blockShapePath(g, kind, width, cell);
+  g.fill();
+  return c;
+}
+
+/** Fissures pseudo-aléatoires mais stables (même dessin à chaque resize). */
+function makeCracks(kind: number, width: number, cell: number): HTMLCanvasElement {
+  const [c, g] = makeCanvas(width * cell, cell);
+  let seed = 1234 + kind * 97 + width * 13;
+  const rnd = (): number => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  g.save();
+  blockShapePath(g, kind, width, cell);
+  g.clip();
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  const branches = 2 + width;
+  for (let pass = 0; pass < 2; pass++) {
+    seed = 1234 + kind * 97 + width * 13;
+    g.strokeStyle = pass === 0 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.28)';
+    g.lineWidth = Math.max(1, cell * (pass === 0 ? 0.035 : 0.015));
+    const off = pass === 0 ? 0 : -Math.max(1, cell * 0.02);
+    g.beginPath();
+    for (let b = 0; b < branches; b++) {
+      // part d'un bord, zigzague vers l'intérieur
+      let x = (b + 0.5) * (c.width / branches) + (rnd() - 0.5) * cell * 0.3;
+      let y = rnd() < 0.5 ? cell * 0.06 : cell * 0.94;
+      const dir = y < cell / 2 ? 1 : -1;
+      g.moveTo(x, y + off);
+      for (let s = 0; s < 4; s++) {
+        x += (rnd() - 0.5) * cell * 0.3;
+        y += dir * cell * (0.08 + rnd() * 0.12);
+        g.lineTo(x, y + off);
+      }
+    }
+    g.stroke();
+  }
+  g.restore();
+  return c;
+}
+
 function makeFrozen(width: number, cell: number): HTMLCanvasElement {
   const [c, g] = makeCanvas(width * cell, cell);
   const ins = BLOCK_INSET * cell;
@@ -187,29 +265,159 @@ function makeFrozen(width: number, cell: number): HTMLCanvasElement {
   return c;
 }
 
-function makeBall(color: string, tier: number, radius: number, cell: number): HTMLCanvasElement {
-  const ext = radius * BALL_EXTENT * cell;
+/** Rayon visuel d'une balle (unités plateau) selon l'élément et le rang. Visuel seulement. */
+export const TIER_SCALE: readonly number[] = [1, 1.25, 1.5];
+export function ballVisualRadius(radius: number, element: number, tier: number): number {
+  return radius * (TIER_SCALE[tier - 1] ?? 1) * (element === ELEMENT_INDEX.lead ? 1.12 : 1);
+}
+
+/** Silhouette par élément : on doit reconnaître la balle sans la couleur. */
+function makeBall(element: number, color: string, tier: number, radius: number, cell: number): HTMLCanvasElement {
+  const vr = ballVisualRadius(radius, element, tier);
+  const ext = vr * ballExtent(element, tier) * cell;
   const [c, g] = makeCanvas(ext * 2, ext * 2);
-  const cx = c.width / 2, cy = c.height / 2, r = radius * cell;
-  if (tier === 3) {
+  const cx = c.width / 2, cy = c.height / 2, r = vr * cell;
+  const lw = Math.max(1, r * 0.14);
+  const dark = shade(color, -0.5);
+  const light = shade(color, 0.55);
+  const TAU = Math.PI * 2;
+
+  if (tier === 3 || element === ELEMENT_INDEX.fire) {
     g.shadowColor = color;
-    g.shadowBlur = r * 1.6;
+    g.shadowBlur = r * (element === ELEMENT_INDEX.fire ? 1.4 : 1.6);
   }
-  g.fillStyle = color;
-  g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+
+  switch (element) {
+    case ELEMENT_INDEX.fire: {
+      // couronne de flammèches irrégulières + cœur chaud
+      g.fillStyle = color;
+      g.beginPath();
+      const spikes = 9;
+      for (let i = 0; i <= spikes * 2; i++) {
+        const a = (i / (spikes * 2)) * TAU - Math.PI / 2;
+        const rr = i % 2 === 0 ? r * (1.38 + 0.18 * Math.sin(i * 2.1)) : r * 0.92;
+        if (i === 0) g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+        else g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      }
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.fillStyle = shade(color, 0.35);
+      g.beginPath(); g.arc(cx, cy, r * 0.78, 0, TAU); g.fill();
+      g.fillStyle = '#fff3b0';
+      g.beginPath(); g.arc(cx, cy + r * 0.1, r * 0.42, 0, TAU); g.fill();
+      break;
+    }
+    case ELEMENT_INDEX.lightning: {
+      // disque + 4 arcs électriques en croix + éclair sombre
+      g.strokeStyle = light; g.lineWidth = lw; g.lineCap = 'round';
+      g.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU + Math.PI / 4;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        g.moveTo(cx + ca * r * 1.1, cy + sa * r * 1.1);
+        g.lineTo(cx + ca * r * 1.35 - sa * r * 0.18, cy + sa * r * 1.35 + ca * r * 0.18);
+        g.lineTo(cx + ca * r * 1.6, cy + sa * r * 1.6);
+      }
+      g.stroke();
+      g.fillStyle = color;
+      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      g.fillStyle = dark;
+      g.beginPath();
+      g.moveTo(cx + r * 0.15, cy - r * 0.75); g.lineTo(cx - r * 0.35, cy + r * 0.08); g.lineTo(cx - r * 0.02, cy + r * 0.08);
+      g.lineTo(cx - r * 0.18, cy + r * 0.75); g.lineTo(cx + r * 0.38, cy - r * 0.12); g.lineTo(cx + r * 0.05, cy - r * 0.12);
+      g.closePath(); g.fill();
+      break;
+    }
+    case ELEMENT_INDEX.ice: {
+      // hexagone facetté
+      g.fillStyle = color;
+      g.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU - Math.PI / 2;
+        const x = cx + Math.cos(a) * r * 1.12, y = cy + Math.sin(a) * r * 1.12;
+        if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.fillStyle = 'rgba(255,255,255,0.55)';
+      g.beginPath();
+      g.moveTo(cx, cy);
+      for (let i = 4; i <= 6; i++) {
+        const a = (i / 6) * TAU - Math.PI / 2;
+        g.lineTo(cx + Math.cos(a) * r * 1.12, cy + Math.sin(a) * r * 1.12);
+      }
+      g.closePath(); g.fill();
+      g.strokeStyle = shade(color, -0.35); g.lineWidth = Math.max(1, lw * 0.7);
+      g.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU - Math.PI / 2;
+        g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * r * 1.12, cy + Math.sin(a) * r * 1.12);
+      }
+      g.stroke();
+      break;
+    }
+    case ELEMENT_INDEX.ghost: {
+      // silhouette de fantôme : dôme + bas ondulé + deux yeux
+      g.fillStyle = color;
+      g.beginPath();
+      g.arc(cx, cy - r * 0.1, r * 1.0, Math.PI, 0);
+      g.lineTo(cx + r, cy + r * 0.9);
+      for (let i = 0; i < 4; i++) {
+        const x0 = cx + r - (i + 0.5) * (r / 2);
+        g.quadraticCurveTo(x0, cy + r * (i % 2 === 0 ? 0.45 : 1.2), cx + r - (i + 1) * (r / 2), cy + r * 0.9);
+      }
+      g.closePath(); g.fill();
+      g.fillStyle = PALETTE.bg0;
+      g.beginPath(); g.arc(cx - r * 0.35, cy - r * 0.15, r * 0.18, 0, TAU); g.fill();
+      g.beginPath(); g.arc(cx + r * 0.35, cy - r * 0.15, r * 0.18, 0, TAU); g.fill();
+      break;
+    }
+    case ELEMENT_INDEX.lead: {
+      // sombre, lourd : contour épais, reflet terne, rivets
+      g.fillStyle = color;
+      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      g.strokeStyle = '#1a1e26'; g.lineWidth = Math.max(1.5, r * 0.26);
+      g.beginPath(); g.arc(cx, cy, r * 0.8, 0, TAU); g.stroke();
+      // liseré clair extérieur : lisible sur fond sombre malgré la teinte plomb
+      g.strokeStyle = 'rgba(232,236,245,0.55)'; g.lineWidth = Math.max(1, r * 0.1);
+      g.beginPath(); g.arc(cx, cy, r * 0.97, 0, TAU); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.28)';
+      g.beginPath(); g.arc(cx - r * 0.28, cy - r * 0.28, r * 0.24, 0, TAU); g.fill();
+      g.fillStyle = '#1a1e26';
+      g.beginPath(); g.arc(cx + r * 0.3, cy + r * 0.25, r * 0.1, 0, TAU); g.fill();
+      break;
+    }
+    case ELEMENT_INDEX.split: {
+      // deux demi-disques séparés par une fente
+      const gap = r * 0.2;
+      g.fillStyle = color;
+      g.beginPath(); g.arc(cx - gap, cy, r, Math.PI / 2, Math.PI * 1.5); g.closePath(); g.fill();
+      g.beginPath(); g.arc(cx + gap, cy, r, -Math.PI / 2, Math.PI / 2); g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.fillStyle = 'rgba(255,255,255,0.6)';
+      g.beginPath(); g.arc(cx - gap - r * 0.35, cy - r * 0.35, r * 0.22, 0, TAU); g.fill();
+      g.beginPath(); g.arc(cx + gap + r * 0.3, cy - r * 0.35, r * 0.18, 0, TAU); g.fill();
+      break;
+    }
+    default: {
+      // pierre : disque + reflet décalé (−30 %, −30 %)
+      g.fillStyle = color;
+      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      g.shadowBlur = 0;
+      g.strokeStyle = shade(color, -0.45); g.lineWidth = lw;
+      g.beginPath(); g.arc(cx, cy, r * 0.93, 0, TAU); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.75)';
+      g.beginPath(); g.arc(cx - r * 0.3, cy - r * 0.3, r * 0.32, 0, TAU); g.fill();
+    }
+  }
   g.shadowBlur = 0;
-  g.strokeStyle = shade(color, -0.45); g.lineWidth = Math.max(1, r * 0.14);
-  g.beginPath(); g.arc(cx, cy, r * 0.93, 0, Math.PI * 2); g.stroke();
-  // reflet décalé (−30 %, −30 %)
-  g.fillStyle = 'rgba(255,255,255,0.75)';
-  g.beginPath(); g.arc(cx - r * 0.3, cy - r * 0.3, r * 0.32, 0, Math.PI * 2); g.fill();
   if (tier >= 2) {
-    g.strokeStyle = shade(color, 0.5); g.lineWidth = Math.max(1, r * 0.18);
-    g.beginPath(); g.arc(cx, cy, r * 1.45, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = light; g.lineWidth = Math.max(1, r * 0.16);
+    g.beginPath(); g.arc(cx, cy, r * 1.5, 0, TAU); g.stroke();
   }
   if (tier >= 3) {
-    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = Math.max(1, r * 0.14);
-    g.beginPath(); g.arc(cx, cy, r * 1.85, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = Math.max(1, r * 0.12);
+    g.beginPath(); g.arc(cx, cy, r * 1.85, 0, TAU); g.stroke();
   }
   return c;
 }
@@ -260,28 +468,6 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   const cell = l.cellPx;
   const W = Math.round(l.cssW * l.dpr), H = Math.round(l.cssH * l.dpr);
 
-  // fond : dégradé vertical bg0 → bg1
-  const [bg, gb] = makeCanvas(W, H);
-  const grad = gb.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, PALETTE.bg0);
-  grad.addColorStop(1, PALETTE.bg1);
-  gb.fillStyle = grad;
-  gb.fillRect(0, 0, W, H);
-
-  // grille du plateau, alpha 0,06
-  const [grid, gg] = makeCanvas(l.cols * cell, l.rows * cell);
-  gg.fillStyle = 'rgba(11,15,26,0.55)';
-  gg.fillRect(0, 0, grid.width, grid.height);
-  gg.strokeStyle = 'rgba(232,236,245,0.06)';
-  gg.lineWidth = Math.max(1, cell / 50);
-  gg.beginPath();
-  for (let i = 1; i < l.cols; i++) { gg.moveTo(i * cell + 0.5, 0); gg.lineTo(i * cell + 0.5, grid.height); }
-  for (let j = 1; j < l.rows; j++) { gg.moveTo(0, j * cell + 0.5); gg.lineTo(grid.width, j * cell + 0.5); }
-  gg.stroke();
-  // rangée du joueur : teinte danger très discrète
-  gg.fillStyle = 'rgba(255,94,94,0.05)';
-  gg.fillRect(0, (l.rows - 1) * cell, grid.width, cell);
-
   // largeurs nécessaires : 1 + largeurs des boss de la config
   const widths: number[] = [1];
   for (const b of config.waves.bosses) if (!widths.includes(b.width)) widths.push(b.width);
@@ -292,13 +478,41 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
     for (const w of widths) row[w] = makeBlock(k, w, cell, colors);
     block.push(row);
   }
+  const damaged: (HTMLCanvasElement | undefined)[][] = [];
+  const white: (HTMLCanvasElement | undefined)[][] = [];
+  for (let k = 0; k < KINDS.length; k++) {
+    const dm: (HTMLCanvasElement | undefined)[] = [];
+    const wh: (HTMLCanvasElement | undefined)[] = [];
+    for (const w of widths) {
+      wh[w] = makeMask(k, w, cell, '#ffffff');
+      if (k === KIND_INDEX.peg) continue;
+      const base = block[k]?.[w];
+      if (!base) continue;
+      const dark = makeMask(k, w, cell, '#000000');
+      const cracks = makeCracks(k, w, cell);
+      for (let lv = 0; lv < DMG_LEVELS; lv++) {
+        const [c, g] = makeCanvas(base.width, base.height);
+        g.drawImage(base, 0, 0);
+        g.globalAlpha = DMG_DARK[lv] ?? 0;
+        g.drawImage(dark, 0, 0);
+        g.globalAlpha = 1;
+        if (lv === DMG_LEVELS - 1) g.drawImage(cracks, 0, 0);
+        dm[w * DMG_LEVELS + lv] = c;
+      }
+    }
+    damaged.push(dm); white.push(wh);
+  }
   const frozen: (HTMLCanvasElement | undefined)[] = [];
   for (const w of widths) frozen[w] = makeFrozen(w, cell);
 
   const radius = config.blocks.board.ballRadius;
   const ball: HTMLCanvasElement[] = [];
+  const ballExt: number[] = [];
   for (let e = 0; e < ELEMENTS.length; e++) {
-    for (let t = 1; t <= 3; t++) ball.push(makeBall(colors.element[e] ?? PALETTE.stone, t, radius, cell));
+    for (let t = 1; t <= 3; t++) {
+      ball.push(makeBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell));
+      ballExt.push(ballVisualRadius(radius, e, t) * ballExtent(e, t));
+    }
   }
 
   // vignette (combo niv. 3) et bords rouges (dégâts joueur)
@@ -325,7 +539,7 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   }
 
   return {
-    bg, grid, block, frozen, ball,
+    block, damaged, white, frozen, ball, ballExt,
     coin: makeDrop('coin', cell), fragment: makeDrop('fragment', cell), heart: makeDrop('heart', cell),
     halo: makeHalo(cell), vignette, redEdge,
   };

@@ -25,7 +25,8 @@ export interface Particles {
     lifeMin: number, lifeMax: number, sizeMin: number, sizeMax: number, gravity: number,
   ): void;
   update(dt: number): void;
-  draw(ctx: CanvasRenderingContext2D): void;
+  /** contexte en transform identité ; k = px physiques par unité, (ox, oy) = origine du plateau */
+  draw(ctx: CanvasRenderingContext2D, k: number, ox: number, oy: number): void;
   clear(): void;
 }
 
@@ -77,27 +78,32 @@ export function createParticles(): Particles {
         i++;
       }
     },
-    draw(ctx) {
-      // contexte en unités plateau
+    draw(ctx, k, ox, oy) {
+      // contexte en transform identité : rectangles arrondis aux pixels physiques
+      // (fillRect entier = chemin rapide, sans anti-aliasing)
       let lastColor = '';
       for (let i = 0; i < live; i++) {
         const p = pool[i]!;
         const t = p.life / p.max;
         if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
         ctx.globalAlpha = t < 0.5 ? t * 2 : 1;
-        const s = p.size * (0.4 + 0.6 * t);
+        const s = p.size * (0.4 + 0.6 * t) * k;
+        const cx = ox + p.x * k, cy = oy + p.y * k;
         if (p.shape === P_SPARK) {
-          // trait étiré dans le sens du mouvement (approx. par un carré allongé axe-aligné)
-          const ex = p.vx * 0.012, ey = p.vy * 0.012;
-          ctx.fillRect(p.x - s * 0.5 - (ex < 0 ? -ex : 0), p.y - s * 0.5 - (ey < 0 ? -ey : 0), s + (ex < 0 ? -ex : ex), s + (ey < 0 ? -ey : ey));
+          // trait étiré dans le sens du mouvement
+          const ex = p.vx * 0.012 * k, ey = p.vy * 0.012 * k;
+          const ax = ex < 0 ? -ex : ex, ay = ey < 0 ? -ey : ey;
+          const w = Math.round(s + ax), h = Math.round(s + ay);
+          ctx.fillRect(Math.round(cx - s * 0.5 - (ex < 0 ? ax : 0)), Math.round(cy - s * 0.5 - (ey < 0 ? ay : 0)), w < 1 ? 1 : w, h < 1 ? 1 : h);
         } else if (p.shape === P_SHARD) {
-          ctx.fillRect(p.x - s * 0.5, p.y - s * 0.5, s, s);
+          const w = Math.round(s);
+          ctx.fillRect(Math.round(cx - s * 0.5), Math.round(cy - s * 0.5), w < 1 ? 1 : w, w < 1 ? 1 : w);
         } else {
           ctx.beginPath();
-          ctx.moveTo(p.x, p.y - s);
-          ctx.lineTo(p.x + s * 0.5, p.y);
-          ctx.lineTo(p.x, p.y + s);
-          ctx.lineTo(p.x - s * 0.5, p.y);
+          ctx.moveTo(cx, cy - s);
+          ctx.lineTo(cx + s * 0.5, cy);
+          ctx.lineTo(cx, cy + s);
+          ctx.lineTo(cx - s * 0.5, cy);
           ctx.closePath();
           ctx.fill();
         }

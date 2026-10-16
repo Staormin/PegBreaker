@@ -57,3 +57,10 @@ export function shade(hex: string, amount: number): string {
   }
   return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 }
+
+/** Mélange linéaire de deux couleurs #rrggbb → 'rgb(r,g,b)'. Usage hors boucle uniquement. */
+export function mixHex(a: string, b: string, t: number): string {
+  const na = parseInt(a.slice(1), 16), nb = parseInt(b.slice(1), 16);
+  const ch = (sh: number): number => Math.round(((na >> sh) & 255) * (1 - t) + ((nb >> sh) & 255) * t);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}

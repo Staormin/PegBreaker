@@ -27,12 +27,12 @@ export function createLayout(cols: number, rows: number): Layout {
 }
 
 /** Lit la taille du parent du canvas et met à jour le canvas et le layout. */
-export function computeLayout(l: Layout, canvas: HTMLCanvasElement): void {
+export function computeLayout(l: Layout, canvas: HTMLCanvasElement, maxDpr: number = MAX_DPR): void {
   const parent = canvas.parentElement;
   const w = Math.max(1, parent ? parent.clientWidth : canvas.clientWidth || 360);
   const h = Math.max(1, parent ? parent.clientHeight : canvas.clientHeight || 640);
   const dprRaw = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  const dpr = Math.min(MAX_DPR, Math.max(1, dprRaw));
+  const dpr = Math.min(maxDpr, Math.max(1, dprRaw));
   l.cssW = w;
   l.cssH = h;
   l.dpr = dpr;

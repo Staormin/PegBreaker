@@ -20,9 +20,15 @@ function createDemoTime(): DemoTime {
   };
 }
 
-const ELEMS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost'];
+const ELEMS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
 
-export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
+export interface RenderDemoOptions {
+  /** nombre de balles de la volée (défaut 7 : une par élément) */
+  balls?: number;
+}
+
+export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptions = {}): () => void {
+  const nBalls = opts.balls ?? 7;
   const config = loadConfig();
   const { cols, rows, ballRadius: R } = config.blocks.board;
   const bus = createEventBus();
@@ -48,8 +54,8 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
     { id: 4, kind: 'heart', pos: { x: 4.5, y: 7.5 }, value: 1, element: null },
   ];
   const balls: Ball[] = [];
-  for (let i = 0; i < 5; i++) {
-    balls.push({ id: 100 + i, element: ELEMS[i] ?? 'stone', tier: ((i % 3) + 1) as 1 | 2 | 3, pos: { x: 3.5, y: rows - R }, vel: { x: 0, y: 0 }, radius: R, combo: 0, alive: false, triggered: false });
+  for (let i = 0; i < nBalls; i++) {
+    balls.push({ id: 100 + i, element: ELEMS[i % ELEMS.length] ?? 'stone', tier: ((Math.floor(i / ELEMS.length) % 3) + 1) as 1 | 2 | 3, pos: { x: 3.5, y: rows - R }, vel: { x: 0, y: 0 }, radius: R, combo: 0, alive: false, triggered: false });
   }
 
   const state: RunState = {
@@ -60,7 +66,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
     launchPos: { x: 3.5, y: rows - R }, aimDir: { x: 0.3, y: -1 },
     currentShotDamage: 0, currentShotCombo: 0, rewardOffer: null, shop: null,
     pendingLaunches: 0, advanceProgress: 0,
-    stats: { shots: 0, blocksDestroyed: 0, bestCombo: 0, bestShotDamage: 0, totalDamage: 0, coinsEarned: 0, fragmentsEarned: 0, fusions: 0, bossesKilled: 0, durationMs: 0 },
+    stats: { shots: 0, blocksDestroyed: 0, bestCombo: 0, bestShotDamage: 0, totalDamage: 0, coinsEarned: 0, fragmentsEarned: 0, fusions: 0, bossesKilled: 0, perfectWaves: 0, durationMs: 0 },
     rngState: 0, recallSpeed: 1,
   };
 
@@ -84,10 +90,12 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
   function hitBlock(ball: Ball, b: Block, nx: number, ny: number): void {
     emit({ type: 'ball:bounce', ballId: ball.id, pos: { x: ball.pos.x, y: ball.pos.y }, normal: { x: nx, y: ny }, surface: b.kind === 'peg' ? 'peg' : 'block', combo: ball.combo });
     if (b.kind === 'peg') { ball.combo++; return; }
+    if (ball.element === 'ghost') return;
     ball.combo++;
     const crit = Math.random() < 0.12;
     const dmg = Math.max(1, Math.round((ball.tier * 2 + ball.combo * 0.3) * (crit ? 3 : 1)));
     b.hp = Math.max(0, b.hp - dmg);
+    state.currentShotDamage += dmg * 8; // démo : fait monter la « lumière » du plateau
     emit({ type: 'block:hit', blockId: b.id, pos: { x: ball.pos.x, y: ball.pos.y }, damage: dmg, combo: ball.combo, element: ball.element, hpLeft: b.hp, crit });
     if (ball.element === 'lightning') {
       const other = blocks[Math.floor(Math.random() * blocks.length)];
@@ -157,7 +165,10 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
       if (phaseT > 2200) {
         state.phase = 'firing'; phaseT = 0; launched = 0; launchT = 0;
         state.pendingLaunches = balls.length;
-        if (state.stats.shots % 2 === 1) emit({ type: 'volley:fusion', element: 'fire', tier: 2, index: 0, pos: { x: state.launchPos.x, y: state.launchPos.y } });
+        state.currentShotDamage = 0;
+        state.recallSpeed = 1;
+        if (state.stats.shots % 2 === 1) emit({ type: 'volley:fusion', element: 'fire', tier: 2, index: 0, pos: { x: state.launchPos.x, y: state.launchPos.y - 0.6 } });
+        else emit({ type: 'reward:chosen', option: { kind: 'fuse', element: 'ice', tier: 3 } });
         emit({ type: 'volley:start', count: balls.length, from: { ...state.launchPos }, dir: { ...state.aimDir } });
       }
     } else if (state.phase === 'firing') {
@@ -171,7 +182,9 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
         launched++;
         state.pendingLaunches = balls.length - launched;
       }
-      physics(dtMs);
+      // accélération automatique après 2,5 s (comme la sim après 4,5 s)
+      if (phaseT > 2500) state.recallSpeed = Math.min(3, state.recallSpeed + dtMs * 0.002);
+      physics(dtMs * state.recallSpeed);
       milestoneT += dtMs;
       if (milestoneT > 1600) {
         milestoneT = 0;
@@ -186,7 +199,14 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
         state.aimDir = null;
         state.pendingLaunches = 0;
         state.stats.shots++;
-        // avancée : la sim incrémente row au début de la phase et anime advanceProgress
+        if (state.stats.shots % 2 === 0) state.wave = Math.min(15, state.wave + 3); // teinte de profondeur
+        emit({ type: 'rows:advanced', wave: state.wave, newRow: false });
+        state.phase = 'advancing'; phaseT = 0; state.advanceProgress = 0;
+      }
+    } else if (state.phase === 'advancing') {
+      state.advanceProgress = Math.min(1, phaseT / config.blocks.board.advanceDurationMs);
+      if (state.advanceProgress >= 1) {
+        // comme la sim : row est incrémenté à la FIN de l'avancée
         for (const b of blocks) {
           if (b.frozen) { b.frozen = false; continue; }
           if (b.kind === 'boss') continue;
@@ -197,12 +217,8 @@ export function mountRenderDemo(canvas: HTMLCanvasElement): () => void {
             respawnBlock(b);
           }
         }
-        emit({ type: 'rows:advanced', wave: 1, newRow: false });
-        state.phase = 'advancing'; phaseT = 0; state.advanceProgress = 0;
+        state.phase = 'aiming'; phaseT = 0; state.advanceProgress = 0;
       }
-    } else if (state.phase === 'advancing') {
-      state.advanceProgress = Math.min(1, phaseT / config.blocks.board.advanceDurationMs);
-      if (state.advanceProgress >= 1) { state.phase = 'aiming'; phaseT = 0; }
     }
   }
 
