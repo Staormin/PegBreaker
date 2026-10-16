@@ -313,12 +313,17 @@ export interface BallDef {
 export interface BallsConfig {
   tierDamageMultiplier: number;
   comboDamagePerBounce: number;
+  /** au-delà de ce combo, chaque rebond n'ajoute plus que comboDamagePerBounceAfterCap */
+  comboSoftCap: number;
+  comboDamagePerBounceAfterCap: number;
   comboMilestones: [number, number, number];
   /** nb max de balles dans la volée */
   maxVolley: number;
   /** 'fire' : rayon d'explosion en cellules ; dégâts = ratio × dégâts de la balle */
   fire: { radius: number; damageRatio: number };
   lightning: { chainRange: number; damageRatio: number };
+  /** glace : gèle seulement au premier impact de la balle ; au plus maxFrozenPerShot blocs gelés par tir */
+  ice: { maxFrozenPerShot: number };
   split: { maxSplitsPerShot: number; angleDeg: number };
   lead: { damageMultiplier: number };
   defs: BallDef[];
@@ -562,6 +567,8 @@ export interface Renderer {
   setShake(v: boolean): void;
   /** nombre de particules vivantes (QA/perf) */
   readonly particleCount: number;
+  /** résolution interne courante (qualité adaptative), 1..2 */
+  readonly dpr: number;
   dispose?(): void;
 }
 
@@ -595,6 +602,9 @@ export interface DebugApi {
   setSpeed(mult: number): void;
   /** fps moyen sur la dernière seconde */
   fps: number;
+  /** nombre de hit-stops demandés depuis le chargement et timeScale courant */
+  hitStops: number;
+  readonly timeScale: number;
   /** erreurs capturées (window.onerror, unhandledrejection) */
   errors: string[];
   /** horodatage performance.now() du premier événement 'block:destroyed' ou 'drop:collected' */

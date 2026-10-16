@@ -1,10 +1,13 @@
 {
   "tierDamageMultiplier": 2.5,
   "comboDamagePerBounce": 0.1,
+  "comboSoftCap": 30,
+  "comboDamagePerBounceAfterCap": 0.02,
   "comboMilestones": [3, 8, 16],
   "maxVolley": 30,
   "fire": { "radius": 1.1, "damageRatio": 0.6 },
   "lightning": { "chainRange": 2.5, "damageRatio": 0.5 },
+  "ice": { "maxFrozenPerShot": 3 },
   "split": { "maxSplitsPerShot": 12, "angleDeg": 25 },
   "lead": { "damageMultiplier": 3 },
   "defs": [

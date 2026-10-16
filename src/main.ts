@@ -8,11 +8,11 @@ import { createUI } from './ui';
 import { createMeta } from './systems';
 import { createAudio } from './audio';
 
-const VERSION = '0.1.0-j1';
+const VERSION = '0.4.0-j4';
 const FIXED_MS = 1000 / 60;
 
 // --- TimeControl : hit-stop et slow-mo ------------------------------------
-function createTimeControl(): TimeControl & { tick(dtReal: number): void; speed: number } {
+function createTimeControl(): TimeControl & { tick(dtReal: number): void; speed: number; hitStops: number } {
   let hitStopLeft = 0;
   let slowLeft = 0;
   let slowScale = 1;
@@ -22,7 +22,9 @@ function createTimeControl(): TimeControl & { tick(dtReal: number): void; speed:
       if (hitStopLeft > 0) return 0;
       return (slowLeft > 0 ? slowScale : 1) * tc.speed;
     },
+    hitStops: 0,
     requestHitStop(ms: number): void {
+      tc.hitStops++;
       hitStopLeft = Math.max(hitStopLeft, ms);
     },
     requestSlowMo(scale: number, ms: number): void {
@@ -112,6 +114,12 @@ function boot(): void {
       time.speed = Math.max(0.1, Math.min(50, mult));
     },
     fps: 0,
+    get hitStops() {
+      return time.hitStops;
+    },
+    get timeScale() {
+      return time.timeScale;
+    },
     errors,
     get firstRewardAt() {
       return firstRewardAt;

@@ -238,6 +238,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     setReduceMotion() {},
     setShake() {},
     particleCount: 0,
+    dpr: 1,
   };
   const audio: AudioSystem = {
     unlocked: false,
