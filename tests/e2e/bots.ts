@@ -7,14 +7,16 @@
 // invariants, fps) et une boucle de jeu `play(cond)` cadencée par requestAnimationFrame.
 import type { Page } from '@playwright/test';
 import type { Block, DebugApi, RewardOption, RunPhase, RunState, Vec2 } from '../../src/core/types';
+import { SPREAD_DEAD_PX, SPREAD_RANGE_PX } from '../../src/ui/input';
 
 export type BotKind = 'naive' | 'greedy' | 'contracts';
 /** à la mort (run:lost) : abandon immédiat (sim.giveUp), rien (le test pilote l'écran « Revanche ? »),
  *  ou seconde chance via le DOM si elle est possible et payable (sinon abandon) */
 export type LostPolicy = 'giveUp' | 'none' | 'reviveIfAffordable';
 /** ouverture de l'éventail : 'none' = jamais touchée (0, comportement d'avant le lot 1) ;
- *  'drag' = longueur de geste d'un débutant tirée uniformément dans [40, 320] px CSS → spreadFromDrag */
-export type SpreadMode = 'none' | 'drag';
+ *  'drag' = longueur de geste d'un débutant tirée uniformément dans [40, 320] px CSS → spreadFromDrag ;
+ *  'max' = éventail systématique (1) */
+export type SpreadMode = 'none' | 'drag' | 'max';
 
 export interface QaInstallOptions {
   bot: BotKind;
@@ -28,11 +30,16 @@ export interface QaInstallOptions {
   onLost?: LostPolicy;
   /** ouverture de l'éventail pour naive/contracts (défaut 'none') */
   spreadMode?: SpreadMode;
+  /** zone morte et plage du geste (px CSS), recopiées de ui/input.ts (défaut 150 / 220) */
+  spreadDeadPx?: number;
+  spreadRangePx?: number;
 }
 
 export interface PlayCondition {
   /** rend la main dès que la phase devient l'une de celles-ci (avant que le bot n'agisse) */
   stopOnPhases?: RunPhase[];
+  /** rend la main à l'ouverture d'un coffre de boss (phase 'reward' et state.rewardSource === 'boss'), avant que le bot ne choisisse */
+  stopOnBossReward?: boolean;
   /** rend la main quand firstRewardAt est renseigné */
   untilFirstReward?: boolean;
   /** rend la main après N tirs terminés de plus (phase sortie de 'firing') */
@@ -63,6 +70,8 @@ export interface ShotRecord {
   firingMs: number;
   /** ouverture de l'éventail au tir */
   spread: number;
+  /** distance lanceur → cible visée en px CSS (bot naïf ; 0 sinon) */
+  targetPx: number;
   /** contrat actif au tir (kind) ou null */
   contract: string | null;
   /** dégâts et blocs cassés par la balle dorée sur ce tir */
@@ -204,6 +213,8 @@ export function qaInstall(opt: QaInstallOptions): void {
     rewardsTaken: [] as string[],
     destroyedAtFire: 0,
     shotSpread: 0,
+    lastTargetPx: 0,
+    shotTargetPx: 0,
     shotContract: null as string | null,
     nextFireAt: -1,
     stopReason: '',
@@ -416,6 +427,12 @@ export function qaInstall(opt: QaInstallOptions): void {
     const t = lowest();
     let ang = Math.PI / 2; // vertical
     if (t) ang = Math.atan2(-(t.row + 0.5 - lp.y), t.col + t.width / 2 - lp.x);
+    // modèle B du geste : le joueur glisse du lanceur jusqu'à la cible (longueur en px CSS)
+    if (t) {
+      const a = api.renderer.boardToScreen({ x: lp.x, y: lp.y });
+      const b = api.renderer.boardToScreen({ x: t.col + t.width / 2, y: t.row + 0.5 });
+      rec.lastTargetPx = Math.hypot(b.x - a.x, b.y - a.y);
+    } else rec.lastTargetPx = 0;
     ang += ((rand() * 2 - 1) * 10 * Math.PI) / 180;
     return { x: Math.cos(ang), y: -Math.sin(ang) };
   }
@@ -469,9 +486,10 @@ export function qaInstall(opt: QaInstallOptions): void {
   // --- éventail (F1) et bot « contrats » ----------------------------------------------
   /** débutant : longueur de geste uniforme 40–320 px CSS, convertie comme ui/input.ts (90 px morts, 220 px de plage) */
   function dragSpread(): number {
+    if (opt.spreadMode === 'max') return 1;
     if ((opt.spreadMode ?? 'none') !== 'drag') return sim.state.aimSpread ?? 0;
     const len = 40 + rand() * 280;
-    const v = (len - 90) / 220;
+    const v = (len - (opt.spreadDeadPx ?? 150)) / (opt.spreadRangePx ?? 220);
     return v <= 0 ? 0 : v >= 1 ? 1 : v;
   }
 
@@ -612,6 +630,7 @@ export function qaInstall(opt: QaInstallOptions): void {
       rec.shotGoldenDamage = 0;
       rec.shotGoldenKills = 0;
       rec.shotSpread = Number.isFinite(s.aimSpread) ? s.aimSpread : 0;
+      rec.shotTargetPx = rec.lastTargetPx;
       const c = s.contract;
       rec.shotContract = c && c.status === 'active' ? (rec.contractKind.get(c.id) ?? c.id) : null;
     }
@@ -626,6 +645,7 @@ export function qaInstall(opt: QaInstallOptions): void {
         volley: s.volley.length,
         firingMs: Math.round(ms),
         spread: Math.round(rec.shotSpread * 1000) / 1000,
+        targetPx: Math.round(rec.shotTargetPx),
         contract: rec.shotContract,
         goldenDamage: rec.shotGoldenDamage,
         goldenKills: rec.shotGoldenKills,
@@ -789,6 +809,10 @@ export function qaInstall(opt: QaInstallOptions): void {
         rec.stopReason = `phase:${s.phase}`;
         break;
       }
+      if (c.stopOnBossReward && s.phase === 'reward' && (s as { rewardSource?: string }).rewardSource === 'boss') {
+        rec.stopReason = 'boss-reward';
+        break;
+      }
       if (c.untilFirstReward && api.firstRewardAt !== null) {
         rec.stopReason = 'first-reward';
         break;
@@ -814,7 +838,7 @@ export function qaInstall(opt: QaInstallOptions): void {
             const a = aimContracts();
             sim.aim(a.dir, a.spread);
           } else if (opt.bot === 'naive') {
-            if ((opt.spreadMode ?? 'none') === 'drag') sim.aim(aimNaive(), dragSpread());
+            if ((opt.spreadMode ?? 'none') !== 'none') sim.aim(aimNaive(), dragSpread());
             else sim.aim(aimNaive());
           } else sim.aim(aimGreedy());
           sim.fire();
@@ -839,6 +863,8 @@ export function qaInstall(opt: QaInstallOptions): void {
     if (p.handleChoices !== undefined) opt.handleChoices = p.handleChoices;
     if (p.onLost !== undefined) opt.onLost = p.onLost;
     if (p.spreadMode !== undefined) opt.spreadMode = p.spreadMode;
+    if (p.spreadDeadPx !== undefined) opt.spreadDeadPx = p.spreadDeadPx;
+    if (p.spreadRangePx !== undefined) opt.spreadRangePx = p.spreadRangePx;
     rec.nextFireAt = -1;
   }
 
@@ -890,7 +916,7 @@ export async function waitReady(page: Page, dismissTitle = true): Promise<void> 
 /** Ouvre le jeu (seed forcée par défaut : run jamais sauvegardée), branche la collecte d'erreurs, ferme le titre. */
 export async function openGame(page: Page, seed: string, o: OpenOptions = {}): Promise<Session> {
   const consoleErrors = watchErrors(page);
-  await page.goto(o.url ?? `/?seed=${encodeURIComponent(seed)}`);
+  await page.goto(o.url ?? `/?seed=${encodeURIComponent(seed)}&qa=1`);
   await waitReady(page, o.dismissTitle ?? true);
   return { page, consoleErrors };
 }
@@ -909,6 +935,8 @@ export async function installBot(page: Page, o: Partial<QaInstallOptions> & { bo
     handleChoices: o.handleChoices ?? true,
     onLost: o.onLost ?? 'giveUp',
     spreadMode: o.spreadMode ?? 'none',
+    spreadDeadPx: o.spreadDeadPx ?? SPREAD_DEAD_PX,
+    spreadRangePx: o.spreadRangePx ?? SPREAD_RANGE_PX,
   };
   await page.evaluate(qaInstall, opts);
 }
@@ -965,13 +993,13 @@ export function mean(xs: number[]): number {
 }
 
 /** dossier des captures du jalon courant (lot 1 du plan fun) ; docs/qa/final-shots reste la référence « avant » */
-export const SHOTS_DIR = 'docs/qa/fun-shots/suite';
+export const SHOTS_DIR = 'docs/qa/fun-final-shots/suite';
 
 /** captures du passage courant (anciennement docs/qa/final-shots) */
-export const FINAL_SHOTS = 'docs/qa/fun-shots/suite';
+export const FINAL_SHOTS = 'docs/qa/fun-final-shots/suite';
 
 /** préfixe des sorties JSON du passage courant (les fichiers final-*.json restent la référence « avant ») */
-export const QA_OUT = 'docs/qa/lot1';
+export const QA_OUT = 'docs/qa/fun-final';
 
 /** captures du rapport fun-lot1 */
-export const FUN_SHOTS = 'docs/qa/fun-shots';
+export const FUN_SHOTS = 'docs/qa/fun-final-shots';

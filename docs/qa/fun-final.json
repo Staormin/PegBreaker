@@ -1,0 +1,2404 @@
+{
+  "generatedAt": "2026-10-16T20:40:42.582Z",
+  "build": "0.4.0-j4",
+  "method": {
+    "speed": "naïf qa-1 : vitesse 1 et 1,5 s de visée jusqu'à firstRewardAt, puis vitesse 8 ; autres : vitesse 8, 10 pages en parallèle au plus",
+    "spread": "geste de débutant uniforme 40–320 px CSS → spread = clamp((len − 150) / 220) (ui/input.ts) ; modèle B : longueur = distance lanceur → cible",
+    "involuntary": "le bot naïf ne veut jamais ouvrir : toute ouverture > 0 est involontaire (spreadShare) ; modèle B = involuntaryShareB",
+    "decisionsPerShot": "(tirs + tirs à ouverture > 0) / tirs",
+    "durationHuman": "durationMs − visée bot + 1,5 s × tirs",
+    "revive": "conditionnel (contrats) : clic DOM sur [data-action=revive] si gratuit (stats.runs = 0, qa=1) ou ◆ suffisants ; autres : sim.giveUp()"
+  },
+  "before": {
+    "source": "docs/qa/final-metrics.json (build 7a33cab)",
+    "decisionsPerShot": 1,
+    "comboGe5Naive": 0.1,
+    "durationHumanMinNaive": 2.64,
+    "waveOfDeathNaive": 5.2,
+    "decisionsPerMinHumanNaive": 18.5,
+    "timeToFirstRewardMsNaive": 2203,
+    "timeToFirstChoiceHumanMsNaive": 23836.6,
+    "deadMoments": 0
+  },
+  "lot1": {
+    "source": "docs/qa/lot1-fun.json (rapport fun-lot1.md)",
+    "naive": {
+      "runs": 5,
+      "decisionsPerShot": 1.83,
+      "spreadShare": 0.83,
+      "decisionsPerMinHuman": 27.44,
+      "comboGe5": 0.39,
+      "comboGe8": 0.21,
+      "comboGe5UnderComboContract": 0.42,
+      "contractsOfferedPerRun": 6.2,
+      "contractsCompletedPerRun": 2.4,
+      "contractsFailedPerRun": 3.6,
+      "contractSuccessRate": 0.39,
+      "contractsByKind": {
+        "destroyInOneShot": {
+          "offered": 4,
+          "completed": 3,
+          "failed": 1
+        },
+        "noDamage": {
+          "offered": 5,
+          "completed": 2,
+          "failed": 3
+        },
+        "clearUnderShots": {
+          "offered": 5,
+          "completed": 1,
+          "failed": 4
+        },
+        "collectBalls": {
+          "offered": 2,
+          "completed": 1,
+          "failed": 0
+        },
+        "collectCoins": {
+          "offered": 6,
+          "completed": 0,
+          "failed": 6
+        },
+        "reachCombo": {
+          "offered": 6,
+          "completed": 4,
+          "failed": 2
+        },
+        "goldenKill": {
+          "offered": 2,
+          "completed": 1,
+          "failed": 1
+        },
+        "killWithElement": {
+          "offered": 1,
+          "completed": 0,
+          "failed": 1
+        }
+      },
+      "durationHumanMin": 4.08,
+      "firstLossWave": 6.6,
+      "waveOfDeath": 6.6,
+      "depth": 54.6,
+      "reviveShare": 0,
+      "wavesGainedByRevive": null,
+      "depthGainedByRevive": null,
+      "timeToFirstChoiceHumanMs": 20173.2,
+      "goldenPerShot": 1,
+      "goldenDamageShare": 0.16,
+      "shotsWithGoldenKill": 0.21,
+      "deadMoments": 0,
+      "maxFeedbackGapMs": 1550,
+      "errors": 0
+    },
+    "contracts": {
+      "runs": 5,
+      "decisionsPerShot": 1.61,
+      "spreadShare": 0.61,
+      "decisionsPerMinHuman": 22.74,
+      "comboGe5": 0.44,
+      "comboGe8": 0.28,
+      "comboGe5UnderComboContract": 0.32,
+      "contractsOfferedPerRun": 10,
+      "contractsCompletedPerRun": 5.2,
+      "contractsFailedPerRun": 4.4,
+      "contractSuccessRate": 0.52,
+      "contractsByKind": {
+        "destroyInOneShot": {
+          "offered": 8,
+          "completed": 7,
+          "failed": 0
+        },
+        "noDamage": {
+          "offered": 5,
+          "completed": 3,
+          "failed": 2
+        },
+        "clearUnderShots": {
+          "offered": 7,
+          "completed": 1,
+          "failed": 6
+        },
+        "collectBalls": {
+          "offered": 3,
+          "completed": 1,
+          "failed": 1
+        },
+        "collectCoins": {
+          "offered": 10,
+          "completed": 3,
+          "failed": 7
+        },
+        "reachCombo": {
+          "offered": 9,
+          "completed": 6,
+          "failed": 3
+        },
+        "goldenKill": {
+          "offered": 3,
+          "completed": 1,
+          "failed": 2
+        },
+        "killWithElement": {
+          "offered": 5,
+          "completed": 4,
+          "failed": 1
+        }
+      },
+      "durationHumanMin": 8.44,
+      "firstLossWave": 9.2,
+      "waveOfDeath": 11,
+      "depth": 104.2,
+      "reviveShare": 1,
+      "wavesGainedByRevive": 1.8,
+      "depthGainedByRevive": 23.8,
+      "timeToFirstChoiceHumanMs": 14410.2,
+      "goldenPerShot": 1,
+      "goldenDamageShare": 0.08,
+      "shotsWithGoldenKill": 0.14,
+      "deadMoments": 0,
+      "maxFeedbackGapMs": 767,
+      "errors": 0
+    },
+    "timeToFirstRewardMsNaive": 2192
+  },
+  "tight": {
+    "label": "naïf, rafale serrée (spread 0)",
+    "runs": [
+      {
+        "bot": "tight",
+        "seed": "qa-1",
+        "stopReason": "gameover",
+        "shots": 82,
+        "decisionsPerShot": 1,
+        "spreadShare": 0,
+        "involuntaryShareB": 0.95,
+        "meanTargetPx": 404,
+        "bestShotDamageRun": 6438,
+        "fullFanShare": 0,
+        "meanSpread": 0,
+        "decisionsPerMinHuman": 18.5,
+        "comboGe5": 0.22,
+        "comboGe8": 0.1,
+        "comboGe5UnderComboContract": 0.14,
+        "contractShots": 50,
+        "contracts": {
+          "offered": 9,
+          "completed": 6,
+          "failed": 2,
+          "byKind": {
+            "destroyInOneShot": {
+              "offered": 3,
+              "completed": 2,
+              "failed": 0
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectBalls": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 302242,
+        "durationHumanMin": 5.04,
+        "durationSimMs": 205525,
+        "firstLossWave": 9,
+        "firstLossDepth": 82,
+        "waveOfDeath": 9,
+        "depth": 82,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 9,
+            "depth": 82,
+            "canRevive": true,
+            "simMs": 205525,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 22417,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 7,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 82,
+          "damage": 13587,
+          "kills": 37,
+          "hits": 381,
+          "perShot": 1,
+          "damageShare": 0.25,
+          "shotsWithGoldenKill": 0.29
+        },
+        "bestCombo": 39,
+        "bestShotDamage": 6438,
+        "contractsCompletedStat": 6,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 933,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "tight",
+        "seed": "qa-2",
+        "stopReason": "gameover",
+        "shots": 199,
+        "decisionsPerShot": 1,
+        "spreadShare": 0,
+        "involuntaryShareB": 0.93,
+        "meanTargetPx": 394,
+        "bestShotDamageRun": 101672,
+        "fullFanShare": 0,
+        "meanSpread": 0,
+        "decisionsPerMinHuman": 15.1,
+        "comboGe5": 0.37,
+        "comboGe8": 0.17,
+        "comboGe5UnderComboContract": 0.29,
+        "contractShots": 115,
+        "contracts": {
+          "offered": 17,
+          "completed": 10,
+          "failed": 7,
+          "byKind": {
+            "collectCoins": {
+              "offered": 4,
+              "completed": 2,
+              "failed": 2
+            },
+            "clearUnderShots": {
+              "offered": 2,
+              "completed": 0,
+              "failed": 2
+            },
+            "noDamage": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 3,
+              "completed": 2,
+              "failed": 1
+            },
+            "goldenKill": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "destroyInOneShot": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 879783,
+        "durationHumanMin": 14.66,
+        "durationSimMs": 619600,
+        "firstLossWave": 18,
+        "firstLossDepth": 199,
+        "waveOfDeath": 18,
+        "depth": 199,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 18,
+            "depth": 199,
+            "canRevive": true,
+            "simMs": 619600,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 19784,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 15,
+          "boss": 2
+        },
+        "golden": {
+          "launches": 199,
+          "damage": 89671,
+          "kills": 39,
+          "hits": 922,
+          "perShot": 1,
+          "damageShare": 0.06,
+          "shotsWithGoldenKill": 0.16
+        },
+        "bestCombo": 55,
+        "bestShotDamage": 101672,
+        "contractsCompletedStat": 10,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1000,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "tight",
+        "seed": "qa-3",
+        "stopReason": "gameover",
+        "shots": 99,
+        "decisionsPerShot": 1,
+        "spreadShare": 0,
+        "involuntaryShareB": 0.98,
+        "meanTargetPx": 415,
+        "bestShotDamageRun": 7909,
+        "fullFanShare": 0,
+        "meanSpread": 0,
+        "decisionsPerMinHuman": 15.9,
+        "comboGe5": 0.55,
+        "comboGe8": 0.35,
+        "comboGe5UnderComboContract": 0.41,
+        "contractShots": 68,
+        "contracts": {
+          "offered": 10,
+          "completed": 6,
+          "failed": 4,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "collectBalls": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 2,
+              "completed": 0,
+              "failed": 2
+            },
+            "clearUnderShots": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "reachCombo": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 426158,
+        "durationHumanMin": 7.1,
+        "durationSimMs": 304325,
+        "firstLossWave": 11,
+        "firstLossDepth": 99,
+        "waveOfDeath": 11,
+        "depth": 99,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 11,
+            "depth": 99,
+            "canRevive": true,
+            "simMs": 304325,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 14334,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 8,
+          "boss": 2
+        },
+        "golden": {
+          "launches": 99,
+          "damage": 17499,
+          "kills": 32,
+          "hits": 423,
+          "perShot": 1,
+          "damageShare": 0.19,
+          "shotsWithGoldenKill": 0.19
+        },
+        "bestCombo": 64,
+        "bestShotDamage": 7909,
+        "contractsCompletedStat": 6,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1050,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "tight",
+        "seed": "qa-4",
+        "stopReason": "gameover",
+        "shots": 53,
+        "decisionsPerShot": 1,
+        "spreadShare": 0,
+        "involuntaryShareB": 0.91,
+        "meanTargetPx": 399,
+        "bestShotDamageRun": 2602,
+        "fullFanShare": 0,
+        "meanSpread": 0,
+        "decisionsPerMinHuman": 18.9,
+        "comboGe5": 0.17,
+        "comboGe8": 0.09,
+        "comboGe5UnderComboContract": 0.05,
+        "contractShots": 46,
+        "contracts": {
+          "offered": 7,
+          "completed": 5,
+          "failed": 1,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 196400,
+        "durationHumanMin": 3.27,
+        "durationSimMs": 134633,
+        "firstLossWave": 7,
+        "firstLossDepth": 53,
+        "waveOfDeath": 7,
+        "depth": 53,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 7,
+            "depth": 53,
+            "canRevive": true,
+            "simMs": 134633,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 15500,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 5,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 53,
+          "damage": 3888,
+          "kills": 23,
+          "hits": 122,
+          "perShot": 1,
+          "damageShare": 0.2,
+          "shotsWithGoldenKill": 0.32
+        },
+        "bestCombo": 26,
+        "bestShotDamage": 2602,
+        "contractsCompletedStat": 5,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1033,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "tight",
+        "seed": "qa-5",
+        "stopReason": "gameover",
+        "shots": 36,
+        "decisionsPerShot": 1,
+        "spreadShare": 0,
+        "involuntaryShareB": 0.94,
+        "meanTargetPx": 407,
+        "bestShotDamageRun": 435,
+        "fullFanShare": 0,
+        "meanSpread": 0,
+        "decisionsPerMinHuman": 21.2,
+        "comboGe5": 0.06,
+        "comboGe8": 0.03,
+        "comboGe5UnderComboContract": 0,
+        "contractShots": 33,
+        "contracts": {
+          "offered": 4,
+          "completed": 0,
+          "failed": 4,
+          "byKind": {
+            "reachCombo": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 116175,
+        "durationHumanMin": 1.94,
+        "durationSimMs": 76908,
+        "firstLossWave": 4,
+        "firstLossDepth": 36,
+        "waveOfDeath": 4,
+        "depth": 36,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 36,
+            "canRevive": true,
+            "simMs": 76908,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 25816,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 3
+        },
+        "golden": {
+          "launches": 36,
+          "damage": 1615,
+          "kills": 14,
+          "hits": 68,
+          "perShot": 1,
+          "damageShare": 0.3,
+          "shotsWithGoldenKill": 0.28
+        },
+        "bestCombo": 8,
+        "bestShotDamage": 435,
+        "contractsCompletedStat": 0,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 850,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    ],
+    "average": {
+      "runs": 5,
+      "decisionsPerShot": 1,
+      "spreadShare": 0,
+      "involuntaryShareB": 0.94,
+      "meanTargetPx": 403.8,
+      "bestShotDamage": 23811.2,
+      "shots": 93.8,
+      "decisionsPerMinHuman": 17.92,
+      "comboGe5": 0.27,
+      "comboGe8": 0.15,
+      "comboGe5UnderComboContract": 0.18,
+      "contractsOfferedPerRun": 9.4,
+      "contractsCompletedPerRun": 5.4,
+      "contractsFailedPerRun": 3.6,
+      "contractSuccessRate": 0.57,
+      "contractsByKind": {
+        "destroyInOneShot": {
+          "offered": 9,
+          "completed": 6,
+          "failed": 1
+        },
+        "noDamage": {
+          "offered": 4,
+          "completed": 4,
+          "failed": 0
+        },
+        "clearUnderShots": {
+          "offered": 7,
+          "completed": 2,
+          "failed": 5
+        },
+        "collectBalls": {
+          "offered": 3,
+          "completed": 2,
+          "failed": 1
+        },
+        "collectCoins": {
+          "offered": 10,
+          "completed": 6,
+          "failed": 4
+        },
+        "killWithElement": {
+          "offered": 5,
+          "completed": 2,
+          "failed": 3
+        },
+        "reachCombo": {
+          "offered": 7,
+          "completed": 4,
+          "failed": 3
+        },
+        "goldenKill": {
+          "offered": 2,
+          "completed": 1,
+          "failed": 1
+        }
+      },
+      "durationHumanMin": 6.4,
+      "firstLossWave": 9.8,
+      "waveOfDeath": 9.8,
+      "depth": 93.8,
+      "reviveShare": 0,
+      "wavesGainedByRevive": null,
+      "depthGainedByRevive": null,
+      "timeToFirstChoiceHumanMs": 19570.2,
+      "goldenPerShot": 1,
+      "goldenDamageShare": 0.2,
+      "shotsWithGoldenKill": 0.25,
+      "deadMoments": 0,
+      "maxFeedbackGapMs": 1050,
+      "errors": 0
+    }
+  },
+  "naive": {
+    "label": "naïf, geste de débutant 40–320 px",
+    "runs": [
+      {
+        "bot": "naive",
+        "seed": "qa-1",
+        "stopReason": "gameover",
+        "shots": 158,
+        "decisionsPerShot": 1.66,
+        "spreadShare": 0.66,
+        "involuntaryShareB": 0.96,
+        "meanTargetPx": 399,
+        "bestShotDamageRun": 15744,
+        "fullFanShare": 0,
+        "meanSpread": 0.26,
+        "decisionsPerMinHuman": 22.2,
+        "comboGe5": 0.68,
+        "comboGe8": 0.49,
+        "comboGe5UnderComboContract": 0.68,
+        "contractShots": 101,
+        "contracts": {
+          "offered": 14,
+          "completed": 11,
+          "failed": 2,
+          "byKind": {
+            "destroyInOneShot": {
+              "offered": 4,
+              "completed": 2,
+              "failed": 1
+            },
+            "noDamage": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "collectBalls": {
+              "offered": 3,
+              "completed": 2,
+              "failed": 1
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 758779,
+        "durationHumanMin": 12.65,
+        "durationSimMs": 549779,
+        "firstLossWave": 15,
+        "firstLossDepth": 158,
+        "waveOfDeath": 15,
+        "depth": 158,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 15,
+            "depth": 158,
+            "canRevive": true,
+            "simMs": 549779,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": 2204,
+        "timeToFirstChoiceHumanMs": 18267,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 12,
+          "boss": 2
+        },
+        "golden": {
+          "launches": 158,
+          "damage": 27218,
+          "kills": 32,
+          "hits": 473,
+          "perShot": 1,
+          "damageShare": 0.07,
+          "shotsWithGoldenKill": 0.18
+        },
+        "bestCombo": 82,
+        "bestShotDamage": 15744,
+        "contractsCompletedStat": 11,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1550,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "naive",
+        "seed": "qa-2",
+        "stopReason": "gameover",
+        "shots": 215,
+        "decisionsPerShot": 1.6,
+        "spreadShare": 0.6,
+        "involuntaryShareB": 0.93,
+        "meanTargetPx": 381,
+        "bestShotDamageRun": 164572,
+        "fullFanShare": 0,
+        "meanSpread": 0.21,
+        "decisionsPerMinHuman": 20.6,
+        "comboGe5": 0.47,
+        "comboGe8": 0.33,
+        "comboGe5UnderComboContract": 0.45,
+        "contractShots": 136,
+        "contracts": {
+          "offered": 18,
+          "completed": 12,
+          "failed": 5,
+          "byKind": {
+            "collectCoins": {
+              "offered": 4,
+              "completed": 2,
+              "failed": 2
+            },
+            "clearUnderShots": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "noDamage": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 3,
+              "completed": 3,
+              "failed": 0
+            },
+            "goldenKill": {
+              "offered": 2,
+              "completed": 0,
+              "failed": 2
+            },
+            "destroyInOneShot": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 3,
+              "completed": 2,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 1070579,
+        "durationHumanMin": 17.84,
+        "durationSimMs": 783162,
+        "firstLossWave": 19,
+        "firstLossDepth": 215,
+        "waveOfDeath": 19,
+        "depth": 215,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 19,
+            "depth": 215,
+            "canRevive": true,
+            "simMs": 783162,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 16433,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 16,
+          "boss": 2
+        },
+        "golden": {
+          "launches": 215,
+          "damage": 103997,
+          "kills": 38,
+          "hits": 947,
+          "perShot": 1,
+          "damageShare": 0.05,
+          "shotsWithGoldenKill": 0.12
+        },
+        "bestCombo": 69,
+        "bestShotDamage": 164572,
+        "contractsCompletedStat": 12,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 767,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "naive",
+        "seed": "qa-3",
+        "stopReason": "gameover",
+        "shots": 35,
+        "decisionsPerShot": 1.69,
+        "spreadShare": 0.69,
+        "involuntaryShareB": 0.89,
+        "meanTargetPx": 420,
+        "bestShotDamageRun": 1533,
+        "fullFanShare": 0,
+        "meanSpread": 0.25,
+        "decisionsPerMinHuman": 27.8,
+        "comboGe5": 0.4,
+        "comboGe8": 0.14,
+        "comboGe5UnderComboContract": 1,
+        "contractShots": 30,
+        "contracts": {
+          "offered": 5,
+          "completed": 2,
+          "failed": 3,
+          "byKind": {
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectBalls": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 140142,
+        "durationHumanMin": 2.34,
+        "durationSimMs": 97725,
+        "firstLossWave": 5,
+        "firstLossDepth": 35,
+        "waveOfDeath": 5,
+        "depth": 35,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 5,
+            "depth": 35,
+            "canRevive": true,
+            "simMs": 97725,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 10900,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 4
+        },
+        "golden": {
+          "launches": 35,
+          "damage": 2815,
+          "kills": 21,
+          "hits": 120,
+          "perShot": 1,
+          "damageShare": 0.3,
+          "shotsWithGoldenKill": 0.31
+        },
+        "bestCombo": 22,
+        "bestShotDamage": 1533,
+        "contractsCompletedStat": 2,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 717,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "naive",
+        "seed": "qa-4",
+        "stopReason": "gameover",
+        "shots": 33,
+        "decisionsPerShot": 1.52,
+        "spreadShare": 0.52,
+        "involuntaryShareB": 0.94,
+        "meanTargetPx": 422,
+        "bestShotDamageRun": 3298,
+        "fullFanShare": 0,
+        "meanSpread": 0.19,
+        "decisionsPerMinHuman": 25.9,
+        "comboGe5": 0.3,
+        "comboGe8": 0.12,
+        "comboGe5UnderComboContract": 0.57,
+        "contractShots": 30,
+        "contracts": {
+          "offered": 4,
+          "completed": 1,
+          "failed": 2,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 127496,
+        "durationHumanMin": 2.12,
+        "durationSimMs": 87113,
+        "firstLossWave": 4,
+        "firstLossDepth": 33,
+        "waveOfDeath": 4,
+        "depth": 33,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 33,
+            "canRevive": true,
+            "simMs": 87113,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 20784,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 3
+        },
+        "golden": {
+          "launches": 33,
+          "damage": 4561,
+          "kills": 22,
+          "hits": 123,
+          "perShot": 1,
+          "damageShare": 0.46,
+          "shotsWithGoldenKill": 0.52
+        },
+        "bestCombo": 27,
+        "bestShotDamage": 3298,
+        "contractsCompletedStat": 1,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 733,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "naive",
+        "seed": "qa-5",
+        "stopReason": "gameover",
+        "shots": 35,
+        "decisionsPerShot": 1.57,
+        "spreadShare": 0.57,
+        "involuntaryShareB": 0.91,
+        "meanTargetPx": 410,
+        "bestShotDamageRun": 1514,
+        "fullFanShare": 0,
+        "meanSpread": 0.24,
+        "decisionsPerMinHuman": 27.7,
+        "comboGe5": 0.23,
+        "comboGe8": 0.14,
+        "comboGe5UnderComboContract": 0.27,
+        "contractShots": 26,
+        "contracts": {
+          "offered": 4,
+          "completed": 3,
+          "failed": 1,
+          "byKind": {
+            "reachCombo": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 130130,
+        "durationHumanMin": 2.17,
+        "durationSimMs": 88213,
+        "firstLossWave": 4,
+        "firstLossDepth": 35,
+        "waveOfDeath": 4,
+        "depth": 35,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 35,
+            "canRevive": true,
+            "simMs": 88213,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 20733,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 3
+        },
+        "golden": {
+          "launches": 35,
+          "damage": 1900,
+          "kills": 11,
+          "hits": 64,
+          "perShot": 1,
+          "damageShare": 0.29,
+          "shotsWithGoldenKill": 0.29
+        },
+        "bestCombo": 47,
+        "bestShotDamage": 1514,
+        "contractsCompletedStat": 3,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 750,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    ],
+    "average": {
+      "runs": 5,
+      "decisionsPerShot": 1.61,
+      "spreadShare": 0.61,
+      "involuntaryShareB": 0.93,
+      "meanTargetPx": 406.4,
+      "bestShotDamage": 37332.2,
+      "shots": 95.2,
+      "decisionsPerMinHuman": 24.84,
+      "comboGe5": 0.42,
+      "comboGe8": 0.24,
+      "comboGe5UnderComboContract": 0.59,
+      "contractsOfferedPerRun": 9,
+      "contractsCompletedPerRun": 5.8,
+      "contractsFailedPerRun": 2.6,
+      "contractSuccessRate": 0.64,
+      "contractsByKind": {
+        "destroyInOneShot": {
+          "offered": 9,
+          "completed": 6,
+          "failed": 2
+        },
+        "noDamage": {
+          "offered": 4,
+          "completed": 4,
+          "failed": 0
+        },
+        "clearUnderShots": {
+          "offered": 6,
+          "completed": 2,
+          "failed": 4
+        },
+        "collectBalls": {
+          "offered": 4,
+          "completed": 3,
+          "failed": 1
+        },
+        "collectCoins": {
+          "offered": 9,
+          "completed": 5,
+          "failed": 3
+        },
+        "killWithElement": {
+          "offered": 6,
+          "completed": 4,
+          "failed": 1
+        },
+        "reachCombo": {
+          "offered": 5,
+          "completed": 5,
+          "failed": 0
+        },
+        "goldenKill": {
+          "offered": 2,
+          "completed": 0,
+          "failed": 2
+        }
+      },
+      "durationHumanMin": 7.42,
+      "firstLossWave": 9.4,
+      "waveOfDeath": 9.4,
+      "depth": 95.2,
+      "reviveShare": 0,
+      "wavesGainedByRevive": null,
+      "depthGainedByRevive": null,
+      "timeToFirstChoiceHumanMs": 17423.4,
+      "goldenPerShot": 1,
+      "goldenDamageShare": 0.23,
+      "shotsWithGoldenKill": 0.28,
+      "deadMoments": 0,
+      "maxFeedbackGapMs": 1550,
+      "errors": 0
+    }
+  },
+  "fan": {
+    "label": "naïf, éventail systématique (spread 1)",
+    "runs": [
+      {
+        "bot": "fan",
+        "seed": "qa-1",
+        "stopReason": "gameover",
+        "shots": 60,
+        "decisionsPerShot": 2,
+        "spreadShare": 1,
+        "involuntaryShareB": 0.93,
+        "meanTargetPx": 395,
+        "bestShotDamageRun": 1744,
+        "fullFanShare": 1,
+        "meanSpread": 1,
+        "decisionsPerMinHuman": 28.8,
+        "comboGe5": 0.4,
+        "comboGe8": 0.27,
+        "comboGe5UnderComboContract": 0.44,
+        "contractShots": 46,
+        "contracts": {
+          "offered": 6,
+          "completed": 4,
+          "failed": 2,
+          "byKind": {
+            "destroyInOneShot": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "collectCoins": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "collectBalls": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 269183,
+        "durationHumanMin": 4.49,
+        "durationSimMs": 197650,
+        "firstLossWave": 7,
+        "firstLossDepth": 60,
+        "waveOfDeath": 7,
+        "depth": 60,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 7,
+            "depth": 60,
+            "canRevive": true,
+            "simMs": 197650,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 13133,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 5,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 60,
+          "damage": 4125,
+          "kills": 24,
+          "hits": 176,
+          "perShot": 1,
+          "damageShare": 0.22,
+          "shotsWithGoldenKill": 0.28
+        },
+        "bestCombo": 38,
+        "bestShotDamage": 1744,
+        "contractsCompletedStat": 4,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1150,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "fan",
+        "seed": "qa-2",
+        "stopReason": "gameover",
+        "shots": 28,
+        "decisionsPerShot": 1.96,
+        "spreadShare": 0.96,
+        "involuntaryShareB": 0.93,
+        "meanTargetPx": 430,
+        "bestShotDamageRun": 937,
+        "fullFanShare": 0.96,
+        "meanSpread": 1,
+        "decisionsPerMinHuman": 30.6,
+        "comboGe5": 0.46,
+        "comboGe8": 0.25,
+        "comboGe5UnderComboContract": 0.5,
+        "contractShots": 23,
+        "contracts": {
+          "offered": 4,
+          "completed": 3,
+          "failed": 1,
+          "byKind": {
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 117475,
+        "durationHumanMin": 1.96,
+        "durationSimMs": 87292,
+        "firstLossWave": 4,
+        "firstLossDepth": 28,
+        "waveOfDeath": 4,
+        "depth": 28,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 28,
+            "canRevive": true,
+            "simMs": 87292,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 14000,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 3
+        },
+        "golden": {
+          "launches": 28,
+          "damage": 1728,
+          "kills": 10,
+          "hits": 79,
+          "perShot": 1,
+          "damageShare": 0.28,
+          "shotsWithGoldenKill": 0.32
+        },
+        "bestCombo": 25,
+        "bestShotDamage": 937,
+        "contractsCompletedStat": 3,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1150,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "fan",
+        "seed": "qa-3",
+        "stopReason": "gameover",
+        "shots": 45,
+        "decisionsPerShot": 2,
+        "spreadShare": 1,
+        "involuntaryShareB": 0.93,
+        "meanTargetPx": 421,
+        "bestShotDamageRun": 2059,
+        "fullFanShare": 1,
+        "meanSpread": 1,
+        "decisionsPerMinHuman": 28.7,
+        "comboGe5": 0.51,
+        "comboGe8": 0.27,
+        "comboGe5UnderComboContract": 1,
+        "contractShots": 28,
+        "contracts": {
+          "offered": 5,
+          "completed": 2,
+          "failed": 3,
+          "byKind": {
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectBalls": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 202921,
+        "durationHumanMin": 3.38,
+        "durationSimMs": 151771,
+        "firstLossWave": 6,
+        "firstLossDepth": 45,
+        "waveOfDeath": 6,
+        "depth": 45,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 6,
+            "depth": 45,
+            "canRevive": true,
+            "simMs": 151771,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 17650,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 5
+        },
+        "golden": {
+          "launches": 45,
+          "damage": 3719,
+          "kills": 19,
+          "hits": 157,
+          "perShot": 1,
+          "damageShare": 0.23,
+          "shotsWithGoldenKill": 0.27
+        },
+        "bestCombo": 60,
+        "bestShotDamage": 2059,
+        "contractsCompletedStat": 2,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 883,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "fan",
+        "seed": "qa-4",
+        "stopReason": "gameover",
+        "shots": 32,
+        "decisionsPerShot": 2,
+        "spreadShare": 1,
+        "involuntaryShareB": 0.88,
+        "meanTargetPx": 406,
+        "bestShotDamageRun": 1338,
+        "fullFanShare": 1,
+        "meanSpread": 1,
+        "decisionsPerMinHuman": 32.4,
+        "comboGe5": 0.28,
+        "comboGe8": 0.19,
+        "comboGe5UnderComboContract": 0.5,
+        "contractShots": 32,
+        "contracts": {
+          "offered": 4,
+          "completed": 2,
+          "failed": 1,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 127800,
+        "durationHumanMin": 2.13,
+        "durationSimMs": 93067,
+        "firstLossWave": 4,
+        "firstLossDepth": 32,
+        "waveOfDeath": 4,
+        "depth": 32,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 32,
+            "canRevive": true,
+            "simMs": 93067,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 20017,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 3
+        },
+        "golden": {
+          "launches": 32,
+          "damage": 1931,
+          "kills": 14,
+          "hits": 78,
+          "perShot": 1,
+          "damageShare": 0.28,
+          "shotsWithGoldenKill": 0.28
+        },
+        "bestCombo": 56,
+        "bestShotDamage": 1338,
+        "contractsCompletedStat": 2,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 1167,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "fan",
+        "seed": "qa-5",
+        "stopReason": "gameover",
+        "shots": 41,
+        "decisionsPerShot": 2,
+        "spreadShare": 1,
+        "involuntaryShareB": 0.95,
+        "meanTargetPx": 422,
+        "bestShotDamageRun": 1343,
+        "fullFanShare": 1,
+        "meanSpread": 1,
+        "decisionsPerMinHuman": 27.3,
+        "comboGe5": 0.37,
+        "comboGe8": 0.24,
+        "comboGe5UnderComboContract": 0.11,
+        "contractShots": 32,
+        "contracts": {
+          "offered": 5,
+          "completed": 1,
+          "failed": 3,
+          "byKind": {
+            "reachCombo": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "goldenKill": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 0
+            }
+          }
+        },
+        "durationHumanMs": 193546,
+        "durationHumanMin": 3.23,
+        "durationSimMs": 146763,
+        "firstLossWave": 5,
+        "firstLossDepth": 41,
+        "waveOfDeath": 5,
+        "depth": 41,
+        "revived": false,
+        "wavesGainedByRevive": null,
+        "depthGainedByRevive": null,
+        "lost": [
+          {
+            "wave": 5,
+            "depth": 41,
+            "canRevive": true,
+            "simMs": 146763,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 20000,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 4
+        },
+        "golden": {
+          "launches": 41,
+          "damage": 1994,
+          "kills": 14,
+          "hits": 89,
+          "perShot": 1,
+          "damageShare": 0.19,
+          "shotsWithGoldenKill": 0.27
+        },
+        "bestCombo": 48,
+        "bestShotDamage": 1343,
+        "contractsCompletedStat": 1,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 850,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    ],
+    "average": {
+      "runs": 5,
+      "decisionsPerShot": 1.99,
+      "spreadShare": 0.99,
+      "involuntaryShareB": 0.92,
+      "meanTargetPx": 414.8,
+      "bestShotDamage": 1484.2,
+      "shots": 41.2,
+      "decisionsPerMinHuman": 29.56,
+      "comboGe5": 0.4,
+      "comboGe8": 0.24,
+      "comboGe5UnderComboContract": 0.51,
+      "contractsOfferedPerRun": 4.8,
+      "contractsCompletedPerRun": 2.4,
+      "contractsFailedPerRun": 2,
+      "contractSuccessRate": 0.5,
+      "contractsByKind": {
+        "destroyInOneShot": {
+          "offered": 5,
+          "completed": 4,
+          "failed": 1
+        },
+        "noDamage": {
+          "offered": 2,
+          "completed": 2,
+          "failed": 0
+        },
+        "collectCoins": {
+          "offered": 7,
+          "completed": 2,
+          "failed": 4
+        },
+        "collectBalls": {
+          "offered": 2,
+          "completed": 1,
+          "failed": 1
+        },
+        "clearUnderShots": {
+          "offered": 4,
+          "completed": 2,
+          "failed": 2
+        },
+        "reachCombo": {
+          "offered": 2,
+          "completed": 1,
+          "failed": 1
+        },
+        "killWithElement": {
+          "offered": 1,
+          "completed": 0,
+          "failed": 1
+        },
+        "goldenKill": {
+          "offered": 1,
+          "completed": 0,
+          "failed": 0
+        }
+      },
+      "durationHumanMin": 3.04,
+      "firstLossWave": 5.2,
+      "waveOfDeath": 5.2,
+      "depth": 41.2,
+      "reviveShare": 0,
+      "wavesGainedByRevive": null,
+      "depthGainedByRevive": null,
+      "timeToFirstChoiceHumanMs": 16960,
+      "goldenPerShot": 1,
+      "goldenDamageShare": 0.24,
+      "shotsWithGoldenKill": 0.28,
+      "deadMoments": 0,
+      "maxFeedbackGapMs": 1167,
+      "errors": 0
+    }
+  },
+  "contracts": {
+    "label": "conditionnel : lit le contrat (0 au mur, 1 sur rangée ≥ 4)",
+    "runs": [
+      {
+        "bot": "contracts",
+        "seed": "qa-1",
+        "stopReason": "gameover",
+        "shots": 56,
+        "decisionsPerShot": 1.54,
+        "spreadShare": 0.54,
+        "involuntaryShareB": 0.98,
+        "meanTargetPx": 383,
+        "bestShotDamageRun": 1855,
+        "fullFanShare": 0.07,
+        "meanSpread": 0.28,
+        "decisionsPerMinHuman": 24.9,
+        "comboGe5": 0.3,
+        "comboGe8": 0.18,
+        "comboGe5UnderComboContract": 0.33,
+        "contractShots": 47,
+        "contracts": {
+          "offered": 6,
+          "completed": 3,
+          "failed": 2,
+          "byKind": {
+            "destroyInOneShot": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 0
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "collectBalls": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 231709,
+        "durationHumanMin": 3.86,
+        "durationSimMs": 160992,
+        "firstLossWave": 6,
+        "firstLossDepth": 47,
+        "waveOfDeath": 7,
+        "depth": 56,
+        "revived": true,
+        "wavesGainedByRevive": 1,
+        "depthGainedByRevive": 9,
+        "lost": [
+          {
+            "wave": 6,
+            "depth": 47,
+            "canRevive": true,
+            "simMs": 136942,
+            "action": "revive"
+          },
+          {
+            "wave": 7,
+            "depth": 56,
+            "canRevive": false,
+            "simMs": 160992,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 15717,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 5,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 56,
+          "damage": 3866,
+          "kills": 23,
+          "hits": 134,
+          "perShot": 1,
+          "damageShare": 0.21,
+          "shotsWithGoldenKill": 0.32
+        },
+        "bestCombo": 28,
+        "bestShotDamage": 1855,
+        "contractsCompletedStat": 3,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 750,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "contracts",
+        "seed": "qa-2",
+        "stopReason": "gameover",
+        "shots": 46,
+        "decisionsPerShot": 1.33,
+        "spreadShare": 0.33,
+        "involuntaryShareB": 1,
+        "meanTargetPx": 432,
+        "bestShotDamageRun": 1301,
+        "fullFanShare": 0.04,
+        "meanSpread": 0.12,
+        "decisionsPerMinHuman": 24.5,
+        "comboGe5": 0.2,
+        "comboGe8": 0.09,
+        "comboGe5UnderComboContract": 0.14,
+        "contractShots": 46,
+        "contracts": {
+          "offered": 6,
+          "completed": 3,
+          "failed": 3,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 0,
+              "failed": 2
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 169005,
+        "durationHumanMin": 2.82,
+        "durationSimMs": 111988,
+        "firstLossWave": 4,
+        "firstLossDepth": 28,
+        "waveOfDeath": 6,
+        "depth": 46,
+        "revived": true,
+        "wavesGainedByRevive": 2,
+        "depthGainedByRevive": 18,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 28,
+            "canRevive": true,
+            "simMs": 70008,
+            "action": "revive"
+          },
+          {
+            "wave": 6,
+            "depth": 46,
+            "canRevive": false,
+            "simMs": 111988,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 13066,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 4,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 46,
+          "damage": 3360,
+          "kills": 19,
+          "hits": 104,
+          "perShot": 1,
+          "damageShare": 0.32,
+          "shotsWithGoldenKill": 0.26
+        },
+        "bestCombo": 12,
+        "bestShotDamage": 1301,
+        "contractsCompletedStat": 3,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 750,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "contracts",
+        "seed": "qa-3",
+        "stopReason": "gameover",
+        "shots": 58,
+        "decisionsPerShot": 1.55,
+        "spreadShare": 0.55,
+        "involuntaryShareB": 0.95,
+        "meanTargetPx": 429,
+        "bestShotDamageRun": 1294,
+        "fullFanShare": 0,
+        "meanSpread": 0.14,
+        "decisionsPerMinHuman": 26,
+        "comboGe5": 0.57,
+        "comboGe8": 0.31,
+        "comboGe5UnderComboContract": 1,
+        "contractShots": 43,
+        "contracts": {
+          "offered": 6,
+          "completed": 2,
+          "failed": 3,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 0,
+              "failed": 1
+            },
+            "collectBalls": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "killWithElement": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 230575,
+        "durationHumanMin": 3.84,
+        "durationSimMs": 157508,
+        "firstLossWave": 6,
+        "firstLossDepth": 42,
+        "waveOfDeath": 7,
+        "depth": 58,
+        "revived": true,
+        "wavesGainedByRevive": 1,
+        "depthGainedByRevive": 16,
+        "lost": [
+          {
+            "wave": 6,
+            "depth": 42,
+            "canRevive": true,
+            "simMs": 110792,
+            "action": "revive"
+          },
+          {
+            "wave": 7,
+            "depth": 58,
+            "canRevive": false,
+            "simMs": 157508,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 12216,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 5,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 58,
+          "damage": 4558,
+          "kills": 18,
+          "hits": 177,
+          "perShot": 1,
+          "damageShare": 0.22,
+          "shotsWithGoldenKill": 0.17
+        },
+        "bestCombo": 31,
+        "bestShotDamage": 1294,
+        "contractsCompletedStat": 2,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 683,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "contracts",
+        "seed": "qa-4",
+        "stopReason": "gameover",
+        "shots": 69,
+        "decisionsPerShot": 1.42,
+        "spreadShare": 0.42,
+        "involuntaryShareB": 0.8,
+        "meanTargetPx": 333,
+        "bestShotDamageRun": 3335,
+        "fullFanShare": 0,
+        "meanSpread": 0.14,
+        "decisionsPerMinHuman": 23,
+        "comboGe5": 0.26,
+        "comboGe8": 0.19,
+        "comboGe5UnderComboContract": 0.12,
+        "contractShots": 46,
+        "contracts": {
+          "offered": 7,
+          "completed": 4,
+          "failed": 3,
+          "byKind": {
+            "collectCoins": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "destroyInOneShot": {
+              "offered": 2,
+              "completed": 2,
+              "failed": 0
+            },
+            "reachCombo": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 283850,
+        "durationHumanMin": 4.73,
+        "durationSimMs": 195450,
+        "firstLossWave": 4,
+        "firstLossDepth": 28,
+        "waveOfDeath": 8,
+        "depth": 69,
+        "revived": true,
+        "wavesGainedByRevive": 4,
+        "depthGainedByRevive": 41,
+        "lost": [
+          {
+            "wave": 4,
+            "depth": 28,
+            "canRevive": true,
+            "simMs": 67442,
+            "action": "revive"
+          },
+          {
+            "wave": 8,
+            "depth": 69,
+            "canRevive": false,
+            "simMs": 195450,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 18016,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 6,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 69,
+          "damage": 8828,
+          "kills": 31,
+          "hits": 226,
+          "perShot": 1,
+          "damageShare": 0.29,
+          "shotsWithGoldenKill": 0.28
+        },
+        "bestCombo": 33,
+        "bestShotDamage": 3335,
+        "contractsCompletedStat": 4,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 683,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      {
+        "bot": "contracts",
+        "seed": "qa-5",
+        "stopReason": "gameover",
+        "shots": 59,
+        "decisionsPerShot": 1.46,
+        "spreadShare": 0.46,
+        "involuntaryShareB": 0.97,
+        "meanTargetPx": 375,
+        "bestShotDamageRun": 1690,
+        "fullFanShare": 0,
+        "meanSpread": 0.16,
+        "decisionsPerMinHuman": 25.5,
+        "comboGe5": 0.19,
+        "comboGe8": 0.08,
+        "comboGe5UnderComboContract": 0.14,
+        "contractShots": 53,
+        "contracts": {
+          "offered": 7,
+          "completed": 2,
+          "failed": 5,
+          "byKind": {
+            "reachCombo": {
+              "offered": 2,
+              "completed": 1,
+              "failed": 1
+            },
+            "collectCoins": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "destroyInOneShot": {
+              "offered": 1,
+              "completed": 1,
+              "failed": 0
+            },
+            "clearUnderShots": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "goldenKill": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            },
+            "noDamage": {
+              "offered": 1,
+              "completed": 0,
+              "failed": 1
+            }
+          }
+        },
+        "durationHumanMs": 226038,
+        "durationHumanMin": 3.77,
+        "durationSimMs": 150238,
+        "firstLossWave": 6,
+        "firstLossDepth": 47,
+        "waveOfDeath": 7,
+        "depth": 59,
+        "revived": true,
+        "wavesGainedByRevive": 1,
+        "depthGainedByRevive": 12,
+        "lost": [
+          {
+            "wave": 6,
+            "depth": 47,
+            "canRevive": true,
+            "simMs": 126221,
+            "action": "revive"
+          },
+          {
+            "wave": 7,
+            "depth": 59,
+            "canRevive": false,
+            "simMs": 150238,
+            "action": "giveUp"
+          }
+        ],
+        "runOverCount": 1,
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceHumanMs": 11300,
+        "firstOfferSource": "wave",
+        "rewardSources": {
+          "wave": 5,
+          "boss": 1
+        },
+        "golden": {
+          "launches": 59,
+          "damage": 3421,
+          "kills": 11,
+          "hits": 125,
+          "perShot": 1,
+          "damageShare": 0.21,
+          "shotsWithGoldenKill": 0.17
+        },
+        "bestCombo": 23,
+        "bestShotDamage": 1690,
+        "contractsCompletedStat": 2,
+        "deadMoments": [],
+        "maxFeedbackGapMs": 800,
+        "softlocks": [],
+        "violations": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    ],
+    "average": {
+      "runs": 5,
+      "decisionsPerShot": 1.46,
+      "spreadShare": 0.46,
+      "involuntaryShareB": 0.94,
+      "meanTargetPx": 390.4,
+      "bestShotDamage": 1895,
+      "shots": 57.6,
+      "decisionsPerMinHuman": 24.78,
+      "comboGe5": 0.3,
+      "comboGe8": 0.17,
+      "comboGe5UnderComboContract": 0.35,
+      "contractsOfferedPerRun": 6.4,
+      "contractsCompletedPerRun": 2.8,
+      "contractsFailedPerRun": 3.2,
+      "contractSuccessRate": 0.44,
+      "contractsByKind": {
+        "destroyInOneShot": {
+          "offered": 6,
+          "completed": 5,
+          "failed": 0
+        },
+        "noDamage": {
+          "offered": 4,
+          "completed": 2,
+          "failed": 2
+        },
+        "clearUnderShots": {
+          "offered": 5,
+          "completed": 3,
+          "failed": 2
+        },
+        "collectBalls": {
+          "offered": 2,
+          "completed": 1,
+          "failed": 1
+        },
+        "collectCoins": {
+          "offered": 8,
+          "completed": 1,
+          "failed": 6
+        },
+        "reachCombo": {
+          "offered": 5,
+          "completed": 2,
+          "failed": 3
+        },
+        "killWithElement": {
+          "offered": 1,
+          "completed": 0,
+          "failed": 1
+        },
+        "goldenKill": {
+          "offered": 1,
+          "completed": 0,
+          "failed": 1
+        }
+      },
+      "durationHumanMin": 3.8,
+      "firstLossWave": 5.2,
+      "waveOfDeath": 7,
+      "depth": 57.6,
+      "reviveShare": 1,
+      "wavesGainedByRevive": 1.8,
+      "depthGainedByRevive": 19.2,
+      "timeToFirstChoiceHumanMs": 14063,
+      "goldenPerShot": 1,
+      "goldenDamageShare": 0.25,
+      "shotsWithGoldenKill": 0.24,
+      "deadMoments": 0,
+      "maxFeedbackGapMs": 800,
+      "errors": 0
+    }
+  }
+}

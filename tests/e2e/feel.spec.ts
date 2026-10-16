@@ -210,7 +210,7 @@ function audioTapInit(): void {
 async function setupFeel(page: Page, seed: string, extraVolley: string[]): Promise<string[]> {
   await page.addInitScript(audioTapInit);
   const errors = watchErrors(page);
-  await page.goto(`/?seed=${seed}`);
+  await page.goto(`/?seed=${seed}&qa=1`);
   await waitReady(page);
   await page.mouse.click(270, 480); // geste réel : déverrouille l'audio (si le titre n'était pas là)
   await page.evaluate(feelInstall);
@@ -380,7 +380,7 @@ test('fusion : carte de récompense « fuse » cliquée au DOM → animation (pa
   let found = '';
   for (let i = 1; i <= 8 && !found; i++) {
     const seed = `fuse-${i}`;
-    await page.goto(`/?seed=${seed}`);
+    await page.goto(`/?seed=${seed}&qa=1`);
     await waitReady(page);
     await installBot(page, { bot: 'greedy', seed, handleChoices: false });
     await setSpeed(page, 8);

@@ -1,7 +1,8 @@
 // tests/e2e/share.spec.ts — propriétaire : qa-tester. Carte de score + défi par lien (F6).
 // navigator.share absent, navigator.clipboard.writeText intercepté par un init script.
 // 1. fin de run → [data-action=share] → lien ?seed=…&goal=<profondeur> copié + PNG téléchargé (> 20 ko)
-// 2. le lien dans une nouvelle page → badge .hud-challenge, même seed, et .challenge-result cohérent en fin de run.
+// 2. le lien dans une nouvelle page → badge .hud-challenge, même seed, et .challenge-result cohérent en fin de run
+//    (même bot, même graine → même profondeur → égalité, data-result="tie"). La 1re page est en qa=1 (non créditée).
 import { expect, test, type Page } from '@playwright/test';
 import { copyFileSync, mkdirSync, statSync } from 'node:fs';
 import { FUN_SHOTS, installBot, play, setSpeed, waitReady, watchErrors, type QaWindow } from './bots';
@@ -49,7 +50,7 @@ test('partage : lien de défi copié, PNG téléchargé, défi rejoué sur la m�
   const page = await context.newPage();
   await stubShare(page);
   const errors = watchErrors(page);
-  await page.goto(`/?seed=${SEED}`);
+  await page.goto(`/?seed=${SEED}&qa=1`);
   await waitReady(page);
   expect(await page.locator('.hud-challenge').count(), 'pas de badge hors défi').toBe(0);
   const end1 = await playToEnd(page, SEED);
@@ -84,7 +85,7 @@ test('partage : lien de défi copié, PNG téléchargé, défi rejoué sur la m�
   const end2 = await playToEnd(page2, SEED);
   const result = page2.locator('.challenge-result');
   await expect(result).toBeVisible();
-  const expected = end2.depth > end1.depth ? 'won' : 'lost';
+  const expected = end2.depth > end1.depth ? 'won' : end2.depth === end1.depth ? 'tie' : 'lost';
   await expect(result).toHaveAttribute('data-result', expected);
   const txt = (await result.textContent()) ?? '';
   test.info().annotations.push({ type: 'défi', description: JSON.stringify({ goal: end1.depth, end2, result: expected, txt }) });
@@ -97,31 +98,12 @@ test('partage : lien de défi copié, PNG téléchargé, défi rejoué sur la m�
     return { runs: m.stats.runs, fragments: m.meta.fragments, bestWave: m.stats.bestWave };
   });
   const shownFrags = await page2.locator('.frag-gain .num').textContent();
-  test.info().annotations.push({ type: 'méta après défi (voir F6-01)', description: JSON.stringify({ meta2, shownFrags }) });
+  test.info().annotations.push({ type: 'méta après défi', description: JSON.stringify({ meta2, shownFrags }) });
+  // F6-01 corrigé : la run de défi (sans qa=1) est créditée
+  expect(meta2.runs, 'run de défi comptée').toBe(1);
   await page2.screenshot({ path: `${FUN_SHOTS}/08-defi-resultat.png` });
 
   for (const p of [page, page2]) expect(await p.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice())).toEqual([]);
   expect(errors).toEqual([]);
   expect(errors2).toEqual([]);
-});
-
-// F6-01 : une run lancée depuis un lien de défi (?seed=X&goal=N) n'est jamais créditée à la méta (main.ts ignore
-// run:over quand ?seed= est présent), alors que l'écran de fin affiche « +N ◆ » et « Nouveau record ».
-// test.fail : passera au rouge (donc à retirer) quand le bug sera corrigé.
-test('BUG F6-01 connu : la run de défi crédite fragments et stats', async ({ page }) => {
-  test.fail();
-  test.setTimeout(120_000);
-  await page.goto('/?seed=qa-1&goal=10');
-  await waitReady(page);
-  await playToEnd(page, 'qa-1');
-  await page.waitForTimeout(300);
-  const m = await page.evaluate(() => {
-    const d = (window as unknown as QaWindow).__pegbreaker.meta.data;
-    return { runs: d.stats.runs, fragments: d.meta.fragments };
-  });
-  const shown = Number(((await page.locator('.frag-gain .num').textContent()) ?? '0').replace(/\D/g, ''));
-  test.info().annotations.push({ type: 'F6-01', description: JSON.stringify({ ...m, shown }) });
-  expect(shown, 'fragments affichés').toBeGreaterThan(0);
-  expect(m.runs, 'run comptée').toBe(1);
-  expect(m.fragments, 'fragments crédités = affichés').toBe(shown);
 });

@@ -224,7 +224,7 @@ test('métriques : 5 runs naïf + 5 runs greedy', async ({ context }) => {
   const tA = Date.now();
   // temps de chargement jusqu'au premier tir possible (sim en 'aiming', avant le clic sur l'écran titre)
   const errA = watchErrors(pageA);
-  await pageA.goto('/?seed=qa-1');
+  await pageA.goto('/?seed=qa-1&qa=1');
   const readyAtMs = (await (
     await pageA.waitForFunction(
       () => {

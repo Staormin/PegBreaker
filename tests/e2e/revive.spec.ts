@@ -56,6 +56,8 @@ test('seconde chance gratuite en run 1, puis seconde mort et abandon', async ({ 
     const clear = api.sim.config.economy.revive.clearRows;
     return {
       phase: s.phase,
+      blocksLeft: s.blocks.filter((b) => b.kind !== 'peg').length,
+      rowsLeftInWave: s.rowsLeftInWave,
       hp: s.hp,
       maxHp: s.maxHp,
       revivesUsed: s.revivesUsed,
@@ -65,12 +67,18 @@ test('seconde chance gratuite en run 1, puis seconde mort et abandon', async ({ 
     };
   });
   test.info().annotations.push({ type: 'après revanche', description: JSON.stringify({ before, after }) });
-  expect(after.phase).toBe('aiming');
+  // revanche : retour en visée ; si l'effacement des 3 rangées vide le plateau en fin de vague, la vague est
+  // nettoyée aussitôt (sim/machine.ts revive → clearWave) et l'on passe directement à la récompense
+  if (after.phase !== 'aiming') {
+    expect(['reward', 'shop'], 'vague nettoyée par la revanche').toContain(after.phase);
+    expect(after.blocksLeft).toBe(0);
+    expect(after.rowsLeftInWave).toBe(0);
+  }
   expect(after.hp).toBe(Math.ceil(after.maxHp / 2));
   expect(after.revivesUsed).toBe(1);
   expect(after.lowBlocks, '3 rangées du bas vides').toEqual([]);
   expect(after.frags, 'gratuit : aucun ◆ débité').toBe(before.frags);
-  await expect.poll(() => page.evaluate(() => document.getElementById('ui')?.dataset.screen)).toBe('game');
+  await expect.poll(() => page.evaluate(() => document.getElementById('ui')?.dataset.screen)).toBe(after.phase === 'aiming' ? 'game' : after.phase);
   await expect.poll(() => counts(page), { timeout: 3000 }).toEqual({ lost: 1, revived: 1, over: 0 });
 
   // seconde mort : la revanche n'est plus proposée
@@ -83,8 +91,11 @@ test('seconde chance gratuite en run 1, puis seconde mort et abandon', async ({ 
   await page.waitForTimeout(500);
   await expect.poll(() => counts(page), { timeout: 3000 }).toEqual({ lost: 2, revived: 1, over: 1 });
   const screens = await page.evaluate(() => (window as unknown as QaWindow & { __screens: string[] }).__screens.slice());
-  // UiScreen contient 'revive' depuis le lot 1 ; ui/index.ts annonce encore 'gameover' (voir F4-01 du rapport)
+  // F4-01 corrigé : l'écran « Revanche ? » est annoncé 'revive' ; 'gameover' seulement après l'abandon final
   test.info().annotations.push({ type: 'ui:screen', description: JSON.stringify(screens) });
+  expect(screens.filter((x) => x === 'revive').length, 'deux écrans revanche annoncés').toBe(2);
+  expect(screens.filter((x) => x === 'gameover').length, 'une seule fin de run annoncée').toBe(1);
+  expect(screens[screens.length - 1]).toBe('gameover');
   const runs = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.meta.data.stats.runs);
   expect(runs).toBe(1);
   const pageErrors = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice());
@@ -125,10 +136,11 @@ test('seconde chance payante : solde débité du coût', async ({ page }) => {
   const res = await page.evaluate((k) => {
     const api = (window as unknown as QaWindow).__pegbreaker;
     const saved = JSON.parse(localStorage.getItem(k) ?? '{}') as { meta?: { fragments?: number } };
-    return { phase: api.sim.state.phase, frags: api.meta.data.meta.fragments, savedFrags: saved.meta?.fragments ?? null };
+    return { phase: api.sim.state.phase, blocksLeft: api.sim.state.blocks.filter((b) => b.kind !== 'peg').length, frags: api.meta.data.meta.fragments, savedFrags: saved.meta?.fragments ?? null };
   }, SAVE_KEY);
   test.info().annotations.push({ type: 'revanche payante', description: JSON.stringify({ cost, f0, ...res }) });
-  expect(res.phase).toBe('aiming');
+  expect(['aiming', 'reward', 'shop'], 'run reprise').toContain(res.phase);
+  if (res.phase !== 'aiming') expect(res.blocksLeft, 'vague nettoyée par la revanche').toBe(0);
   expect(f0 - res.frags, `débit = economy.revive.cost (${cost})`).toBe(cost);
   expect(res.savedFrags, 'débit persisté').toBe(100 - cost);
   const pageErrors = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice());

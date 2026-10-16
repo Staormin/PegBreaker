@@ -1,14 +1,16 @@
-// tests/e2e/fun.spec.ts — propriétaire : qa-tester. Mesure du lot 1 du plan fun (docs/FUN.md, section Mesure).
-// 5 seeds bot naïf + 5 seeds bot « contrats » (qa-1…qa-5), profil vierge, seed forcée (run 1 : seconde chance gratuite).
-//  - naïf : vise le bloc le plus bas ±10°, longueur de geste de débutant (40–320 px → éventail involontaire), abandonne à la mort ;
-//  - contrats : naïf qui lit state.contract (mur + rafale pour combo/casse, blocs près des drops pour pièces/balles,
-//    éventail à 1 si ≥ 4 blocs sur une rangée pour « nettoie en N tirs ») et prend la seconde chance si elle est payable.
-// Comparaison au « avant » (docs/qa/final-metrics.json, build 7a33cab) → docs/qa/lot1-fun.json.
+// tests/e2e/fun.spec.ts — propriétaire : qa-tester. Mesure des lots fun (docs/FUN.md, section Mesure).
+// 4 groupes × 5 seeds (qa-1…qa-5), profil vierge, `?seed=…&qa=1` (non crédité ; run 1 : seconde chance gratuite) :
+//  - tight : naïf, rafale serrée (spread 0) ;  - naive : naïf, geste de débutant 40–320 px (ouverture involontaire) ;
+//  - fan : naïf, éventail systématique (spread 1) ;
+//  - contracts (« conditionnel ») : naïf qui lit state.contract (mur + rafale pour combo/casse, blocs près des drops
+//    pour pièces/balles, éventail à 1 si ≥ 4 blocs sur une rangée pour « nettoie en N tirs ») et prend la seconde chance.
+// Comparaison au « avant » (docs/qa/final-metrics.json) et au lot 1 (docs/qa/lot1-fun.json) → docs/qa/fun-final.json.
 // Second test : captures (éventail, bandeau contrat, balle dorée, record) et vérification de l'input réel → spread.
-// N'échoue que sur crash, softlock, erreur console ou incohérence de contrat (run:over ≠ 1), jamais sur une cible de fun.
+// N'échoue que sur crash, softlock, erreur console ou incohérence (run:over ≠ 1), jamais sur une cible de fun.
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Vec2 } from '../../src/core/types';
+import { SPREAD_DEAD_PX, SPREAD_RANGE_PX } from '../../src/ui/input';
 import {
   FUN_SHOTS,
   QA_OUT,
@@ -28,15 +30,26 @@ import {
 
 const SEEDS = ['qa-1', 'qa-2', 'qa-3', 'qa-4', 'qa-5'];
 const AIM_MS = 1500;
-const OUT = `${QA_OUT}-fun.json`;
+const OUT = `${QA_OUT}.json`;
 const BEFORE = 'docs/qa/final-metrics.json';
+/** référence « lot 1 » : rapport docs/qa/fun-lot1.md (commit 2e731ed) */
+const LOT1 = 'docs/qa/lot1-fun.json';
+
+/** groupes comparés : bot de visée + mode d'éventail */
+type Group = 'tight' | 'naive' | 'fan' | 'contracts';
+const GROUPS: Record<Group, { bot: BotKind; spreadMode: 'none' | 'drag' | 'max'; label: string }> = {
+  tight: { bot: 'naive', spreadMode: 'none', label: 'naïf, rafale serrée (spread 0)' },
+  naive: { bot: 'naive', spreadMode: 'drag', label: 'naïf, geste de débutant 40–320 px' },
+  fan: { bot: 'naive', spreadMode: 'max', label: 'naïf, éventail systématique (spread 1)' },
+  contracts: { bot: 'contracts', spreadMode: 'drag', label: 'conditionnel : lit le contrat (0 au mur, 1 sur rangée ≥ 4)' },
+};
 const FATAL = ['page-error', 'softlock', 'sim-frozen'];
 const SAVE_KEY = 'pegbreaker.save.v1';
 
 const r1 = (x: number): number => Math.round(x * 10) / 10;
 const r2 = (x: number): number => Math.round(x * 100) / 100;
 
-function summarize(bot: BotKind, seed: string, r: QaReport, consoleErrors: string[], ttfrMs: number | null) {
+function summarize(bot: Group, seed: string, r: QaReport, consoleErrors: string[], ttfrMs: number | null) {
   const st = r.state.stats;
   const shots = Math.max(1, r.shots);
   const spreadShots = r.shotLog.filter((s) => s.spread > 0).length;
@@ -54,6 +67,13 @@ function summarize(bot: BotKind, seed: string, r: QaReport, consoleErrors: strin
     /** direction (1) + ouverture ≠ 0 (1) */
     decisionsPerShot: r2((r.shots + spreadShots) / shots),
     spreadShare: r2(spreadShots / shots),
+    /** modèle B : part des tirs dont la distance lanceur → cible dépasse la zone morte (geste « du lanceur à la cible ») */
+    involuntaryShareB: (() => {
+      const xs = r.shotLog.filter((x) => x.targetPx > 0);
+      return xs.length ? r2(xs.filter((x) => x.targetPx > SPREAD_DEAD_PX).length / xs.length) : null;
+    })(),
+    meanTargetPx: Math.round(mean(r.shotLog.filter((x) => x.targetPx > 0).map((x) => x.targetPx)) || 0),
+    bestShotDamageRun: r.state.stats.bestShotDamage,
     fullFanShare: r2(fullFan / shots),
     meanSpread: r2(mean(r.shotLog.map((s) => s.spread)) || 0),
     decisionsPerMinHuman: r1(decisions / (durationHumanMs / 60000)),
@@ -110,6 +130,10 @@ function aggregate(rows: Row[]) {
     runs: rows.length,
     decisionsPerShot: avg(rows, (r) => r.decisionsPerShot),
     spreadShare: avg(rows, (r) => r.spreadShare),
+    involuntaryShareB: avg(rows, (r) => r.involuntaryShareB),
+    meanTargetPx: avg(rows, (r) => r.meanTargetPx),
+    bestShotDamage: avg(rows, (r) => r.bestShotDamageRun),
+    shots: avg(rows, (r) => r.shots),
     decisionsPerMinHuman: avg(rows, (r) => r.decisionsPerMinHuman),
     comboGe5: avg(rows, (r) => r.comboGe5),
     comboGe8: avg(rows, (r) => r.comboGe8),
@@ -150,18 +174,22 @@ function aggregate(rows: Row[]) {
   };
 }
 
-async function runFast(page: Page, bot: BotKind, seed: string): Promise<Row> {
+async function runFast(page: Page, group: Group, seed: string): Promise<Row> {
+  const g = GROUPS[group];
   const { consoleErrors } = await openGame(page, seed);
-  await installBot(page, { bot, seed, spreadMode: 'drag', onLost: bot === 'contracts' ? 'reviveIfAffordable' : 'giveUp' });
+  // même graine de bot que le lot 1 (hash « naive:<seed> » / « contracts:<seed> ») : seul le mode d'éventail change
+  await installBot(page, { bot: g.bot, seed, spreadMode: g.spreadMode, onLost: g.bot === 'contracts' ? 'reviveIfAffordable' : 'giveUp' });
   await setSpeed(page, 8);
   const r = await play(page, { maxRealMs: 170_000 });
-  return summarize(bot, seed, r, consoleErrors, null);
+  const row = summarize(group, seed, r, consoleErrors, null);
+  await page.close();
+  return row;
 }
 
 test.describe.configure({ mode: 'serial' });
 
-test('fun lot 1 : 5 seeds naïf + 5 seeds contrats, comparés au « avant »', async ({ context }) => {
-  test.setTimeout(240_000);
+test('fun final : naïf, serré, éventail systématique, conditionnel (5 seeds chacun) contre avant et lot 1', async ({ context }) => {
+  test.setTimeout(420_000);
   mkdirSync('docs/qa', { recursive: true });
 
   // A. naïf qa-1 à vitesse 1 avec 1,5 s de visée jusqu'à la première récompense, puis vitesse 8
@@ -173,16 +201,18 @@ test('fun lot 1 : 5 seeds naïf + 5 seeds contrats, comparés au « avant »', a
   const ttfr = rA0.firstRewardAt; // performance.now() : origine = navigation
   await configureBot(pageA, { humanDelayMs: 0 });
   await setSpeed(pageA, 8);
-  const jobs: Promise<Row>[] = [play(pageA, { maxRealMs: 170_000 }).then((r) => summarize('naive', 'qa-1', r, sA.consoleErrors, ttfr))];
-  // B. les 9 autres en parallèle
-  for (const bot of ['naive', 'contracts'] as const)
-    for (const seed of SEEDS) {
-      if (bot === 'naive' && seed === 'qa-1') continue;
-      jobs.push(context.newPage().then((p) => runFast(p, bot, seed)));
-    }
-  const rows = await Promise.all(jobs);
-  const naive = rows.filter((r) => r.bot === 'naive').sort((a, b) => a.seed.localeCompare(b.seed));
-  const contracts = rows.filter((r) => r.bot === 'contracts').sort((a, b) => a.seed.localeCompare(b.seed));
+  const build = await pageA.evaluate(() => (window as unknown as QaWindow).__pegbreaker.version);
+  const jobA = play(pageA, { maxRealMs: 200_000 }).then((r) => summarize('naive', 'qa-1', r, sA.consoleErrors, ttfr));
+
+  // B. les 19 autres runs, par lots de 10 pages au plus (CPU partagé)
+  const todo: [Group, string][] = [];
+  for (const g of ['naive', 'contracts', 'fan', 'tight'] as const)
+    for (const seed of SEEDS) if (!(g === 'naive' && seed === 'qa-1')) todo.push([g, seed]);
+  const rows: Row[] = [];
+  const first = todo.splice(0, 9);
+  rows.push(...(await Promise.all([jobA, ...first.map(([g, seed]) => context.newPage().then((p) => runFast(p, g, seed)))])));
+  rows.push(...(await Promise.all(todo.map(([g, seed]) => context.newPage().then((p) => runFast(p, g, seed))))));
+  const by = (g: Group): Row[] => rows.filter((r) => r.bot === g).sort((a, b) => a.seed.localeCompare(b.seed));
 
   // « avant » : build 7a33cab (docs/qa/final-metrics.json, même formule de durée joueur)
   let before: Record<string, unknown> | null = null;
@@ -195,35 +225,39 @@ test('fun lot 1 : 5 seeds naïf + 5 seeds contrats, comparés au « avant »', a
       source: `${BEFORE} (build 7a33cab)`,
       decisionsPerShot: 1,
       comboGe5Naive: b.naive.average['comboShareGe5'],
-      comboGe5Greedy: b.greedy.average['comboShareGe5'],
       durationHumanMinNaive: r2((b.naive.average['durationHumanMs'] ?? 0) / 60000),
-      durationHumanMinGreedy: r2((b.greedy.average['durationHumanMs'] ?? 0) / 60000),
       waveOfDeathNaive: b.naive.average['waveOfDeath'],
-      waveOfDeathGreedy: b.greedy.average['waveOfDeath'],
       decisionsPerMinHumanNaive: b.naive.average['decisionsPerMinHuman'],
       timeToFirstRewardMsNaive: b.naive.runs[0]?.timeToFirstRewardMs ?? null,
       timeToFirstChoiceHumanMsNaive: b.naive.average['timeToFirstChoiceHumanMs'],
       deadMoments: b.naive.average['deadMoments'],
-      contracts: null,
-      revive: null,
     };
   }
+  let lot1: Record<string, unknown> | null = null;
+  if (existsSync(LOT1)) {
+    const l = JSON.parse(readFileSync(LOT1, 'utf8')) as { naive: { average: unknown; runs: { timeToFirstRewardMs: number | null }[] }; contracts: { average: unknown } };
+    lot1 = { source: `${LOT1} (rapport fun-lot1.md)`, naive: l.naive.average, contracts: l.contracts.average, timeToFirstRewardMsNaive: l.naive.runs[0]?.timeToFirstRewardMs ?? null };
+  }
+  const groups = Object.fromEntries(
+    (Object.keys(GROUPS) as Group[]).map((g) => [g, { label: GROUPS[g].label, runs: by(g), average: aggregate(by(g)) }]),
+  );
   const out = {
     generatedAt: new Date().toISOString(),
-    build: await pageA.evaluate(() => (window as unknown as QaWindow).__pegbreaker.version),
+    build,
     method: {
-      speed: 'naïf qa-1 : vitesse 1 et 1,5 s de visée jusqu\'à firstRewardAt, puis vitesse 8 ; autres : vitesse 8 en parallèle',
-      spread: 'longueur de geste uniforme 40–320 px CSS → spread = clamp((len − 90) / 220) (ui/input.ts) ; le bot contrats force 0 (mur) ou 1 (rangée ≥ 4)',
+      speed: 'naïf qa-1 : vitesse 1 et 1,5 s de visée jusqu\'à firstRewardAt, puis vitesse 8 ; autres : vitesse 8, 10 pages en parallèle au plus',
+      spread: `geste de débutant uniforme 40–320 px CSS → spread = clamp((len − ${SPREAD_DEAD_PX}) / ${SPREAD_RANGE_PX}) (ui/input.ts) ; modèle B : longueur = distance lanceur → cible`,
+      involuntary: 'le bot naïf ne veut jamais ouvrir : toute ouverture > 0 est involontaire (spreadShare) ; modèle B = involuntaryShareB',
       decisionsPerShot: '(tirs + tirs à ouverture > 0) / tirs',
       durationHuman: 'durationMs − visée bot + 1,5 s × tirs',
-      revive: 'contrats : clic DOM sur [data-action=revive] si gratuit (stats.runs = 0) ou ◆ suffisants ; naïf : sim.giveUp()',
+      revive: 'conditionnel (contrats) : clic DOM sur [data-action=revive] si gratuit (stats.runs = 0, qa=1) ou ◆ suffisants ; autres : sim.giveUp()',
     },
     before,
-    naive: { runs: naive, average: aggregate(naive) },
-    contracts: { runs: contracts, average: aggregate(contracts) },
+    lot1,
+    ...groups,
   };
   writeFileSync(OUT, JSON.stringify(out, null, 2) + '\n');
-  test.info().annotations.push({ type: 'fun', description: JSON.stringify({ naive: out.naive.average, contracts: out.contracts.average }) });
+  test.info().annotations.push({ type: 'fun', description: JSON.stringify(Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.average]))) });
 
   for (const row of rows) {
     const tag = `${row.bot}/${row.seed}`;
@@ -249,7 +283,7 @@ test('captures et input réel : éventail, contrat, balle dorée, record', async
     d.currentRun = null;
     localStorage.setItem(k, JSON.stringify(d));
   }, SAVE_KEY);
-  await page.goto('/?seed=fun-shots');
+  await page.goto('/?seed=fun-shots&qa=1');
   await waitReady(page);
   await page.waitForTimeout(300);
   const rec = page.locator('.hud-record');
@@ -284,7 +318,8 @@ test('captures et input réel : éventail, contrat, balle dorée, record', async
   await page.screenshot({ path: `${FUN_SHOTS}/01-eventail-ouvert.png` });
   test.info().annotations.push({ type: 'spread', description: JSON.stringify({ s60, s200, s400 }) });
   expect(s60, 'geste de 60 px : rafale serrée').toBe(0);
-  expect(s200).toBeCloseTo((200 - 90) / 220, 1);
+  expect(SPREAD_DEAD_PX, 'zone morte du lot 1 bis').toBe(150);
+  expect(s200).toBeCloseTo(Math.min(1, Math.max(0, (200 - SPREAD_DEAD_PX) / SPREAD_RANGE_PX)), 2);
   expect(s400, 'geste de 400 px : éventail max').toBe(1);
   await page.mouse.up(); // tire l'éventail
   await page.waitForFunction(() => (window as unknown as QaWindow).__pegbreaker.sim.state.phase === 'firing', null, { timeout: 3000 });
