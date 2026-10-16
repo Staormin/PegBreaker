@@ -1,5 +1,7 @@
 # PEGBREAKER — Les 27 balles (2026-10-17)
 
+![Galerie des 27 balles](balls-gallery.png)
+
 Chaque balle a **une** mécanique lisible en une phrase, un effet amplifié par le rang (II, III), et une place dans le build (synergie avec le combo, la fusion, les contrats ou une relique). Les 7 d'origine restent ; 20 nouvelles.
 
 Rang : sauf mention, rang II = effet ×1,5 (ou +1 selon la nature), rang III = ×2 (ou +2). Les dégâts suivent toujours `tierDamageMultiplier`.

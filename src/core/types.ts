@@ -45,6 +45,8 @@ export interface Ball {
   triggered: boolean;
   /** dernière balle de la volée : dégâts × lastBallMultiplier */
   golden: boolean;
+  /** nature : balle de la volée, mini-balle (essaim, cristal, jumelle) ou copie d'écho */
+  kind?: 'main' | 'mini' | 'echo';
 }
 
 // ----------------------------------------------------------------------
@@ -70,6 +72,8 @@ export interface Block {
   armorSide: 'none' | 'down';
   /** identifiant du pattern de boss (config waves.json) */
   bossId: string | null;
+  /** charges d'acide restantes (0/absent = aucune) */
+  acidCharges?: number;
 }
 
 export type DropKind = 'coin' | 'ball' | 'fragment' | 'heart';
@@ -269,7 +273,7 @@ export type GameEvent =
   | { type: 'shop:rerolled'; cost: number }
   | { type: 'shop:left' }
   | { type: 'player:damaged'; amount: number; hpLeft: number }
-  | { type: 'player:healed'; amount: number; hpLeft: number; source?: 'heart' | 'drop' | 'relic' | 'contract' | 'vampire' | 'shop' | 'revive' }
+  | { type: 'player:healed'; amount: number; hpLeft: number; pos?: Vec2; source?: 'heart' | 'drop' | 'relic' | 'contract' | 'vampire' | 'shop' | 'revive' }
   | { type: 'meta:unlocked'; nodeId: string }
   | { type: 'achievement:unlocked'; achievementId: string }
   | { type: 'ui:click' }
