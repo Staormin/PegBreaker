@@ -13,6 +13,7 @@ import { clampAim, preview } from './aim';
 import { refreshRelics } from './relics';
 import { syncFx } from './pools';
 import { validateElementParams } from './elements/index';
+import { migrateAcid } from './elements/elemental';
 
 export { fuseVolley } from './volley';
 
@@ -65,6 +66,7 @@ export function createSim(config: GameConfig, options: SimOptions): Sim {
     for (const b of s.balls) b.golden ??= false;
     ctx.s = s;
     syncFx(ctx); // snapshot antérieur aux 27 balles : effets neutres
+    migrateAcid(ctx);
     rng.setState(s.rngState);
     refreshRelics(ctx);
     ctx.gridDirty = true;

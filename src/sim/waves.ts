@@ -215,18 +215,50 @@ function shiftOnce(ctx: Ctx): void {
   ctx.gridDirty = true;
 }
 
+/** Vague à partir de laquelle la fin de partie se durcit (waves.json → lateWave ; absent = jamais). */
+export function lateWave(ctx: Ctx): number {
+  const v = ctx.cfg.waves.lateWave;
+  return typeof v === 'number' && v > 0 ? v : Infinity;
+}
+
+/**
+ * Plafond de brèche par avancée : breachDamageCapPerShot, + floor((wave − lateWave) / 5) au-delà de lateWave
+ * (anti-infini : les soins ne compensent plus indéfiniment une perte plafonnée à 1 PV).
+ */
+export function breachBudgetFor(ctx: Ctx, wave: number): number {
+  const perShot = ctx.cfg.blocks.breachDamageCapPerShot;
+  if (!(typeof perShot === 'number' && perShot > 0)) return Infinity;
+  const late = lateWave(ctx);
+  return wave > late ? perShot + Math.floor((wave - late) / 5) : perShot;
+}
+
+/** Rangée supplémentaire de fin de partie : à partir de lateWave, tous les lateExtraRowEvery tirs de la vague. */
+export function lateExtraRow(ctx: Ctx): boolean {
+  const s = ctx.s;
+  const every = ctx.cfg.waves.lateExtraRowEvery;
+  if (!(typeof every === 'number' && every > 0) || s.wave < lateWave(ctx)) return false;
+  return s.shotInWave > 0 && s.shotInWave % Math.round(every) === 0;
+}
+
 /** Fin de l'animation 'advancing' : descente (mods.advanceRows, 2 avec 'rush'), nouvelle rangée, drops au sol. */
 export function advanceRows(ctx: Ctx): void {
   const s = ctx.s;
   const shifts = Math.max(1, ctx.mods.advanceRows);
   if (!s.internal.thawedIds) s.internal.thawedIds = []; // snapshot antérieur à T2d
   s.internal.thawedIds.length = 0;
-  const perShot = (ctx.cfg.blocks as unknown as { breachDamageCapPerShot?: number }).breachDamageCapPerShot;
-  ctx.breachBudget = typeof perShot === 'number' && perShot > 0 ? perShot : Infinity;
+  ctx.breachBudget = breachBudgetFor(ctx, s.wave);
   for (let k = 0; k < shifts; k++) shiftOnce(ctx);
   let newRow = false;
   if (s.rowsLeftInWave > 0) {
     generateRow(ctx, 0);
+    newRow = true;
+  }
+  if (lateExtraRow(ctx)) {
+    // rangée hors quota de la vague : descente supplémentaire si la rangée 0 vient d'être remplie
+    if (newRow) shiftOnce(ctx);
+    const left = s.rowsLeftInWave;
+    generateRow(ctx, 0);
+    s.rowsLeftInWave = left;
     newRow = true;
   }
   emit(ctx, { type: 'rows:advanced', wave: s.wave, newRow });

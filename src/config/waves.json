@@ -26,6 +26,8 @@
     { "wave": 20, "blocks": 6 }
   ],
   "startRows": 3,
+  "lateWave": 20,
+  "lateExtraRowEvery": 4,
   "bossEvery": 5,
   "shopEvery": 3,
   "bosses": [

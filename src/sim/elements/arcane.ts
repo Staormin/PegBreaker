@@ -8,12 +8,12 @@ import { DEG, centerX, centerY, prm, setAttrib, spawnMini } from './common';
 /** Pierre : aucune mécanique. */
 export const stone: ElementHooks = {};
 
-/** Prisme : à chaque rebond de mur latéral, un rayon inflige rowRatio × ses dégâts à tous les blocs de sa rangée. */
+/** Prisme : à chaque rebond de mur latéral, un rayon inflige rowRatio × ses dégâts (plafonnés à cap) à chaque bloc de sa rangée. */
 export const prism: ElementHooks = {
-  params: ['rowRatio'],
+  params: ['rowRatio', 'cap'],
   onWallBounce(ctx, b, fx, wallX) {
     const row = Math.floor(b.pos.y);
-    const dmg = ballDamage(ctx, b, null, fx) * prm(ctx, 'prism', 'rowRatio', b.tier);
+    const dmg = Math.min(ballDamage(ctx, b, null, fx) * prm(ctx, 'prism', 'rowRatio', b.tier), prm(ctx, 'prism', 'cap', b.tier));
     if (dmg <= 0) return;
     const blocks = ctx.s.blocks;
     const n = blocks.length;
@@ -32,19 +32,19 @@ export const prism: ElementHooks = {
   },
 };
 
-/** Vide : ignore l'armure ; chaque impact ajoute pctMaxHp % des PV max du bloc. */
+/** Vide : ignore l'armure ; chaque impact ajoute pctMaxHp % des PV max du bloc, au plus `cap`. */
 export const voidHooks: ElementHooks = {
-  params: ['pctMaxHp'],
+  params: ['pctMaxHp', 'cap'],
   modifyDamage(ctx, b, _fx, dmg, target) {
     if (!target) return dmg;
     ctx.hit.ignoreArmor = true;
-    return dmg + (prm(ctx, 'void', 'pctMaxHp', b.tier) / 100) * target.maxHp;
+    return dmg + Math.min((prm(ctx, 'void', 'pctMaxHp', b.tier) / 100) * target.maxHp, prm(ctx, 'void', 'cap', b.tier));
   },
 };
 
-/** Rouille : au premier contact avec un bloc, il perd son armure et pctMaxHp % de ses PV max, définitivement. */
+/** Rouille : au premier contact avec un bloc, il perd son armure et pctMaxHp % de ses PV max (au plus `cap`), définitivement. */
 export const rust: ElementHooks = {
-  params: ['pctMaxHp'],
+  params: ['pctMaxHp', 'cap'],
   modifyDamage(ctx, b, _fx, dmg, target) {
     if (!target || !isBreakable(target)) return dmg;
     const rusted = ctx.s.internal.rusted;
@@ -54,7 +54,7 @@ export const rust: ElementHooks = {
       target.kind = 'normal';
       target.armorSide = 'none';
     }
-    const loss = (prm(ctx, 'rust', 'pctMaxHp', b.tier) / 100) * target.maxHp;
+    const loss = Math.min((prm(ctx, 'rust', 'pctMaxHp', b.tier) / 100) * target.maxHp, prm(ctx, 'rust', 'cap', b.tier));
     target.maxHp = Math.max(1, Math.round(target.maxHp - loss));
     return dmg + loss;
   },
@@ -99,12 +99,12 @@ export const crystal: ElementHooks = {
   },
 };
 
-/** Nova : à chaque palier de combo, explose (rayon × bigboom) ; dégâts = combo × comboMult (× éventail). */
+/** Nova : à chaque palier de combo, explose (rayon × bigboom) ; dégâts = combo × comboMult (× éventail), au plus `cap`. */
 export const nova: ElementHooks = {
-  params: ['radius', 'comboMult'],
+  params: ['radius', 'comboMult', 'cap'],
   onComboMilestone(ctx, b, fx, _level, combo) {
     const radius = prm(ctx, 'nova', 'radius', b.tier) * ctx.relic.bigboom;
-    const dmg = combo * prm(ctx, 'nova', 'comboMult', b.tier) * (ctx.s.internal.shotDamageMult ?? 1);
+    const dmg = Math.min(combo * prm(ctx, 'nova', 'comboMult', b.tier) * (ctx.s.internal.shotDamageMult ?? 1), prm(ctx, 'nova', 'cap', b.tier));
     if (radius <= 0 || dmg <= 0) return;
     const pb = ctx.curBall;
     const pf = ctx.curFx;

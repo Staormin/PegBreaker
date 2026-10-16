@@ -75,9 +75,9 @@ describe('éléments : acide', () => {
         id = b.id;
         return [b];
       });
-      const charges = mut(sim).internal.acid;
+      const charges = mut(sim).internal.acidQ;
       expect(charges[0]).toBe(id);
-      expect(sim.state.blocks.find((b) => b.id === id)!.acidCharges).toBe(charges.length / 3);
+      expect(sim.state.blocks.find((b) => b.id === id)!.acidCharges).toBe(charges.length / 4);
       sim.aim(UP);
       sim.fire();
       const start = ofType(sim.step(0), 'block:hit').filter((e) => e.element === 'acid' && e.ballId === -1);
@@ -434,7 +434,7 @@ describe('éléments : jumelle', () => {
 
 describe('éléments : rouille', () => {
   for (const tier of TIERS) {
-    it(`rang ${tier} : −${tier === 1 ? 15 : 30} % de PV max définitivement, et perte de l armure`, () => {
+    it(`rang ${tier} : −${tier === 1 ? 15 : 30} % de PV max (plafonné à cap) définitivement, et perte de l armure`, () => {
       let id = -1;
       const { evs, sim } = single(`rust-${tier}`, vb('rust', tier), (s) => {
         const b = block(s, 'normal', 3, 3, 1000);
@@ -442,8 +442,9 @@ describe('éléments : rouille', () => {
         return [b];
       });
       const b = sim.state.blocks.find((x) => x.id === id)!;
-      expect(b.maxHp).toBe(tier === 1 ? 850 : 700);
-      expect(hitsOn(evs, id)[0]!.damage).toBe(tier === 1 ? 160 : 363);
+      const loss = Math.min((P('rust', 'pctMaxHp', tier) / 100) * 1000, P('rust', 'cap', tier));
+      expect(b.maxHp).toBe(Math.round(1000 - loss));
+      expect(hitsOn(evs, id)[0]!.damage).toBe(Math.round(base('rust', tier) + loss));
       let aid = -1;
       const side = single(
         `rust-side-${tier}`,
@@ -685,5 +686,72 @@ describe('déblocages et contrats', () => {
     const mine = withAll.filter((o) => ids.includes(o.id));
     expect(mine.length).toBeGreaterThan(0);
     for (const o of mine) expect(o.wave).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('garde-fous de fin de partie', () => {
+  const HUGE = 1e9;
+  for (const tier of TIERS) {
+    it(`rang ${tier} : vide, rouille, acide plafonnés par touche sur un bloc énorme`, () => {
+      const v = single(`capv-${tier}`, vb('void', tier), (s) => [block(s, 'normal', 3, 3, HUGE)]);
+      expect(ofType(v.evs, 'block:hit')[0]!.damage).toBe(Math.round(base('void', tier) + P('void', 'cap', tier)));
+      const r = single(`capr-${tier}`, vb('rust', tier), (s) => [block(s, 'normal', 3, 3, HUGE)]);
+      expect(ofType(r.evs, 'block:hit')[0]!.damage).toBe(Math.round(base('rust', tier) + P('rust', 'cap', tier)));
+      const a = single(`capa-${tier}`, vb('acid', tier), (s) => [block(s, 'normal', 3, 3, HUGE)]);
+      a.sim.aim(UP);
+      a.sim.fire();
+      const tick = ofType(a.sim.step(0), 'block:hit').filter((e) => e.element === 'acid' && e.ballId === -1);
+      expect(tick[0]!.damage).toBe(P('acid', 'capPerTurn', tier));
+    });
+    it(`rang ${tier} : nova et prisme plafonnés`, () => {
+      const n = single(
+        `capn-${tier}`,
+        vb('nova', tier),
+        (s) => [block(s, 'normal', 3, 3, HUGE), block(s, 'normal', 4, 3, HUGE)],
+        UP,
+        3.5,
+        (s) => {
+          mut(s).relics = ['bouncy'];
+        },
+      );
+      for (const e of ofType(n.evs, 'block:explode').filter((x) => x.element === 'nova')) expect(e.damage).toBeLessThanOrEqual(P('nova', 'cap', tier));
+      const cfg = config();
+      cfg.balls.defs.find((d) => d.id === 'prism')!.params!.cap = [2, 2, 2];
+      const sim = newSim(`capp-${tier}`, cfg);
+      setup(sim, [1, 2, 3, 4, 5, 6, 7, 8].map((r) => block(sim, 'normal', 0, r, HUGE)), vb('prism', tier), { launchX: 3.5, rowsLeft: 1 });
+      const rays = ofType(shoot(sim, { x: 1, y: -1 }), 'lightning:chain').filter((e) => e.element === 'prism');
+      expect(rays.length).toBeGreaterThan(0);
+      for (const e of rays) expect(e.damage).toBe(2);
+    });
+  }
+  it('brèche : breachDamageCapPerShot + floor((vague − lateWave) / 5) au-delà de lateWave ; rangée en plus tous les 2 tirs', () => {
+    const cfg = config();
+    const late = cfg.waves.lateWave!;
+    const per = cfg.blocks.breachDamageCapPerShot!;
+    const breach = (wave: number): number => {
+      const sim = newSim(`breach-${wave}`, cfg);
+      const s = mut(sim);
+      const rows = cfg.blocks.board.rows;
+      setup(sim, [0, 1, 2, 3, 4, 5, 6].map((c) => block(sim, 'normal', c, rows - 2, 100)), vb('stone', 1), { rowsLeft: 3 });
+      s.wave = wave;
+      s.hp = s.maxHp = 50;
+      const evs = shoot(sim, { x: -1, y: -0.15 });
+      return ofType(evs, 'player:damaged').reduce((n, e) => n + e.amount, 0);
+    };
+    expect(breach(late - 1)).toBe(per);
+    expect(breach(late + 5)).toBe(per + 1);
+    expect(breach(late + 12)).toBe(per + 2);
+    // rangée supplémentaire : au 2e tir d'une vague tardive, deux rangées entrent
+    const sim = newSim('extra-row', cfg);
+    const s = mut(sim);
+    setup(sim, [block(sim, 'normal', 0, 0, 1e9)], vb('stone', 1), { rowsLeft: 5 });
+    s.wave = late;
+    s.shotInWave = 1;
+    const before = s.rowsLeftInWave;
+    const evs = shoot(sim, UP);
+    expect(ofType(evs, 'rows:advanced').length).toBe(1);
+    expect(sim.state.rowsLeftInWave).toBe(before - 1); // la rangée en plus ne consomme pas le quota
+    const top = sim.state.blocks.filter((b) => b.row <= 1).length;
+    expect(top).toBeGreaterThan(1);
   });
 });

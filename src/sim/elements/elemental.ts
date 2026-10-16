@@ -46,68 +46,82 @@ export const ice: ElementHooks = {
   },
 };
 
+/** Pas des charges d'acide dans internal.acidQ : [blockId, pct, toursRestants, plafondParTour]. */
+const AQ = 4;
+
 /**
- * Acide : chaque impact pose une charge (pctPerTurn % des PV max, `turns` tirs, au plus maxCharges par bloc).
- * Au plafond, la charge la plus usée est rafraîchie. Les charges mordent au début des tirs suivants.
+ * Acide : chaque impact pose une charge (pctPerTurn % des PV max, plafonnée à capPerTurn par tour, `turns` tirs,
+ * au plus maxCharges par bloc). Au plafond, la charge la plus usée est rafraîchie. Les charges mordent au début
+ * des tirs suivants.
  */
 export const acid: ElementHooks = {
-  params: ['pctPerTurn', 'turns', 'maxCharges'],
+  params: ['pctPerTurn', 'turns', 'maxCharges', 'capPerTurn'],
   onBlockHit(ctx, b, _fx, _bi, blk, _px, _py, _dmg, isPeg) {
     if (isPeg || !isBreakable(blk)) return;
     const pct = prm(ctx, 'acid', 'pctPerTurn', b.tier);
     const turns = Math.round(prm(ctx, 'acid', 'turns', b.tier));
     const max = Math.round(prm(ctx, 'acid', 'maxCharges', b.tier));
+    const cap = prm(ctx, 'acid', 'capPerTurn', b.tier);
     if (pct <= 0 || turns <= 0 || max <= 0) return;
-    const a = ctx.s.internal.acid;
+    const a = ctx.s.internal.acidQ;
     let count = 0;
     let weakest = -1;
-    for (let k = 0; k + 2 < a.length; k += 3) {
+    for (let k = 0; k + AQ - 1 < a.length; k += AQ) {
       if (a[k] !== blk.id) continue;
       count++;
       if (weakest < 0 || (a[k + 2] as number) < (a[weakest + 2] as number)) weakest = k;
     }
     if (count < max) {
-      a.push(blk.id, pct, turns);
+      a.push(blk.id, pct, turns, cap);
       blk.acidCharges = count + 1;
     } else if (weakest >= 0) {
       a[weakest + 1] = Math.max(a[weakest + 1] as number, pct);
       a[weakest + 2] = turns;
+      a[weakest + 3] = Math.max(a[weakest + 3] as number, cap);
     }
   },
   onShotStart(ctx) {
-    const a = ctx.s.internal.acid;
+    const a = ctx.s.internal.acidQ;
     let k = 0;
-    while (k + 2 < a.length) {
+    while (k + AQ - 1 < a.length) {
       const i = blockIndex(ctx, a[k] as number);
       const blk = i >= 0 ? (ctx.s.blocks[i] as Block) : null;
       if (blk && isBreakable(blk)) {
-        damageBlock(ctx, i, ((a[k + 1] as number) / 100) * blk.maxHp, 'acid', 0, false);
+        damageBlock(ctx, i, Math.min(((a[k + 1] as number) / 100) * blk.maxHp, a[k + 3] as number), 'acid', 0, false);
         a[k + 2] = (a[k + 2] as number) - 1;
       } else a[k + 2] = 0;
       if ((a[k + 2] as number) <= 0) {
-        // swap-remove du triplet
-        const last = a.length - 3;
-        if (k !== last) {
-          a[k] = a[last] as number;
-          a[k + 1] = a[last + 1] as number;
-          a[k + 2] = a[last + 2] as number;
-        }
+        // swap-remove du quadruplet
+        const last = a.length - AQ;
+        if (k !== last) for (let j = 0; j < AQ; j++) a[k + j] = a[last + j] as number;
         a.length = last;
-      } else k += 3;
+      } else k += AQ;
     }
     syncAcidCharges(ctx);
   },
 };
 
-/** Block.acidCharges (lu par le renderer) = nombre de charges restantes, recalculé depuis internal.acid. */
+/** Reprise : anciennes charges (triplets sans plafond) → quadruplets, plafond du rang I. */
+export function migrateAcid(ctx: Ctx): void {
+  const it = ctx.s.internal;
+  if (!Array.isArray(it.acidQ)) it.acidQ = [];
+  const old = it.acid;
+  if (Array.isArray(old)) {
+    const cap = prm(ctx, 'acid', 'capPerTurn', 1);
+    for (let k = 0; k + 2 < old.length; k += 3) it.acidQ.push(old[k] as number, old[k + 1] as number, old[k + 2] as number, cap);
+    delete it.acid;
+  }
+}
+
+/** Block.acidCharges (lu par le renderer) = nombre de charges restantes, recalculé depuis internal.acidQ. */
 function syncAcidCharges(ctx: Ctx): void {
   const blocks = ctx.s.blocks;
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i] as Block;
     if (b.acidCharges) b.acidCharges = 0;
   }
-  const a = ctx.s.internal.acid;
-  for (let k = 0; k + 2 < a.length; k += 3) {
+  const a = ctx.s.internal.acidQ;
+  for (let k = 0; k + AQ - 1 < a.length; k += AQ) {
     const i = blockIndex(ctx, a[k] as number);
     const b = i >= 0 ? blocks[i] : undefined;
     if (b) b.acidCharges = (b.acidCharges ?? 0) + 1;

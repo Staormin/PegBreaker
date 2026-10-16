@@ -64,8 +64,10 @@ export interface SimInternal {
   goldenMult: number;
   /** effets par balle en vol, ALIGNÉ sur RunState.balls (même index, swap-remove miroir dans pools.ts) */
   bfx: BallFx[];
-  /** acide : charges par bloc, triplets à plat [blockId, pct, toursRestants, ...] */
-  acid: number[];
+  /** acide : charges par bloc, quadruplets à plat [blockId, pct, toursRestants, plafondParTour, ...] */
+  acidQ: number[];
+  /** ancien format (triplets sans plafond), migré à la reprise d'un snapshot */
+  acid?: number[];
   /** rouille : ids des blocs déjà rouillés (une fois par bloc) */
   rusted: number[];
   /** choc : paires à plat [blockId, reculs ce tir, ...], remis à zéro à chaque tir */
@@ -176,7 +178,7 @@ export function createInternal(nextId: number): SimInternal {
     shotDamageMult: 1,
     goldenMult: 1,
     bfx: [],
-    acid: [],
+    acidQ: [],
     rusted: [],
     shocked: [],
   };
