@@ -8,9 +8,11 @@
     "advanceDurationMs": 250,
     "minAimAngleDeg": 8,
     "maxVolleyMs": 9000,
-    "recallSpeed": 3
+    "recallSpeed": 3,
+    "autoSpeedupAfterMs": 4500
   },
   "breachDamageCap": 2,
+  "bossBreachDamage": 3,
   "defs": [
     { "kind": "normal", "color": "#4f7cff", "hpRatio": 1, "weightByWave": [{ "wave": 1, "weight": 100 }] },
     { "kind": "peg", "color": "#e8ecf5", "hpRatio": 0, "weightByWave": [{ "wave": 1, "weight": 18 }, { "wave": 6, "weight": 22 }] },

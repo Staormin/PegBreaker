@@ -79,6 +79,7 @@ function boot(): void {
   });
   const debug: DebugApi = {
     sim,
+    renderer,
     bus,
     meta: meta as unknown as MetaSystem,
     eventCounts,

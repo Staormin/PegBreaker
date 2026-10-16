@@ -294,6 +294,8 @@ export interface BoardConfig {
   /** durée max d'une volée avant rappel automatique (ms) */
   maxVolleyMs: number;
   recallSpeed: number;
+  /** après ce délai (ms), la volée accélère progressivement jusqu'à recallSpeed (0 = désactivé) */
+  autoSpeedupAfterMs: number;
 }
 
 export interface BallDef {
@@ -347,6 +349,8 @@ export interface BlocksConfig {
   drops: DropTable;
   /** dégâts max infligés par un bloc qui franchit la ligne */
   breachDamageCap: number;
+  /** dégâts infligés par un boss qui franchit la ligne (non plafonnés par breachDamageCap) */
+  bossBreachDamage: number;
 }
 
 export interface BossDef {
@@ -571,6 +575,7 @@ export interface UI {
 
 export interface DebugApi {
   sim: Sim;
+  renderer: Renderer;
   bus: import('./events').EventBus;
   meta: MetaSystem;
   /** compteur par type d'événement depuis le chargement */
