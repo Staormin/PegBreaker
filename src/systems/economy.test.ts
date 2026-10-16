@@ -1,6 +1,6 @@
 // Sanity d'économie méta : bot « vise le bloc le plus bas » (sim réelle), achats gloutons
 // du nœud le moins cher après chaque run. Cibles (brief T10) : 1er achat après 1-2 runs,
-// arbre complet en ~25 runs.
+// arbre complet en ~25-30 runs (J3 : 16 nœuds, total 1 790).
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, RunSummary } from '../core/types';
@@ -53,12 +53,12 @@ const complete = (cfg: GameConfig, meta: ReturnType<typeof createMeta>): boolean
   cfg.meta.nodes.every((n) => (meta.data.meta.nodes[n.id] ?? 0) >= n.costs.length);
 
 describe('économie méta', () => {
-  it('1er achat après ≤ 2 runs, arbre complet en 18-32 runs (3 joueurs simulés)', () => {
+  it('1er achat après ≤ 2 runs, arbre complet en 20-35 runs, moyenne 24-31 (5 joueurs simulés)', () => {
     const cfg = structuredClone(loadConfig());
     const firstBuy: number[] = [];
     const full: number[] = [];
     const perRun: number[] = [];
-    for (let p = 0; p < 3; p++) {
+    for (let p = 0; p < 5; p++) {
       const meta = createMeta(createMemoryStorage(), cfg, () => new Date(2026, 9, 16));
       let first = 0;
       let runs = 0;
@@ -77,8 +77,11 @@ describe('économie méta', () => {
     for (const f of firstBuy) expect(f).toBeGreaterThanOrEqual(1);
     for (const f of firstBuy) expect(f).toBeLessThanOrEqual(2);
     for (const r of full) {
-      expect(r).toBeGreaterThanOrEqual(18);
-      expect(r).toBeLessThanOrEqual(32);
+      expect(r).toBeGreaterThanOrEqual(20);
+      expect(r).toBeLessThanOrEqual(35);
     }
+    const avgFull = full.reduce((a, b) => a + b, 0) / full.length;
+    expect(avgFull).toBeGreaterThanOrEqual(24);
+    expect(avgFull).toBeLessThanOrEqual(31);
   }, 120_000);
 });

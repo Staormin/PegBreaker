@@ -41,7 +41,7 @@ function withFragments(storage: StorageLike, c: GameConfig, n: number): ReturnTy
 }
 
 describe('sauvegarde', () => {
-  it('stockage vide → défauts, nœuds gratuits achetés, stone + fire + lightning, toutes les reliques', () => {
+  it('stockage vide → défauts, nœuds gratuits achetés, stone + fire + lightning, reliques sauf les 4 verrouillées', () => {
     const c = cfg();
     const st = createMemoryStorage();
     const m = createMeta(st, c, fixedNow);
@@ -50,7 +50,9 @@ describe('sauvegarde', () => {
     expect(d.meta.fragments).toBe(0);
     expect(d.meta.nodes).toEqual({ el_fire: 1, el_lightning: 1 });
     expect(d.meta.unlockedElements).toEqual(['stone', 'fire', 'lightning']);
-    expect(d.meta.unlockedRelics).toEqual(c.relics.defs.map((r) => r.id));
+    const locked = ['mitose', 'alchimie', 'radar', 'berserk'];
+    expect(d.meta.unlockedRelics).toEqual(c.relics.defs.map((r) => r.id).filter((id) => !locked.includes(id)));
+    expect(m.getModifiers().unlockedRelics).toEqual(d.meta.unlockedRelics);
     expect(d.stats.runs).toBe(0);
     expect(d.achievements).toEqual([]);
     expect(d.currentRun).toBeNull();
@@ -375,10 +377,10 @@ describe('onRunEnd', () => {
     expect(m.data.achievements).toEqual(got);
   });
 
-  it('seuils : combo 9, tir 999, aucune fusion → rien ; fusion via stats.fusions seul → fusion2', () => {
+  it('seuils : combo 9, tir 999, rang 1 → rien ; balle de rang 2 → fusion2', () => {
     const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
-    expect(m.onRunEnd(summary({ wave: 9 }, { bestCombo: 9, bestShotDamage: 999 }))).toEqual([]);
-    expect(m.onRunEnd(summary({}, { fusions: 1 }))).toEqual(['fusion2']);
+    expect(m.onRunEnd(summary({ wave: 9, depth: 49, score: 9999 }, { bestCombo: 9, bestShotDamage: 999 }))).toEqual([]);
+    expect(m.onRunEnd(summary({ volley: [{ element: 'stone', tier: 2 }] }))).toEqual(['fusion2']);
   });
 
   it('perfectwave n est jamais débloqué (non mesurable depuis RunSummary)', () => {
@@ -411,6 +413,45 @@ describe('onRunEnd', () => {
     const keys = Object.keys(m.data.daily).sort();
     expect(keys).toHaveLength(30);
     expect(keys[0]).toBe('2026-08-06');
+  });
+});
+
+describe('succès J3 (condition déclarative + repli par id)', () => {
+  it('perfectwave via perfectWaves, depth50, score10k, relic5, volley20', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    const got = m.onRunEnd(
+      summary(
+        { depth: 50, score: 10000, relics: ['a', 'b', 'c', 'd', 'e'], volley: Array.from({ length: 20 }, () => ({ element: 'stone' as const, tier: 1 as const })) },
+        { perfectWaves: 1 },
+      ),
+    );
+    expect(got).toEqual(['perfectwave', 'depth50', 'relic5', 'volley20', 'score10k']);
+    expect(m.onRunEnd(summary({ relics: ['a', 'b', 'c', 'd'] }, { perfectWaves: 0 }))).toEqual([]);
+  });
+
+  it('la condition du JSON prime sur la table par id ; id sans condition ni règle → jamais', () => {
+    const c = cfg();
+    const relic5 = c.meta.achievements.find((a) => a.id === 'relic5');
+    if (!relic5) throw new Error('relic5');
+    relic5.condition = { stat: 'bestCombo', gte: 3 }; // remplace la règle « 5 reliques »
+    c.meta.achievements.push({ id: 'mystery', name: '?', description: '', rewardFragments: 99 });
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    expect(m.onRunEnd(summary({ relics: [] }, { bestCombo: 3 }))).toEqual(['relic5']);
+  });
+
+  it('une relique verrouillée est débloquée par son nœud (requires respectés)', () => {
+    const c = cfg();
+    const m = withFragments(createMemoryStorage(), c, 2000);
+    expect(m.buyNode('rel_mitose')).toBe(false); // requiert el_split
+    expect(m.buyNode('el_split')).toBe(true);
+    expect(m.buyNode('rel_mitose')).toBe(true);
+    expect(m.buyNode('rel_radar')).toBe(false); // requiert rel_alchimie
+    expect(m.buyNode('rel_alchimie')).toBe(true);
+    const r = m.getModifiers().unlockedRelics;
+    expect(r).toContain('mitose');
+    expect(r).toContain('alchimie');
+    expect(r).not.toContain('radar');
+    expect(r).not.toContain('berserk');
   });
 });
 

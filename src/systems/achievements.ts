@@ -1,7 +1,7 @@
 // systems/achievements.ts — conditions des succès de meta.json → achievements.
-// AchievementDef ne porte pas de condition (demande core/ : champ `condition`) : la table
-// ci-dessous associe chaque id à un prédicat. Id inconnu → jamais débloqué.
-import type { GlobalStats, RunSummary } from '../core/types';
+// Priorité à `AchievementDef.condition` (déclaratif, seuils dans le JSON) ; à défaut, table
+// par id ci-dessous (pour les mesures absentes de l'union `condition.stat`). Sinon : jamais.
+import type { AchievementDef, GlobalStats, RunSummary } from '../core/types';
 
 export interface AchievementContext {
   summary: RunSummary;
@@ -9,32 +9,52 @@ export interface AchievementContext {
   stats: GlobalStats;
 }
 
+type Stat = NonNullable<AchievementDef['condition']>['stat'];
+
+const maxTier = (s: RunSummary): number => s.volley.reduce((m, v) => Math.max(m, v.tier), 0);
+
+/** Valeur mesurée pour une condition déclarative. Records : globaux ; le reste : la run. */
+export function statValue(stat: Stat, c: AchievementContext): number {
+  switch (stat) {
+    case 'bestCombo':
+      return c.stats.bestCombo;
+    case 'bestShotDamage':
+      return c.stats.bestShotDamage;
+    case 'bestDepth':
+      return c.stats.bestDepth;
+    case 'bestWave':
+      return c.stats.bestWave;
+    case 'bossesKilled':
+      return c.summary.stats.bossesKilled;
+    case 'wave':
+      return c.summary.wave;
+    case 'maxTier':
+      return maxTier(c.summary);
+    case 'isDaily':
+      return c.summary.isDaily ? 1 : 0;
+    case 'perfectWaves':
+      return c.summary.stats.perfectWaves ?? 0; // vieux résumés sans le champ
+  }
+}
+
 type Predicate = (c: AchievementContext) => boolean;
 
-const maxTier = (s: RunSummary): number => s.volley.reduce((m, v) => Math.max(m, v.tier), 1);
-
-/** Seuils de contenu (définis par le nom du succès dans meta.json). */
+/** Repli par id (succès sans `condition`). Seuils de contenu = ceux du nom du succès. */
 export const ACHIEVEMENT_RULES: Readonly<Record<string, Predicate>> = {
-  combo10: (c) => c.stats.bestCombo >= 10,
-  combo30: (c) => c.stats.bestCombo >= 30,
-  fusion2: (c) => maxTier(c.summary) >= 2 || c.summary.stats.fusions >= 1,
-  fusion3: (c) => maxTier(c.summary) >= 3,
-  wave5: (c) => c.summary.stats.bossesKilled >= 1,
-  wave10: (c) => c.summary.wave >= 10,
-  // « Finir une vague sans perdre de PV » : non mesurable depuis RunSummary (il faudrait
-  // un compteur de vagues parfaites dans RunStats). À faire : jamais débloqué pour l'instant.
-  perfectwave: () => false,
-  shot1000: (c) => c.stats.bestShotDamage >= 1000,
-  daily1: (c) => c.summary.isDaily,
+  relic5: (c) => c.summary.relics.length >= 5,
+  volley20: (c) => c.summary.volley.length >= 20,
+  score10k: (c) => c.stats.bestScore >= 10000,
 };
 
-/** Ids des succès nouvellement remplis (ordre de meta.json), hors ceux déjà acquis. */
-export function checkAchievements(ids: readonly string[], owned: readonly string[], ctx: AchievementContext): string[] {
+export function isMet(def: AchievementDef, ctx: AchievementContext): boolean {
+  if (def.condition) return statValue(def.condition.stat, ctx) >= def.condition.gte;
+  const rule = ACHIEVEMENT_RULES[def.id];
+  return rule ? rule(ctx) : false;
+}
+
+/** Succès nouvellement remplis (ordre de meta.json), hors ceux déjà acquis. */
+export function checkAchievements(defs: readonly AchievementDef[], owned: readonly string[], ctx: AchievementContext): string[] {
   const out: string[] = [];
-  for (const id of ids) {
-    if (owned.includes(id)) continue;
-    const rule = ACHIEVEMENT_RULES[id];
-    if (rule && rule(ctx)) out.push(id);
-  }
+  for (const d of defs) if (!owned.includes(d.id) && isMet(d, ctx)) out.push(d.id);
   return out;
 }

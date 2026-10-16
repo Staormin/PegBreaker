@@ -10,6 +10,10 @@
     { "id": "el_ice", "branch": "arsenal", "name": "Glace", "description": "Débloque les balles de glace.", "costs": [100], "effect": "unlockElement:ice", "valuePerLevel": 1, "requires": ["el_split"] },
     { "id": "el_ghost", "branch": "arsenal", "name": "Fantôme", "description": "Débloque les balles fantômes.", "costs": [140], "effect": "unlockElement:ghost", "valuePerLevel": 1, "requires": ["el_ice"] },
     { "id": "el_lead", "branch": "arsenal", "name": "Plomb", "description": "Débloque les balles de plomb.", "costs": [140], "effect": "unlockElement:lead", "valuePerLevel": 1, "requires": ["el_ice"] },
+    { "id": "rel_alchimie", "branch": "arsenal", "name": "Alchimie", "description": "Relique épique : chaque fusion donne +1 balle.", "costs": [90], "effect": "unlockRelic:alchimie", "valuePerLevel": 1, "requires": [] },
+    { "id": "rel_mitose", "branch": "arsenal", "name": "Mitose", "description": "Relique épique : la scission se divise en 3.", "costs": [100], "effect": "unlockRelic:mitose", "valuePerLevel": 1, "requires": ["el_split"] },
+    { "id": "rel_radar", "branch": "arsenal", "name": "Radar", "description": "Relique épique : ×2 sur la rangée la plus basse.", "costs": [110], "effect": "unlockRelic:radar", "valuePerLevel": 1, "requires": ["rel_alchimie"] },
+    { "id": "rel_berserk", "branch": "arsenal", "name": "Berserk", "description": "Relique épique : +10 % de dégâts par PV manquant.", "costs": [140], "effect": "unlockRelic:berserk", "valuePerLevel": 1, "requires": ["rel_radar"] },
     { "id": "mod_glass", "branch": "depth", "name": "Verre", "description": "1 PV max, fragments ×2.", "costs": [80], "effect": "runMod:glass", "valuePerLevel": 1, "requires": [] },
     { "id": "mod_rush", "branch": "depth", "name": "Ruée", "description": "Les blocs descendent de 2 rangées, fragments ×1,5.", "costs": [130], "effect": "runMod:rush", "valuePerLevel": 1, "requires": ["mod_glass"] }
   ],
@@ -18,14 +22,18 @@
     { "id": "rush", "name": "Ruée", "description": "Les blocs descendent de 2 rangées par tir.", "fragmentMultiplier": 1.5 }
   ],
   "achievements": [
-    { "id": "combo10", "name": "Flipper", "description": "Atteindre un combo de 10.", "rewardFragments": 10 },
-    { "id": "combo30", "name": "Pinball wizard", "description": "Atteindre un combo de 30.", "rewardFragments": 30 },
-    { "id": "fusion2", "name": "Alchimiste", "description": "Fusionner une balle de rang 2.", "rewardFragments": 10 },
-    { "id": "fusion3", "name": "Grand alchimiste", "description": "Fusionner une balle de rang 3.", "rewardFragments": 40 },
-    { "id": "wave5", "name": "Premier boss", "description": "Vaincre un boss.", "rewardFragments": 20 },
-    { "id": "wave10", "name": "Profondeur 10", "description": "Atteindre la vague 10.", "rewardFragments": 50 },
-    { "id": "perfectwave", "name": "Intouchable", "description": "Finir une vague sans perdre de PV.", "rewardFragments": 10 },
-    { "id": "shot1000", "name": "Mille", "description": "Infliger 1 000 dégâts en un tir.", "rewardFragments": 25 },
-    { "id": "daily1", "name": "Habitué", "description": "Finir un défi quotidien.", "rewardFragments": 15 }
+    { "id": "combo10", "name": "Flipper", "description": "Atteindre un combo de 10.", "rewardFragments": 10, "condition": { "stat": "bestCombo", "gte": 10 } },
+    { "id": "combo30", "name": "Pinball wizard", "description": "Atteindre un combo de 30.", "rewardFragments": 30, "condition": { "stat": "bestCombo", "gte": 30 } },
+    { "id": "fusion2", "name": "Alchimiste", "description": "Fusionner une balle de rang 2.", "rewardFragments": 10, "condition": { "stat": "maxTier", "gte": 2 } },
+    { "id": "fusion3", "name": "Grand alchimiste", "description": "Fusionner une balle de rang 3.", "rewardFragments": 40, "condition": { "stat": "maxTier", "gte": 3 } },
+    { "id": "wave5", "name": "Premier boss", "description": "Vaincre un boss.", "rewardFragments": 20, "condition": { "stat": "bossesKilled", "gte": 1 } },
+    { "id": "wave10", "name": "Profondeur 10", "description": "Atteindre la vague 10.", "rewardFragments": 50, "condition": { "stat": "wave", "gte": 10 } },
+    { "id": "perfectwave", "name": "Intouchable", "description": "Finir une vague sans perdre de PV.", "rewardFragments": 10, "condition": { "stat": "perfectWaves", "gte": 1 } },
+    { "id": "shot1000", "name": "Mille", "description": "Infliger 1 000 dégâts en un tir.", "rewardFragments": 25, "condition": { "stat": "bestShotDamage", "gte": 1000 } },
+    { "id": "daily1", "name": "Habitué", "description": "Finir un défi quotidien.", "rewardFragments": 15, "condition": { "stat": "isDaily", "gte": 1 } },
+    { "id": "depth50", "name": "Abysses", "description": "Atteindre la profondeur 50.", "rewardFragments": 25, "condition": { "stat": "bestDepth", "gte": 50 } },
+    { "id": "relic5", "name": "Collectionneur", "description": "Posséder 5 reliques en une run.", "rewardFragments": 20 },
+    { "id": "volley20", "name": "Mitraille", "description": "Finir une run avec 20 balles ou plus.", "rewardFragments": 20 },
+    { "id": "score10k", "name": "Cinq chiffres", "description": "Marquer 10 000 points en une run.", "rewardFragments": 30 }
   ]
 }

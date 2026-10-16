@@ -79,11 +79,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
   function onRunEnd(summary: RunSummary): string[] {
     const earned = Math.max(0, Math.round(summary.stats.fragmentsEarned));
     const stats = applyRunStats(d.stats, summary);
-    const unlocked = checkAchievements(
-      config.meta.achievements.map((a) => a.id),
-      d.achievements,
-      { summary, stats },
-    );
+    const unlocked = checkAchievements(config.meta.achievements, d.achievements, { summary, stats });
     let bonus = 0;
     for (const id of unlocked) bonus += config.meta.achievements.find((a) => a.id === id)?.rewardFragments ?? 0;
     stats.totalFragments += earned + bonus;
