@@ -2,7 +2,8 @@
 // Intégration de bout en bout avec le VRAI input : drag souris sur le canvas, drag tactile,
 // clics DOM sur les écrans récompense / boutique / fin de run. Captures dans docs/qa/j1-shots/.
 import { expect, test, type Page } from '@playwright/test';
-import { boardMapping, boardToClient, configureBot, installBot, lowestBlockTarget, openGame, play, setSpeed, type QaWindow } from './bots';
+import type { Vec2 } from '../../src/core/types';
+import { boardToClient, configureBot, installBot, lowestBlockTarget, openGame, play, setSpeed, type QaWindow } from './bots';
 
 const SHOTS = 'docs/qa/j1-shots';
 
@@ -39,10 +40,8 @@ test.describe('smoke J1', () => {
     await page.screenshot({ path: `${SHOTS}/01-debut.png` });
 
     // --- tir 1 : drag souris vers le bloc le plus bas ------------------------
-    const m = await boardMapping(page);
     const { target, launch } = await lowestBlockTarget(page);
-    const tc = boardToClient(m, target);
-    const start = boardToClient(m, { x: 3.5, y: 8 });
+    const [tc, start] = (await boardToClient(page, [target, { x: 3.5, y: 8 }])) as [Vec2, Vec2];
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move((start.x + tc.x) / 2, (start.y + tc.y) / 2, { steps: 4 });
@@ -59,13 +58,15 @@ test.describe('smoke J1', () => {
 
     const s1 = await page.evaluate(() => {
       const s = (window as unknown as QaWindow).__pegbreaker.sim.state;
-      return { shots: s.stats.shots, wave: s.wave, coins: s.coins, volley: s.volley.length, dmg: Math.round(s.currentShotDamage), destroyed: s.stats.blocksDestroyed };
+      return { shots: s.stats.shots, wave: s.wave, coins: s.coins, volley: s.volley.length, dmg: s.currentShotDamage, destroyed: s.stats.blocksDestroyed };
     });
     expect(s1.shots).toBe(1);
     // HUD synchronisé avec l'état
     await expect(page.locator('.hud-wave')).toHaveText(`V${s1.wave}`);
     await expect(page.locator('.hud-coins .num')).toHaveText(String(s1.coins));
-    await expect(page.locator('.hud-shot .num')).toHaveText(String(s1.dmg));
+    expect(Number.isInteger(s1.dmg), 'dégâts du tir entiers').toBe(true);
+    const shotTxt = (await page.locator('.hud-shot .num').textContent()) ?? '';
+    expect(shotTxt.replace(/\D/g, ''), 'HUD : dégâts du tir').toBe(String(s1.dmg));
     const pills = await page.locator('.hud-volley').evaluate((el) => el.textContent ?? '');
     expect(pills.length, 'volée affichée dans le HUD').toBeGreaterThan(0);
     test.info().annotations.push({ type: 'tir1', description: JSON.stringify(s1) });
@@ -165,10 +166,8 @@ test.describe('smoke J1', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, 'pas de scroll horizontal').toBeLessThanOrEqual(0);
 
-      const m = await boardMapping(page);
       const { target, launch } = await lowestBlockTarget(page);
-      const tc = boardToClient(m, target);
-      const start = boardToClient(m, { x: 3.5, y: 8 });
+      const [tc, start] = (await boardToClient(page, [target, { x: 3.5, y: 8 }])) as [Vec2, Vec2];
 
       // un tap (< 12 px de déplacement) ne doit pas tirer
       await page.touchscreen.tap(start.x, start.y);

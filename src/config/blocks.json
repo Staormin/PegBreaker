@@ -7,7 +7,7 @@
     "launchIntervalMs": 60,
     "advanceDurationMs": 250,
     "minAimAngleDeg": 8,
-    "maxVolleyMs": 9000,
+    "maxVolleyMs": 7000,
     "recallSpeed": 3,
     "autoSpeedupAfterMs": 4500
   },

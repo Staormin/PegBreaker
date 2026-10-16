@@ -265,6 +265,14 @@ export function qaInstall(opt: QaInstallOptions): void {
     };
     scan((s as unknown as { internal?: unknown }).internal, 'internal', 0);
     if (internalNaN.length) addViolation(rec.violations, 'nan-internal', `${where}: ${internalNaN.join(', ')}`);
+    // depuis 8a20d70 : PV et dégâts entiers ; maxHp ≥ 1 sauf chevilles (incassables, hp = 0)
+    for (const b of s.blocks) {
+      if (!Number.isInteger(b.hp) || !Number.isInteger(b.maxHp) || (b.kind !== 'peg' && b.maxHp < 1)) addViolation(rec.violations, 'block-hp-int', `${where}: bloc ${b.id} (${b.kind}) hp=${b.hp} maxHp=${b.maxHp}`);
+    }
+    const st = s.stats;
+    for (const [k, v] of [['bestShotDamage', st.bestShotDamage], ['totalDamage', st.totalDamage], ['currentShotDamage', s.currentShotDamage]] as const) {
+      if (!Number.isInteger(v)) addViolation(rec.violations, 'damage-int', `${where}: ${k}=${v}`);
+    }
     if (s.hp > s.maxHp) addViolation(rec.violations, 'hp>maxHp', `${where}: hp=${s.hp} maxHp=${s.maxHp}`);
     if (s.volley.length < 1) addViolation(rec.violations, 'volley-empty', `${where}: volley.length=${s.volley.length}`);
     const cells = new Map<string, number>();
@@ -644,33 +652,17 @@ export async function setSpeed(page: Page, n: number): Promise<void> {
   await page.evaluate((m) => (window as unknown as QaWindow).__pegbreaker.setSpeed(m), n);
 }
 
-// --- géométrie écran (copie de render/layout.ts : HUD 10 % haut, 12 % bas, plateau 7:10) ------
-export interface BoardMapping {
-  left: number;
-  top: number;
-  scale: number;
-  offX: number;
-  offY: number;
-}
-
-export async function boardMapping(page: Page): Promise<BoardMapping> {
-  return page.evaluate(() => {
+// --- géométrie écran : renderer.boardToScreen (px CSS relatifs au canvas) + rect du canvas ------
+/** Convertit des points plateau en coordonnées client (pour page.mouse / touch). */
+export async function boardToClient(page: Page, pts: Vec2[]): Promise<Vec2[]> {
+  return page.evaluate((ps) => {
     const api = (window as unknown as QaWindow).__pegbreaker;
-    const canvas = document.getElementById('game') as HTMLCanvasElement;
-    const r = canvas.getBoundingClientRect();
-    const parent = canvas.parentElement as HTMLElement;
-    const w = parent.clientWidth;
-    const h = parent.clientHeight;
-    const { cols, rows } = api.sim.config.blocks.board;
-    const top = h * 0.1;
-    const availH = h * (1 - 0.1 - 0.12);
-    const scale = Math.max(1, Math.min(w / cols, availH / rows));
-    return { left: r.left, top: r.top, scale, offX: (w - scale * cols) / 2, offY: top + (availH - scale * rows) / 2 };
-  });
-}
-
-export function boardToClient(m: BoardMapping, p: Vec2): Vec2 {
-  return { x: m.left + m.offX + p.x * m.scale, y: m.top + m.offY + p.y * m.scale };
+    const r = (document.getElementById('game') as HTMLCanvasElement).getBoundingClientRect();
+    return ps.map((p) => {
+      const q = api.renderer.boardToScreen(p);
+      return { x: r.left + q.x, y: r.top + q.y };
+    });
+  }, pts);
 }
 
 /** Cible « bloc le plus bas cassable » (centre), ou un point au-dessus du lanceur. */

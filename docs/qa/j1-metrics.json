@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T14:51:19.126Z",
+  "generatedAt": "2026-10-16T15:00:35.402Z",
   "build": "0.1.0-j1",
   "method": {
     "speed": "run naive/qa-1 : vitesse 1 + 1,5 s de visée jusqu'au 1er écran de récompense, 1 volée en CPU 4× (vague 2), puis vitesse 8 ; autres runs : vitesse 8 en parallèle (10 pages, fps vitesse 8 non significatifs : CPU partagé)",
@@ -14,111 +14,107 @@
         "bot": "naive",
         "seed": "qa-1",
         "stopReason": "gameover",
-        "timeToFirstRewardMs": 2405,
-        "timeToFirstChoiceRealMs": 33088,
-        "timeToFirstChoiceHumanMs": 32617,
-        "shotsInWave1": 11,
+        "timeToFirstRewardMs": 2292,
+        "timeToFirstChoiceRealMs": 21825,
+        "timeToFirstChoiceHumanMs": 21567,
+        "shotsInWave1": 6,
         "firstShot": {
-          "damage": 3,
-          "destroyed": 1,
+          "damage": 40,
+          "destroyed": 2,
           "combo": 1
         },
         "shotsUntilFirstBreak": 1,
-        "shots": 64,
-        "rewardChoices": 6,
-        "buys": 2,
-        "decisions": 72,
-        "decisionsPerMinSim": 21,
-        "decisionsPerMinHuman": 15.7,
-        "durationSimMs": 205650,
-        "durationSpecMs": 301650,
-        "durationHumanMs": 275600,
-        "botAimingSimMs": 26050,
-        "choiceSimMs": 1850,
-        "waveOfDeath": 7,
-        "depth": 64,
-        "shotsPerWave": 9.1,
-        "bestCombo": 36,
-        "bestShotDamage": 501,
-        "totalDamage": 3612,
-        "blocksDestroyed": 118,
-        "finalVolley": 21,
-        "fusions": 3,
+        "shots": 44,
+        "rewardChoices": 5,
+        "buys": 1,
+        "decisions": 50,
+        "decisionsPerMinSim": 24,
+        "decisionsPerMinHuman": 17.1,
+        "durationSimMs": 125104,
+        "durationSpecMs": 191104,
+        "durationHumanMs": 175171,
+        "botAimingSimMs": 15933,
+        "choiceSimMs": 983,
+        "waveOfDeath": 6,
+        "depth": 44,
+        "shotsPerWave": 7.3,
+        "bestCombo": 18,
+        "bestShotDamage": 1345,
+        "totalDamage": 7723,
+        "blocksDestroyed": 65,
+        "finalVolley": 14,
+        "fusions": 2,
         "bossesKilled": 0,
-        "damageTaken": 13,
-        "breaches": 7,
+        "damageTaken": 7,
+        "breaches": 3,
         "breachesByKind": {
-          "normal": 6,
-          "boss": 1
+          "boss": 1,
+          "normal": 2
         },
         "breachDamageByKind": {
-          "normal": 11,
-          "boss": 2
+          "boss": 3,
+          "normal": 4
         },
         "bossesSpawned": 1,
-        "coinsEarned": 103,
+        "coinsEarned": 41,
         "relics": [
-          "firstblood",
-          "piggy",
           "magnet",
-          "safetynet"
+          "piggy"
         ],
         "rewardsTaken": [
-          "ball:fire",
-          "fuse:stone2",
-          "relic:firstblood",
           "relic:magnet",
+          "ball:split",
+          "relic:piggy",
           "fuse:stone2",
-          "relic:safetynet"
+          "ball:lightning"
         ],
         "comboShare": {
-          "ge5": 0.27,
-          "ge10": 0.13,
-          "ge20": 0.03
+          "ge5": 0.14,
+          "ge10": 0.07,
+          "ge20": 0
         },
-        "firstShotComboAbove5": 21,
+        "firstShotComboAbove5": 11,
         "damageByWave": {
-          "1": 7,
-          "2": 24,
-          "3": 52,
-          "4": 140,
-          "5": 17,
-          "6": 234,
-          "7": 501
+          "1": 72,
+          "2": 279,
+          "3": 341,
+          "4": 1345,
+          "5": 160,
+          "6": 406
         },
         "deadMoments": [],
         "maxFeedbackGapMs": 1783,
-        "maxFiringMs": 7950,
-        "avgFiringMs": 2547,
+        "maxFiringMs": 6533,
+        "avgFiringMs": 2220,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
-            "samples": 32,
-            "min": 55,
+            "samples": 21,
+            "min": 56,
             "avg": 59.8,
-            "frameMsP95": 17.5,
-            "frameMsMax": 26.6
+            "frameMsP95": 17.3,
+            "frameMsMax": 23.6
           },
           "cpu4Volley": {
-            "samples": 2,
-            "min": 60,
-            "avg": 60,
-            "frameMsP95": 17.7,
-            "frameMsMax": 21
+            "samples": 3,
+            "min": 57,
+            "avg": 58.7,
+            "frameMsP95": 19.8,
+            "frameMsMax": 26.3
           },
           "speed8": {
-            "samples": 23,
-            "min": 42,
-            "avg": 54.3,
-            "frameMsP95": 28.8,
-            "frameMsMax": 77.6
+            "samples": 12,
+            "min": 46,
+            "avg": 52.3,
+            "frameMsP95": 31.3,
+            "frameMsMax": 61.8
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 60.1
+        "realSeconds": 39.5
       },
       {
         "bot": "naive",
@@ -126,72 +122,298 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 30050,
-        "shotsInWave1": 9,
+        "timeToFirstChoiceHumanMs": 20300,
+        "shotsInWave1": 6,
         "firstShot": {
-          "damage": 3,
+          "damage": 50,
+          "destroyed": 2,
+          "combo": 1
+        },
+        "shotsUntilFirstBreak": 1,
+        "shots": 46,
+        "rewardChoices": 5,
+        "buys": 1,
+        "decisions": 52,
+        "decisionsPerMinSim": 28.4,
+        "decisionsPerMinHuman": 18.2,
+        "durationSimMs": 109879,
+        "durationSpecMs": 178879,
+        "durationHumanMs": 171662,
+        "botAimingSimMs": 7217,
+        "choiceSimMs": 1200,
+        "waveOfDeath": 6,
+        "depth": 46,
+        "shotsPerWave": 7.7,
+        "bestCombo": 10,
+        "bestShotDamage": 770,
+        "totalDamage": 8704,
+        "blocksDestroyed": 59,
+        "finalVolley": 14,
+        "fusions": 1,
+        "bossesKilled": 0,
+        "damageTaken": 9,
+        "breaches": 4,
+        "breachesByKind": {
+          "boss": 1,
+          "normal": 3
+        },
+        "breachDamageByKind": {
+          "boss": 3,
+          "normal": 6
+        },
+        "bossesSpawned": 1,
+        "coinsEarned": 23,
+        "relics": [
+          "bigboom"
+        ],
+        "rewardsTaken": [
+          "ball:fire",
+          "relic:bigboom",
+          "ball:lightning",
+          "ball:stone",
+          "fuse:stone2"
+        ],
+        "comboShare": {
+          "ge5": 0.11,
+          "ge10": 0.04,
+          "ge20": 0
+        },
+        "firstShotComboAbove5": 22,
+        "damageByWave": {
+          "1": 66,
+          "2": 119,
+          "3": 203,
+          "4": 700,
+          "5": 150,
+          "6": 770
+        },
+        "deadMoments": [],
+        "maxFeedbackGapMs": 617,
+        "maxFiringMs": 7467,
+        "avgFiringMs": 1977,
+        "cappedVolleys": 0,
+        "fps": {
+          "speed1": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "cpu4Volley": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "speed8": {
+            "samples": 14,
+            "min": 42,
+            "avg": 50.9,
+            "frameMsP95": 31.6,
+            "frameMsMax": 57.3
+          }
+        },
+        "consoleErrors": [],
+        "pageErrors": [],
+        "softlocks": [],
+        "invariantViolations": [],
+        "realSeconds": 15.2
+      },
+      {
+        "bot": "naive",
+        "seed": "qa-3",
+        "stopReason": "gameover",
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceRealMs": null,
+        "timeToFirstChoiceHumanMs": 23784,
+        "shotsInWave1": 7,
+        "firstShot": {
+          "damage": 50,
+          "destroyed": 2,
+          "combo": 1
+        },
+        "shotsUntilFirstBreak": 1,
+        "shots": 70,
+        "rewardChoices": 7,
+        "buys": 2,
+        "decisions": 79,
+        "decisionsPerMinSim": 22.9,
+        "decisionsPerMinHuman": 15.8,
+        "durationSimMs": 206600,
+        "durationSpecMs": 311600,
+        "durationHumanMs": 300367,
+        "botAimingSimMs": 11233,
+        "choiceSimMs": 2000,
+        "waveOfDeath": 8,
+        "depth": 70,
+        "shotsPerWave": 8.8,
+        "bestCombo": 24,
+        "bestShotDamage": 6464,
+        "totalDamage": 57388,
+        "blocksDestroyed": 112,
+        "finalVolley": 23,
+        "fusions": 2,
+        "bossesKilled": 1,
+        "damageTaken": 8,
+        "breaches": 4,
+        "breachesByKind": {
+          "armored": 2,
+          "normal": 1,
+          "explosive": 1
+        },
+        "breachDamageByKind": {
+          "armored": 4,
+          "normal": 2,
+          "explosive": 2
+        },
+        "bossesSpawned": 1,
+        "coinsEarned": 68,
+        "relics": [
+          "magnet",
+          "bouncy",
+          "piggy",
+          "bigboom",
+          "firstblood"
+        ],
+        "rewardsTaken": [
+          "relic:magnet",
+          "relic:bouncy",
+          "fuse:stone2",
+          "relic:bigboom",
+          "relic:firstblood",
+          "ball:fire",
+          "fuse:stone2"
+        ],
+        "comboShare": {
+          "ge5": 0.33,
+          "ge10": 0.09,
+          "ge20": 0.03
+        },
+        "firstShotComboAbove5": 16,
+        "damageByWave": {
+          "1": 95,
+          "2": 233,
+          "3": 325,
+          "4": 1490,
+          "5": 198,
+          "6": 2420,
+          "7": 6464,
+          "8": 3589
+        },
+        "deadMoments": [],
+        "maxFeedbackGapMs": 633,
+        "maxFiringMs": 8850,
+        "avgFiringMs": 2539,
+        "cappedVolleys": 1,
+        "fps": {
+          "speed1": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "cpu4Volley": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "speed8": {
+            "samples": 29,
+            "min": 34,
+            "avg": 44.3,
+            "frameMsP95": 38.6,
+            "frameMsMax": 67.7
+          }
+        },
+        "consoleErrors": [],
+        "pageErrors": [],
+        "softlocks": [],
+        "invariantViolations": [],
+        "realSeconds": 30.6
+      },
+      {
+        "bot": "naive",
+        "seed": "qa-4",
+        "stopReason": "gameover",
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceRealMs": null,
+        "timeToFirstChoiceHumanMs": 15717,
+        "shotsInWave1": 4,
+        "firstShot": {
+          "damage": 20,
           "destroyed": 1,
           "combo": 1
         },
         "shotsUntilFirstBreak": 1,
-        "shots": 34,
-        "rewardChoices": 3,
+        "shots": 40,
+        "rewardChoices": 5,
         "buys": 1,
-        "decisions": 38,
-        "decisionsPerMinSim": 27.5,
-        "decisionsPerMinHuman": 17.7,
-        "durationSimMs": 82838,
-        "durationSpecMs": 133838,
-        "durationHumanMs": 129155,
-        "botAimingSimMs": 4683,
-        "choiceSimMs": 933,
-        "waveOfDeath": 4,
-        "depth": 34,
-        "shotsPerWave": 8.5,
-        "bestCombo": 13,
-        "bestShotDamage": 69,
-        "totalDamage": 511,
-        "blocksDestroyed": 58,
-        "finalVolley": 14,
-        "fusions": 1,
+        "decisions": 46,
+        "decisionsPerMinSim": 27.8,
+        "decisionsPerMinHuman": 18.2,
+        "durationSimMs": 99379,
+        "durationSpecMs": 159379,
+        "durationHumanMs": 152029,
+        "botAimingSimMs": 7350,
+        "choiceSimMs": 1067,
+        "waveOfDeath": 6,
+        "depth": 40,
+        "shotsPerWave": 6.7,
+        "bestCombo": 20,
+        "bestShotDamage": 677,
+        "totalDamage": 7056,
+        "blocksDestroyed": 59,
+        "finalVolley": 9,
+        "fusions": 2,
         "bossesKilled": 0,
         "damageTaken": 11,
-        "breaches": 6,
+        "breaches": 5,
         "breachesByKind": {
+          "boss": 1,
           "normal": 3,
-          "explosive": 2,
           "armored": 1
         },
         "breachDamageByKind": {
+          "boss": 3,
           "normal": 6,
-          "explosive": 3,
           "armored": 2
         },
-        "bossesSpawned": 0,
-        "coinsEarned": 44,
+        "bossesSpawned": 1,
+        "coinsEarned": 68,
         "relics": [
-          "piggy"
+          "bouncy",
+          "magnet",
+          "bigboom"
         ],
         "rewardsTaken": [
-          "ball:stone",
+          "relic:bouncy",
+          "relic:magnet",
+          "relic:bigboom",
           "fuse:stone2",
           "ball:stone"
         ],
         "comboShare": {
-          "ge5": 0.24,
-          "ge10": 0.06,
-          "ge20": 0
+          "ge5": 0.28,
+          "ge10": 0.05,
+          "ge20": 0.03
         },
-        "firstShotComboAbove5": 12,
+        "firstShotComboAbove5": 2,
         "damageByWave": {
-          "1": 9,
-          "2": 26,
-          "3": 69,
-          "4": 54
+          "1": 212,
+          "2": 217,
+          "3": 677,
+          "4": 491,
+          "5": 132,
+          "6": 268
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 917,
-        "maxFiringMs": 5600,
+        "maxFeedbackGapMs": 717,
+        "maxFiringMs": 7350,
         "avgFiringMs": 2035,
         "cappedVolleys": 0,
         "fps": {
@@ -210,137 +432,29 @@
             "frameMsMax": null
           },
           "speed8": {
-            "samples": 10,
-            "min": 47,
-            "avg": 53.3,
-            "frameMsP95": 28.9,
-            "frameMsMax": 77.2
+            "samples": 13,
+            "min": 36,
+            "avg": 47.4,
+            "frameMsP95": 33.5,
+            "frameMsMax": 50.5
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 11.4
+        "realSeconds": 13.8
       },
       {
         "bot": "naive",
-        "seed": "qa-3",
+        "seed": "qa-5",
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 18717,
-        "shotsInWave1": 5,
+        "timeToFirstChoiceHumanMs": 34983,
+        "shotsInWave1": 10,
         "firstShot": {
-          "damage": 3,
-          "destroyed": 1,
-          "combo": 1
-        },
-        "shotsUntilFirstBreak": 1,
-        "shots": 48,
-        "rewardChoices": 5,
-        "buys": 1,
-        "decisions": 54,
-        "decisionsPerMinSim": 27.8,
-        "decisionsPerMinHuman": 17.8,
-        "durationSimMs": 116600,
-        "durationSpecMs": 188600,
-        "durationHumanMs": 181800,
-        "botAimingSimMs": 6800,
-        "choiceSimMs": 1333,
-        "waveOfDeath": 6,
-        "depth": 48,
-        "shotsPerWave": 8,
-        "bestCombo": 12,
-        "bestShotDamage": 103,
-        "totalDamage": 1159,
-        "blocksDestroyed": 77,
-        "finalVolley": 16,
-        "fusions": 1,
-        "bossesKilled": 0,
-        "damageTaken": 6,
-        "breaches": 3,
-        "breachesByKind": {
-          "normal": 1,
-          "boss": 1,
-          "armored": 1
-        },
-        "breachDamageByKind": {
-          "normal": 2,
-          "boss": 2,
-          "armored": 2
-        },
-        "bossesSpawned": 1,
-        "coinsEarned": 40,
-        "relics": [
-          "bouncy",
-          "bigboom"
-        ],
-        "rewardsTaken": [
-          "relic:bouncy",
-          "relic:bigboom",
-          "ball:split",
-          "fuse:stone2",
-          "ball:lightning"
-        ],
-        "comboShare": {
-          "ge5": 0.21,
-          "ge10": 0.02,
-          "ge20": 0
-        },
-        "firstShotComboAbove5": 4,
-        "damageByWave": {
-          "1": 32,
-          "2": 28,
-          "3": 37,
-          "4": 82,
-          "5": 19,
-          "6": 103
-        },
-        "deadMoments": [],
-        "maxFeedbackGapMs": 700,
-        "maxFiringMs": 8817,
-        "avgFiringMs": 2023,
-        "cappedVolleys": 1,
-        "fps": {
-          "speed1": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "cpu4Volley": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "speed8": {
-            "samples": 15,
-            "min": 43,
-            "avg": 54.3,
-            "frameMsP95": 27.7,
-            "frameMsMax": 64.9
-          }
-        },
-        "consoleErrors": [],
-        "pageErrors": [],
-        "softlocks": [],
-        "invariantViolations": [],
-        "realSeconds": 15.7
-      },
-      {
-        "bot": "naive",
-        "seed": "qa-4",
-        "stopReason": "gameover",
-        "timeToFirstRewardMs": null,
-        "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 33017,
-        "shotsInWave1": 9,
-        "firstShot": {
-          "damage": 2,
+          "damage": 20,
           "destroyed": 1,
           "combo": 1
         },
@@ -349,65 +463,64 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 60,
-        "decisionsPerMinSim": 23.3,
-        "decisionsPerMinHuman": 15.8,
-        "durationSimMs": 154763,
-        "durationSpecMs": 235763,
-        "durationHumanMs": 227596,
-        "botAimingSimMs": 8167,
-        "choiceSimMs": 1067,
+        "decisionsPerMinSim": 27.7,
+        "decisionsPerMinHuman": 17.8,
+        "durationSimMs": 130033,
+        "durationSpecMs": 211033,
+        "durationHumanMs": 202633,
+        "botAimingSimMs": 8400,
+        "choiceSimMs": 1333,
         "waveOfDeath": 6,
         "depth": 54,
         "shotsPerWave": 9,
-        "bestCombo": 43,
-        "bestShotDamage": 279,
-        "totalDamage": 1444,
-        "blocksDestroyed": 83,
-        "finalVolley": 13,
-        "fusions": 1,
+        "bestCombo": 11,
+        "bestShotDamage": 1091,
+        "totalDamage": 12959,
+        "blocksDestroyed": 69,
+        "finalVolley": 18,
+        "fusions": 0,
         "bossesKilled": 0,
-        "damageTaken": 6,
-        "breaches": 3,
+        "damageTaken": 5,
+        "breaches": 2,
         "breachesByKind": {
           "boss": 1,
-          "normal": 2
+          "normal": 1
         },
         "breachDamageByKind": {
-          "boss": 2,
-          "normal": 4
+          "boss": 3,
+          "normal": 2
         },
         "bossesSpawned": 1,
-        "coinsEarned": 70,
+        "coinsEarned": 61,
         "relics": [
-          "bouncy",
-          "magnet",
-          "bigboom"
+          "firstblood",
+          "magnet"
         ],
         "rewardsTaken": [
-          "relic:bouncy",
-          "relic:magnet",
-          "ball:lightning",
-          "fuse:stone2",
-          "ball:stone"
+          "ball:stone",
+          "relic:firstblood",
+          "ball:fire",
+          "ball:stone",
+          "ball:fire"
         ],
         "comboShare": {
-          "ge5": 0.41,
-          "ge10": 0.13,
-          "ge20": 0.04
+          "ge5": 0.09,
+          "ge10": 0.02,
+          "ge20": 0
         },
-        "firstShotComboAbove5": 6,
+        "firstShotComboAbove5": 29,
         "damageByWave": {
-          "1": 16,
-          "2": 41,
-          "3": 46,
-          "4": 100,
-          "5": 15,
-          "6": 279
+          "1": 107,
+          "2": 114,
+          "3": 204,
+          "4": 783,
+          "5": 160,
+          "6": 1091
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 733,
-        "maxFiringMs": 8533,
-        "avgFiringMs": 2467,
+        "maxFeedbackGapMs": 650,
+        "maxFiringMs": 6533,
+        "avgFiringMs": 1975,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -425,153 +538,45 @@
             "frameMsMax": null
           },
           "speed8": {
-            "samples": 20,
-            "min": 45,
-            "avg": 55.2,
-            "frameMsP95": 26.8,
-            "frameMsMax": 55.9
+            "samples": 16,
+            "min": 38,
+            "avg": 51.3,
+            "frameMsP95": 32.6,
+            "frameMsMax": 56.1
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 21.3
-      },
-      {
-        "bot": "naive",
-        "seed": "qa-5",
-        "stopReason": "gameover",
-        "timeToFirstRewardMs": null,
-        "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 19084,
-        "shotsInWave1": 4,
-        "firstShot": {
-          "damage": 2,
-          "destroyed": 1,
-          "combo": 1
-        },
-        "shotsUntilFirstBreak": 1,
-        "shots": 50,
-        "rewardChoices": 5,
-        "buys": 1,
-        "decisions": 56,
-        "decisionsPerMinSim": 24.9,
-        "decisionsPerMinHuman": 16.6,
-        "durationSimMs": 134783,
-        "durationSpecMs": 209783,
-        "durationHumanMs": 202416,
-        "botAimingSimMs": 7367,
-        "choiceSimMs": 1200,
-        "waveOfDeath": 6,
-        "depth": 50,
-        "shotsPerWave": 8.3,
-        "bestCombo": 18,
-        "bestShotDamage": 211,
-        "totalDamage": 1461,
-        "blocksDestroyed": 85,
-        "finalVolley": 16,
-        "fusions": 0,
-        "bossesKilled": 0,
-        "damageTaken": 6,
-        "breaches": 3,
-        "breachesByKind": {
-          "boss": 1,
-          "normal": 2
-        },
-        "breachDamageByKind": {
-          "boss": 2,
-          "normal": 4
-        },
-        "bossesSpawned": 1,
-        "coinsEarned": 73,
-        "relics": [
-          "firstblood",
-          "bigboom",
-          "bouncy",
-          "piggy"
-        ],
-        "rewardsTaken": [
-          "relic:firstblood",
-          "relic:bigboom",
-          "relic:bouncy",
-          "ball:split",
-          "relic:piggy"
-        ],
-        "comboShare": {
-          "ge5": 0.28,
-          "ge10": 0.04,
-          "ge20": 0
-        },
-        "firstShotComboAbove5": 3,
-        "damageByWave": {
-          "1": 17,
-          "2": 38,
-          "3": 35,
-          "4": 85,
-          "5": 18,
-          "6": 211
-        },
-        "deadMoments": [],
-        "maxFeedbackGapMs": 567,
-        "maxFiringMs": 8667,
-        "avgFiringMs": 2291,
-        "cappedVolleys": 1,
-        "fps": {
-          "speed1": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "cpu4Volley": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "speed8": {
-            "samples": 17,
-            "min": 47,
-            "avg": 54.5,
-            "frameMsP95": 27.3,
-            "frameMsMax": 73.4
-          }
-        },
-        "consoleErrors": [],
-        "pageErrors": [],
-        "softlocks": [],
-        "invariantViolations": [],
-        "realSeconds": 18.4
+        "realSeconds": 17.2
       }
     ],
     "average": {
       "runs": 5,
-      "shots": 50,
-      "decisionsPerMinSim": 24.9,
-      "decisionsPerMinHuman": 16.7,
-      "durationSpecMs": 213926.8,
-      "durationHumanMs": 203313.4,
-      "waveOfDeath": 5.8,
-      "shotsPerWave": 8.6,
-      "bestCombo": 24.4,
-      "bestShotDamage": 232.6,
-      "finalVolley": 16,
+      "shots": 50.8,
+      "decisionsPerMinSim": 26.2,
+      "decisionsPerMinHuman": 17.4,
+      "durationSpecMs": 210399,
+      "durationHumanMs": 200372.4,
+      "waveOfDeath": 6.4,
+      "shotsPerWave": 7.9,
+      "bestCombo": 16.6,
+      "bestShotDamage": 2069.4,
+      "finalVolley": 15.6,
       "deadMoments": 0,
-      "avgFiringMs": 2272.6,
-      "cappedVolleys": 0.4,
-      "maxFeedbackGapMs": 940,
-      "firstShotDestroyed": 1,
-      "timeToFirstChoiceHumanMs": 26697,
-      "shotsInWave1": 7.6,
-      "bossesKilled": 0,
-      "bossesSpawned": 0.8,
-      "damageTaken": 8.4,
-      "comboShareGe5": 0.3,
+      "avgFiringMs": 2149.2,
+      "cappedVolleys": 0.2,
+      "maxFeedbackGapMs": 880,
+      "firstShotDestroyed": 1.6,
+      "timeToFirstChoiceHumanMs": 23270.2,
+      "shotsInWave1": 6.6,
+      "bossesKilled": 0.2,
+      "bossesSpawned": 1,
+      "damageTaken": 8,
+      "comboShareGe5": 0.2,
       "comboShareGe10": 0.1,
-      "fps8Min": 44.8,
+      "fps8Min": 39.2,
       "consoleErrors": 0
     }
   },
@@ -583,528 +588,77 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 25000,
-        "shotsInWave1": 8,
+        "timeToFirstChoiceHumanMs": 19917,
+        "shotsInWave1": 6,
         "firstShot": {
-          "damage": 4,
+          "damage": 42,
           "destroyed": 2,
           "combo": 2
         },
         "shotsUntilFirstBreak": 1,
-        "shots": 75,
-        "rewardChoices": 7,
-        "buys": 2,
-        "decisions": 84,
-        "decisionsPerMinSim": 16.9,
-        "decisionsPerMinHuman": 12.7,
-        "durationSimMs": 298471,
-        "durationSpecMs": 410971,
-        "durationHumanMs": 398071,
-        "botAimingSimMs": 12900,
-        "choiceSimMs": 1733,
-        "waveOfDeath": 8,
-        "depth": 75,
-        "shotsPerWave": 9.4,
-        "bestCombo": 64,
-        "bestShotDamage": 968,
-        "totalDamage": 9465,
-        "blocksDestroyed": 167,
-        "finalVolley": 24,
-        "fusions": 5,
-        "bossesKilled": 0,
-        "damageTaken": 8,
-        "breaches": 4,
-        "breachesByKind": {
-          "boss": 1,
-          "normal": 3
-        },
-        "breachDamageByKind": {
-          "boss": 2,
-          "normal": 6
-        },
-        "bossesSpawned": 1,
-        "coinsEarned": 136,
-        "relics": [
-          "firstblood",
-          "magnet"
-        ],
-        "rewardsTaken": [
-          "fuse:stone2",
-          "fuse:stone2",
-          "relic:firstblood",
-          "relic:magnet",
-          "fuse:stone3",
-          "fuse:stone2",
-          "fuse:stone2"
-        ],
-        "comboShare": {
-          "ge5": 0.37,
-          "ge10": 0.19,
-          "ge20": 0.09
-        },
-        "firstShotComboAbove5": 18,
-        "damageByWave": {
-          "1": 9,
-          "2": 23,
-          "3": 83,
-          "4": 104,
-          "5": 58,
-          "6": 613,
-          "7": 577,
-          "8": 968
-        },
-        "deadMoments": [],
-        "maxFeedbackGapMs": 750,
-        "maxFiringMs": 8800,
-        "avgFiringMs": 3552,
-        "cappedVolleys": 7,
-        "fps": {
-          "speed1": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "cpu4Volley": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "speed8": {
-            "samples": 43,
-            "min": 19,
-            "avg": 49.1,
-            "frameMsP95": 35.5,
-            "frameMsMax": 93.6
-          }
-        },
-        "consoleErrors": [],
-        "pageErrors": [],
-        "softlocks": [],
-        "invariantViolations": [],
-        "realSeconds": 44.3
-      },
-      {
-        "bot": "greedy",
-        "seed": "qa-2",
-        "stopReason": "gameover",
-        "timeToFirstRewardMs": null,
-        "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 22084,
-        "shotsInWave1": 6,
-        "firstShot": {
-          "damage": 3,
-          "destroyed": 1,
-          "combo": 1
-        },
-        "shotsUntilFirstBreak": 1,
-        "shots": 63,
-        "rewardChoices": 6,
+        "shots": 48,
+        "rewardChoices": 5,
         "buys": 1,
-        "decisions": 70,
-        "decisionsPerMinSim": 22,
-        "decisionsPerMinHuman": 15.2,
-        "durationSimMs": 191296,
-        "durationSpecMs": 285796,
-        "durationHumanMs": 276846,
-        "botAimingSimMs": 8950,
-        "choiceSimMs": 800,
-        "waveOfDeath": 7,
-        "depth": 63,
-        "shotsPerWave": 9,
-        "bestCombo": 19,
-        "bestShotDamage": 213,
-        "totalDamage": 2657,
-        "blocksDestroyed": 101,
-        "finalVolley": 19,
-        "fusions": 0,
-        "bossesKilled": 0,
-        "damageTaken": 14,
-        "breaches": 7,
-        "breachesByKind": {
-          "boss": 1,
-          "normal": 5,
-          "armored": 1
-        },
-        "breachDamageByKind": {
-          "boss": 2,
-          "normal": 10,
-          "armored": 2
-        },
-        "bossesSpawned": 1,
-        "coinsEarned": 85,
-        "relics": [
-          "magnet",
-          "piggy",
-          "firstblood",
-          "bigboom",
-          "safetynet"
-        ],
-        "rewardsTaken": [
-          "ball:stone",
-          "relic:magnet",
-          "relic:piggy",
-          "relic:firstblood",
-          "relic:bigboom",
-          "relic:safetynet"
-        ],
-        "comboShare": {
-          "ge5": 0.24,
-          "ge10": 0.13,
-          "ge20": 0
-        },
-        "firstShotComboAbove5": 8,
-        "damageByWave": {
-          "1": 11,
-          "2": 17,
-          "3": 80,
-          "4": 139,
-          "5": 17,
-          "6": 213,
-          "7": 118
-        },
-        "deadMoments": [],
-        "maxFeedbackGapMs": 633,
-        "maxFiringMs": 8933,
-        "avgFiringMs": 2639,
-        "cappedVolleys": 1,
-        "fps": {
-          "speed1": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "cpu4Volley": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "speed8": {
-            "samples": 25,
-            "min": 45,
-            "avg": 54.6,
-            "frameMsP95": 28,
-            "frameMsMax": 85.8
-          }
-        },
-        "consoleErrors": [],
-        "pageErrors": [],
-        "softlocks": [],
-        "invariantViolations": [],
-        "realSeconds": 26.2
-      },
-      {
-        "bot": "greedy",
-        "seed": "qa-3",
-        "stopReason": "gameover",
-        "timeToFirstRewardMs": null,
-        "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 33000,
-        "shotsInWave1": 10,
-        "firstShot": {
-          "damage": 3,
-          "destroyed": 1,
-          "combo": 1
-        },
-        "shotsUntilFirstBreak": 1,
-        "shots": 60,
-        "rewardChoices": 6,
-        "buys": 2,
-        "decisions": 68,
-        "decisionsPerMinSim": 21.9,
-        "decisionsPerMinHuman": 15.3,
-        "durationSimMs": 186442,
-        "durationSpecMs": 276442,
-        "durationHumanMs": 266942,
-        "botAimingSimMs": 9500,
-        "choiceSimMs": 1717,
-        "waveOfDeath": 7,
-        "depth": 60,
-        "shotsPerWave": 8.6,
-        "bestCombo": 22,
-        "bestShotDamage": 551,
-        "totalDamage": 4119,
-        "blocksDestroyed": 124,
-        "finalVolley": 22,
-        "fusions": 1,
-        "bossesKilled": 0,
-        "damageTaken": 12,
-        "breaches": 6,
-        "breachesByKind": {
-          "boss": 1,
-          "armored": 1,
-          "normal": 4
-        },
-        "breachDamageByKind": {
-          "boss": 2,
-          "armored": 2,
-          "normal": 8
-        },
-        "bossesSpawned": 1,
-        "coinsEarned": 91,
-        "relics": [
-          "bigboom",
-          "bouncy",
-          "firstblood",
-          "piggy",
-          "safetynet"
-        ],
-        "rewardsTaken": [
-          "relic:bigboom",
-          "relic:bouncy",
-          "relic:firstblood",
-          "relic:piggy",
-          "fuse:stone2",
-          "relic:safetynet"
-        ],
-        "comboShare": {
-          "ge5": 0.55,
-          "ge10": 0.15,
-          "ge20": 0.02
-        },
-        "firstShotComboAbove5": 13,
-        "damageByWave": {
-          "1": 13,
-          "2": 32,
-          "3": 45,
-          "4": 120,
-          "5": 25,
-          "6": 274,
-          "7": 551
-        },
-        "deadMoments": [],
-        "maxFeedbackGapMs": 767,
-        "maxFiringMs": 8133,
-        "avgFiringMs": 2688,
-        "cappedVolleys": 0,
-        "fps": {
-          "speed1": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "cpu4Volley": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "speed8": {
-            "samples": 25,
-            "min": 44,
-            "avg": 52.6,
-            "frameMsP95": 30.4,
-            "frameMsMax": 68.8
-          }
-        },
-        "consoleErrors": [],
-        "pageErrors": [],
-        "softlocks": [],
-        "invariantViolations": [],
-        "realSeconds": 26.4
-      },
-      {
-        "bot": "greedy",
-        "seed": "qa-4",
-        "stopReason": "gameover",
-        "timeToFirstRewardMs": null,
-        "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 20650,
-        "shotsInWave1": 6,
-        "firstShot": {
-          "damage": 3,
-          "destroyed": 1,
-          "combo": 1
-        },
-        "shotsUntilFirstBreak": 1,
-        "shots": 56,
-        "rewardChoices": 6,
-        "buys": 2,
-        "decisions": 64,
-        "decisionsPerMinSim": 20.6,
-        "decisionsPerMinHuman": 14.6,
-        "durationSimMs": 186767,
-        "durationSpecMs": 270767,
-        "durationHumanMs": 262734,
-        "botAimingSimMs": 8033,
-        "choiceSimMs": 1333,
-        "waveOfDeath": 7,
-        "depth": 56,
+        "decisions": 54,
+        "decisionsPerMinSim": 24.8,
+        "decisionsPerMinHuman": 16.6,
+        "durationSimMs": 130754,
+        "durationSpecMs": 202754,
+        "durationHumanMs": 194871,
+        "botAimingSimMs": 7883,
+        "choiceSimMs": 1733,
+        "waveOfDeath": 6,
+        "depth": 48,
         "shotsPerWave": 8,
-        "bestCombo": 31,
-        "bestShotDamage": 622,
-        "totalDamage": 3947,
-        "blocksDestroyed": 123,
-        "finalVolley": 23,
+        "bestCombo": 49,
+        "bestShotDamage": 4333,
+        "totalDamage": 15974,
+        "blocksDestroyed": 78,
+        "finalVolley": 16,
         "fusions": 2,
-        "bossesKilled": 0,
-        "damageTaken": 6,
-        "breaches": 3,
+        "bossesKilled": 1,
+        "damageTaken": 10,
+        "breaches": 5,
         "breachesByKind": {
-          "boss": 1,
+          "normal": 3,
           "armored": 2
         },
         "breachDamageByKind": {
-          "boss": 2,
+          "normal": 6,
           "armored": 4
         },
         "bossesSpawned": 1,
-        "coinsEarned": 91,
+        "coinsEarned": 57,
         "relics": [
-          "firstblood",
-          "bouncy",
-          "bigboom",
-          "magnet"
-        ],
-        "rewardsTaken": [
-          "fuse:stone2",
-          "relic:firstblood",
-          "relic:bouncy",
-          "relic:bigboom",
-          "fuse:stone2",
-          "relic:magnet"
-        ],
-        "comboShare": {
-          "ge5": 0.45,
-          "ge10": 0.18,
-          "ge20": 0.05
-        },
-        "firstShotComboAbove5": 8,
-        "damageByWave": {
-          "1": 11,
-          "2": 27,
-          "3": 73,
-          "4": 133,
-          "5": 69,
-          "6": 622,
-          "7": 424
-        },
-        "deadMoments": [],
-        "maxFeedbackGapMs": 717,
-        "maxFiringMs": 8800,
-        "avgFiringMs": 2930,
-        "cappedVolleys": 1,
-        "fps": {
-          "speed1": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "cpu4Volley": {
-            "samples": 0,
-            "min": null,
-            "avg": null,
-            "frameMsP95": null,
-            "frameMsMax": null
-          },
-          "speed8": {
-            "samples": 25,
-            "min": 43,
-            "avg": 52.4,
-            "frameMsP95": 30.2,
-            "frameMsMax": 114.4
-          }
-        },
-        "consoleErrors": [],
-        "pageErrors": [],
-        "softlocks": [],
-        "invariantViolations": [],
-        "realSeconds": 26.2
-      },
-      {
-        "bot": "greedy",
-        "seed": "qa-5",
-        "stopReason": "gameover",
-        "timeToFirstRewardMs": null,
-        "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 17900,
-        "shotsInWave1": 5,
-        "firstShot": {
-          "damage": 3,
-          "destroyed": 1,
-          "combo": 1
-        },
-        "shotsUntilFirstBreak": 1,
-        "shots": 49,
-        "rewardChoices": 5,
-        "buys": 2,
-        "decisions": 56,
-        "decisionsPerMinSim": 26,
-        "decisionsPerMinHuman": 17.2,
-        "durationSimMs": 128988,
-        "durationSpecMs": 202488,
-        "durationHumanMs": 195421,
-        "botAimingSimMs": 7067,
-        "choiceSimMs": 1333,
-        "waveOfDeath": 6,
-        "depth": 49,
-        "shotsPerWave": 8.2,
-        "bestCombo": 23,
-        "bestShotDamage": 283,
-        "totalDamage": 1902,
-        "blocksDestroyed": 92,
-        "finalVolley": 18,
-        "fusions": 0,
-        "bossesKilled": 0,
-        "damageTaken": 6,
-        "breaches": 3,
-        "breachesByKind": {
-          "boss": 1,
-          "normal": 1,
-          "armored": 1
-        },
-        "breachDamageByKind": {
-          "boss": 2,
-          "normal": 2,
-          "armored": 2
-        },
-        "bossesSpawned": 1,
-        "coinsEarned": 95,
-        "relics": [
-          "firstblood",
-          "bigboom",
           "magnet",
-          "bouncy",
-          "piggy"
+          "bouncy"
         ],
         "rewardsTaken": [
-          "relic:firstblood",
-          "relic:bigboom",
+          "ball:stone",
+          "fuse:stone2",
           "relic:magnet",
-          "relic:bouncy",
-          "relic:piggy"
+          "fuse:stone2",
+          "relic:bouncy"
         ],
         "comboShare": {
-          "ge5": 0.24,
-          "ge10": 0.1,
-          "ge20": 0.02
+          "ge5": 0.23,
+          "ge10": 0.13,
+          "ge20": 0.04
         },
-        "firstShotComboAbove5": 5,
+        "firstShotComboAbove5": 16,
         "damageByWave": {
-          "1": 9,
-          "2": 55,
-          "3": 42,
-          "4": 153,
-          "5": 18,
-          "6": 283
+          "1": 84,
+          "2": 125,
+          "3": 251,
+          "4": 741,
+          "5": 180,
+          "6": 4333
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 600,
-        "maxFiringMs": 5200,
-        "avgFiringMs": 2235,
-        "cappedVolleys": 0,
+        "maxFeedbackGapMs": 683,
+        "maxFiringMs": 8967,
+        "avgFiringMs": 2308,
+        "cappedVolleys": 1,
         "fps": {
           "speed1": {
             "samples": 0,
@@ -1122,44 +676,476 @@
           },
           "speed8": {
             "samples": 17,
-            "min": 40,
-            "avg": 53.3,
-            "frameMsP95": 29,
-            "frameMsMax": 80
+            "min": 33,
+            "avg": 47.6,
+            "frameMsP95": 38.2,
+            "frameMsMax": 70.4
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 17.8
+        "realSeconds": 17.9
+      },
+      {
+        "bot": "greedy",
+        "seed": "qa-2",
+        "stopReason": "gameover",
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceRealMs": null,
+        "timeToFirstChoiceHumanMs": 15633,
+        "shotsInWave1": 4,
+        "firstShot": {
+          "damage": 72,
+          "destroyed": 2,
+          "combo": 2
+        },
+        "shotsUntilFirstBreak": 1,
+        "shots": 39,
+        "rewardChoices": 5,
+        "buys": 1,
+        "decisions": 45,
+        "decisionsPerMinSim": 25.2,
+        "decisionsPerMinHuman": 16.9,
+        "durationSimMs": 107054,
+        "durationSpecMs": 165554,
+        "durationHumanMs": 159404,
+        "botAimingSimMs": 6150,
+        "choiceSimMs": 1467,
+        "waveOfDeath": 6,
+        "depth": 39,
+        "shotsPerWave": 6.5,
+        "bestCombo": 12,
+        "bestShotDamage": 1079,
+        "totalDamage": 9057,
+        "blocksDestroyed": 64,
+        "finalVolley": 16,
+        "fusions": 1,
+        "bossesKilled": 1,
+        "damageTaken": 6,
+        "breaches": 3,
+        "breachesByKind": {
+          "normal": 3
+        },
+        "breachDamageByKind": {
+          "normal": 6
+        },
+        "bossesSpawned": 1,
+        "coinsEarned": 42,
+        "relics": [
+          "bigboom",
+          "piggy",
+          "safetynet"
+        ],
+        "rewardsTaken": [
+          "ball:fire",
+          "relic:bigboom",
+          "relic:piggy",
+          "relic:safetynet",
+          "fuse:stone2"
+        ],
+        "comboShare": {
+          "ge5": 0.15,
+          "ge10": 0.03,
+          "ge20": 0
+        },
+        "firstShotComboAbove5": 2,
+        "damageByWave": {
+          "1": 107,
+          "2": 148,
+          "3": 528,
+          "4": 1079,
+          "5": 229,
+          "6": 333
+        },
+        "deadMoments": [],
+        "maxFeedbackGapMs": 567,
+        "maxFiringMs": 5333,
+        "avgFiringMs": 2342,
+        "cappedVolleys": 0,
+        "fps": {
+          "speed1": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "cpu4Volley": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "speed8": {
+            "samples": 14,
+            "min": 43,
+            "avg": 50.1,
+            "frameMsP95": 33.9,
+            "frameMsMax": 53.5
+          }
+        },
+        "consoleErrors": [],
+        "pageErrors": [],
+        "softlocks": [],
+        "invariantViolations": [],
+        "realSeconds": 14.8
+      },
+      {
+        "bot": "greedy",
+        "seed": "qa-3",
+        "stopReason": "gameover",
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceRealMs": null,
+        "timeToFirstChoiceHumanMs": 16600,
+        "shotsInWave1": 5,
+        "firstShot": {
+          "damage": 50,
+          "destroyed": 1,
+          "combo": 1
+        },
+        "shotsUntilFirstBreak": 1,
+        "shots": 53,
+        "rewardChoices": 6,
+        "buys": 2,
+        "decisions": 61,
+        "decisionsPerMinSim": 21.8,
+        "decisionsPerMinHuman": 15.4,
+        "durationSimMs": 167929,
+        "durationSpecMs": 247429,
+        "durationHumanMs": 238246,
+        "botAimingSimMs": 9183,
+        "choiceSimMs": 1867,
+        "waveOfDeath": 7,
+        "depth": 53,
+        "shotsPerWave": 7.6,
+        "bestCombo": 53,
+        "bestShotDamage": 4789,
+        "totalDamage": 39219,
+        "blocksDestroyed": 102,
+        "finalVolley": 24,
+        "fusions": 2,
+        "bossesKilled": 1,
+        "damageTaken": 6,
+        "breaches": 3,
+        "breachesByKind": {
+          "normal": 2,
+          "armored": 1
+        },
+        "breachDamageByKind": {
+          "normal": 4,
+          "armored": 2
+        },
+        "bossesSpawned": 1,
+        "coinsEarned": 64,
+        "relics": [
+          "magnet",
+          "firstblood",
+          "bouncy"
+        ],
+        "rewardsTaken": [
+          "relic:magnet",
+          "fuse:stone2",
+          "relic:firstblood",
+          "relic:bouncy",
+          "ball:lightning",
+          "fuse:stone2"
+        ],
+        "comboShare": {
+          "ge5": 0.34,
+          "ge10": 0.15,
+          "ge20": 0.04
+        },
+        "firstShotComboAbove5": 8,
+        "damageByWave": {
+          "1": 110,
+          "2": 153,
+          "3": 683,
+          "4": 728,
+          "5": 222,
+          "6": 4628,
+          "7": 4789
+        },
+        "deadMoments": [],
+        "maxFeedbackGapMs": 667,
+        "maxFiringMs": 8767,
+        "avgFiringMs": 2744,
+        "cappedVolleys": 1,
+        "fps": {
+          "speed1": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "cpu4Volley": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "speed8": {
+            "samples": 25,
+            "min": 30,
+            "avg": 45.2,
+            "frameMsP95": 38.5,
+            "frameMsMax": 70.1
+          }
+        },
+        "consoleErrors": [],
+        "pageErrors": [],
+        "softlocks": [],
+        "invariantViolations": [],
+        "realSeconds": 26.1
+      },
+      {
+        "bot": "greedy",
+        "seed": "qa-4",
+        "stopReason": "gameover",
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceRealMs": null,
+        "timeToFirstChoiceHumanMs": 18633,
+        "shotsInWave1": 4,
+        "firstShot": {
+          "damage": 50,
+          "destroyed": 2,
+          "combo": 1
+        },
+        "shotsUntilFirstBreak": 1,
+        "shots": 74,
+        "rewardChoices": 8,
+        "buys": 4,
+        "decisions": 86,
+        "decisionsPerMinSim": 18.9,
+        "decisionsPerMinHuman": 13.9,
+        "durationSimMs": 272379,
+        "durationSpecMs": 383379,
+        "durationHumanMs": 372312,
+        "botAimingSimMs": 11067,
+        "choiceSimMs": 2267,
+        "waveOfDeath": 9,
+        "depth": 74,
+        "shotsPerWave": 8.2,
+        "bestCombo": 158,
+        "bestShotDamage": 16513,
+        "totalDamage": 127465,
+        "blocksDestroyed": 141,
+        "finalVolley": 29,
+        "fusions": 5,
+        "bossesKilled": 1,
+        "damageTaken": 6,
+        "breaches": 3,
+        "breachesByKind": {
+          "armored": 3
+        },
+        "breachDamageByKind": {
+          "armored": 6
+        },
+        "bossesSpawned": 1,
+        "coinsEarned": 108,
+        "relics": [
+          "bouncy",
+          "bigboom",
+          "firstblood",
+          "magnet",
+          "safetynet"
+        ],
+        "rewardsTaken": [
+          "relic:bouncy",
+          "fuse:stone2",
+          "relic:bigboom",
+          "relic:firstblood",
+          "fuse:stone2",
+          "fuse:stone3",
+          "relic:magnet",
+          "relic:safetynet"
+        ],
+        "comboShare": {
+          "ge5": 0.57,
+          "ge10": 0.22,
+          "ge20": 0.08
+        },
+        "firstShotComboAbove5": 2,
+        "damageByWave": {
+          "1": 231,
+          "2": 297,
+          "3": 571,
+          "4": 901,
+          "5": 186,
+          "6": 5000,
+          "7": 9136,
+          "8": 11444,
+          "9": 16513
+        },
+        "deadMoments": [],
+        "maxFeedbackGapMs": 650,
+        "maxFiringMs": 8833,
+        "avgFiringMs": 3270,
+        "cappedVolleys": 3,
+        "fps": {
+          "speed1": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "cpu4Volley": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "speed8": {
+            "samples": 40,
+            "min": 35,
+            "avg": 47.4,
+            "frameMsP95": 35.1,
+            "frameMsMax": 55.4
+          }
+        },
+        "consoleErrors": [],
+        "pageErrors": [],
+        "softlocks": [],
+        "invariantViolations": [],
+        "realSeconds": 41
+      },
+      {
+        "bot": "greedy",
+        "seed": "qa-5",
+        "stopReason": "gameover",
+        "timeToFirstRewardMs": null,
+        "timeToFirstChoiceRealMs": null,
+        "timeToFirstChoiceHumanMs": 14600,
+        "shotsInWave1": 4,
+        "firstShot": {
+          "damage": 50,
+          "destroyed": 2,
+          "combo": 1
+        },
+        "shotsUntilFirstBreak": 1,
+        "shots": 42,
+        "rewardChoices": 5,
+        "buys": 0,
+        "decisions": 47,
+        "decisionsPerMinSim": 22.6,
+        "decisionsPerMinHuman": 15.6,
+        "durationSimMs": 125042,
+        "durationSpecMs": 188042,
+        "durationHumanMs": 180975,
+        "botAimingSimMs": 7067,
+        "choiceSimMs": 800,
+        "waveOfDeath": 6,
+        "depth": 42,
+        "shotsPerWave": 7,
+        "bestCombo": 38,
+        "bestShotDamage": 4482,
+        "totalDamage": 15973,
+        "blocksDestroyed": 71,
+        "finalVolley": 16,
+        "fusions": 1,
+        "bossesKilled": 0,
+        "damageTaken": 5,
+        "breaches": 2,
+        "breachesByKind": {
+          "boss": 1,
+          "armored": 1
+        },
+        "breachDamageByKind": {
+          "boss": 3,
+          "armored": 2
+        },
+        "bossesSpawned": 1,
+        "coinsEarned": 42,
+        "relics": [
+          "firstblood"
+        ],
+        "rewardsTaken": [
+          "ball:stone",
+          "ball:split",
+          "ball:fire",
+          "relic:firstblood",
+          "fuse:stone2"
+        ],
+        "comboShare": {
+          "ge5": 0.31,
+          "ge10": 0.12,
+          "ge20": 0.05
+        },
+        "firstShotComboAbove5": 9,
+        "damageByWave": {
+          "1": 100,
+          "2": 114,
+          "3": 339,
+          "4": 1492,
+          "5": 140,
+          "6": 4482
+        },
+        "deadMoments": [],
+        "maxFeedbackGapMs": 683,
+        "maxFiringMs": 7733,
+        "avgFiringMs": 2553,
+        "cappedVolleys": 0,
+        "fps": {
+          "speed1": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "cpu4Volley": {
+            "samples": 0,
+            "min": null,
+            "avg": null,
+            "frameMsP95": null,
+            "frameMsMax": null
+          },
+          "speed8": {
+            "samples": 16,
+            "min": 36,
+            "avg": 48.5,
+            "frameMsP95": 33.9,
+            "frameMsMax": 76.8
+          }
+        },
+        "consoleErrors": [],
+        "pageErrors": [],
+        "softlocks": [],
+        "invariantViolations": [],
+        "realSeconds": 17.3
       }
     ],
     "average": {
       "runs": 5,
-      "shots": 60.6,
-      "decisionsPerMinSim": 21.5,
-      "decisionsPerMinHuman": 15,
-      "durationSpecMs": 289292.8,
-      "durationHumanMs": 280002.8,
-      "waveOfDeath": 7,
-      "shotsPerWave": 8.6,
-      "bestCombo": 31.8,
-      "bestShotDamage": 527.4,
-      "finalVolley": 21.2,
+      "shots": 51.2,
+      "decisionsPerMinSim": 22.7,
+      "decisionsPerMinHuman": 15.7,
+      "durationSpecMs": 237431.6,
+      "durationHumanMs": 229161.6,
+      "waveOfDeath": 6.8,
+      "shotsPerWave": 7.5,
+      "bestCombo": 62,
+      "bestShotDamage": 6239.2,
+      "finalVolley": 20.2,
       "deadMoments": 0,
-      "avgFiringMs": 2808.8,
-      "cappedVolleys": 1.8,
-      "maxFeedbackGapMs": 693.4,
-      "firstShotDestroyed": 1.2,
-      "timeToFirstChoiceHumanMs": 23726.8,
-      "shotsInWave1": 7,
-      "bossesKilled": 0,
+      "avgFiringMs": 2643.4,
+      "cappedVolleys": 1,
+      "maxFeedbackGapMs": 650,
+      "firstShotDestroyed": 1.8,
+      "timeToFirstChoiceHumanMs": 17076.6,
+      "shotsInWave1": 4.6,
+      "bossesKilled": 0.8,
       "bossesSpawned": 1,
-      "damageTaken": 9.2,
-      "comboShareGe5": 0.4,
+      "damageTaken": 6.6,
+      "comboShareGe5": 0.3,
       "comboShareGe10": 0.1,
-      "fps8Min": 38.2,
+      "fps8Min": 35.4,
       "consoleErrors": 0
     }
   },
@@ -1167,23 +1153,23 @@
     "idleFpsBefore": 60,
     "cpu4Volley30": {
       "samples": 4,
-      "min": 58,
-      "avg": 59.5,
-      "frameMsP95": 19.3,
-      "frameMsMax": 28.2
+      "min": 59,
+      "avg": 59.8,
+      "frameMsP95": 18.6,
+      "frameMsMax": 22.5
     },
     "cpu1Volley30": {
       "samples": 3,
       "min": 60,
       "avg": 60,
-      "frameMsP95": 17,
-      "frameMsMax": 19.5
+      "frameMsP95": 16.9,
+      "frameMsMax": 17.6
     },
     "shotLog": [
       {
         "shot": 1,
         "wave": 1,
-        "damage": 13,
+        "damage": 131,
         "combo": 5,
         "destroyed": 3,
         "volley": 30,
@@ -1192,7 +1178,7 @@
       {
         "shot": 2,
         "wave": 1,
-        "damage": 15,
+        "damage": 143,
         "combo": 2,
         "destroyed": 6,
         "volley": 29,
