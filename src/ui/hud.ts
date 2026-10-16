@@ -2,7 +2,7 @@
 // bouton Rappel, indice d'onboarding. `update` est appelé chaque frame mais ne touche le DOM
 // que si une valeur affichée a changé (valeurs mises en cache).
 import type { EventBus } from '../core/events';
-import type { BallElement, BallTier, GameConfig, RunState, Sim, VolleyBall } from '../core/types';
+import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, VolleyBall } from '../core/types';
 import { coinIcon, el, fmt, retrigger } from './dom';
 import { ballColor, ballName } from './options';
 
@@ -17,6 +17,8 @@ export interface HudDeps {
   sim: Sim;
   bus: EventBus;
   config: GameConfig;
+  /** pour situer le bord haut du plateau (bande HUD du compteur de dégâts) */
+  renderer?: Renderer | null;
   /** bouton ◆ (le Puits) et ⚙ (réglages), visibles en phase 'aiming' ; null = absents */
   onWell?: (() => void) | null;
   onSettings?: (() => void) | null;
@@ -218,6 +220,29 @@ export function createHud(deps: HudDeps): Hud {
   bus.on('player:healed', () => retrigger(hpBox, 'pop'));
 
   // --- cadre calé sur le canvas ------------------------------------------
+  /** place le compteur de dégâts dans la bande au-dessus du plateau, sinon à la place de V<wave> */
+  function layoutShot(frameW: number, frameH: number, frameTop: number): void {
+    // taille plafonnée : 28 px à 360 de large, 34 px dès 540
+    let cap = Math.min(34, Math.max(22, 28 + (frameW - 360) / 30));
+    const tb = top.getBoundingClientRect();
+    const barBottom = tb.bottom - frameTop;
+    let boardTop = frameH * 0.1;
+    const bt = deps.renderer?.boardToScreen({ x: 0, y: 0 }).y;
+    if (bt !== undefined && Number.isFinite(bt) && bt > 0) boardTop = bt;
+    const band = boardTop - barBottom;
+    const inBar = band < cap + 4;
+    if (inBar) {
+      // pas la place : remplace temporairement V<wave> dans la barre du haut
+      cap = Math.min(cap, Math.max(20, tb.height - 4));
+      const wb = waveBox.getBoundingClientRect();
+      shot.style.top = `${wb.top - frameTop + wb.height / 2 - cap / 2}px`;
+    } else {
+      shot.style.top = `${barBottom + (band - cap) / 2}px`;
+    }
+    shot.style.setProperty('--shot-size', `${cap}px`);
+    frame.classList.toggle('shot-in-bar', inBar);
+  }
+
   function layout(): void {
     const r = canvas.getBoundingClientRect();
     const p = root.getBoundingClientRect();
@@ -232,6 +257,7 @@ export function createHud(deps: HudDeps): Hud {
     frame.style.top = `${r.top - p.top}px`;
     frame.style.width = `${r.width}px`;
     frame.style.height = `${r.height}px`;
+    layoutShot(r.width, r.height, r.top);
   }
 
   function update(s: Readonly<RunState>, showHint: boolean): void {
@@ -269,7 +295,9 @@ export function createHud(deps: HudDeps): Hud {
     if (!firing && shotLingering && performance.now() >= shotHideAt) shotLingering = false;
     if (wantShot !== shotVisible) {
       shotVisible = wantShot;
+      if (wantShot) layout(); // le renderer a pu changer de mise en page depuis
       setVisible(shot, wantShot);
+      frame.classList.toggle('shot-on', wantShot);
     }
     if (firing !== recallVisible) {
       recallVisible = firing;

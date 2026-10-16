@@ -86,6 +86,7 @@ export function createUI(deps: UiDeps): UI {
     sim,
     bus,
     config,
+    renderer,
     onWell: meta ? () => openSub('meta') : null,
     onSettings: meta ? () => openSub('settings') : null,
     isDaily,

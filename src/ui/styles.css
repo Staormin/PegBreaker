@@ -159,50 +159,62 @@ body {
 
 /* dégâts du tir (centre-haut) */
 .hud-shot {
+  /* position (top) et taille (--shot-size, ≤ 34 px) calculées par hud.ts : bande au-dessus du plateau */
   position: absolute;
   left: 50%;
-  top: 11%;
+  top: 0;
   transform: translateX(-50%) scale(var(--s, 1));
-  font-size: clamp(30px, 10vmin, 56px);
+  transform-origin: 50% 0;
+  font-size: calc(var(--shot-size, 28px) / 1.18);
+  line-height: 1;
   font-weight: 900;
   color: var(--text);
   text-shadow:
-    0 3px 0 rgba(0, 0, 0, 0.55),
-    0 0 18px rgba(255, 233, 92, 0.25);
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(255, 233, 92, 0.25);
   opacity: 0;
   transition:
     opacity 160ms linear,
     transform 160ms var(--ease-out);
   white-space: nowrap;
+  pointer-events: none;
 }
 .hud-shot.on {
   opacity: 1;
 }
+/* paliers : grossit au plus jusqu'à --shot-size (×1,18 de la taille de base) */
 .hud-shot[data-level='1'] {
-  --s: 1.15;
+  --s: 1.06;
   color: #fff7c2;
 }
 .hud-shot[data-level='2'] {
-  --s: 1.32;
+  --s: 1.12;
   color: var(--accent);
 }
 .hud-shot[data-level='3'] {
-  --s: 1.55;
+  --s: 1.18;
   color: var(--accent);
   text-shadow:
-    0 3px 0 rgba(0, 0, 0, 0.6),
-    0 0 26px rgba(255, 94, 94, 0.6);
+    0 2px 0 rgba(0, 0, 0, 0.6),
+    0 0 18px rgba(255, 94, 94, 0.6);
 }
 .hud-shot.pop {
-  animation: shot-pop 260ms var(--ease-back);
+  animation: shot-pop 220ms var(--ease-back);
 }
 @keyframes shot-pop {
   0% {
-    transform: translateX(-50%) scale(calc(var(--s, 1) * 1.45));
+    transform: translateX(-50%) scale(calc(var(--s, 1) * 1.06));
   }
   100% {
     transform: translateX(-50%) scale(var(--s, 1));
   }
+}
+/* pas de place au-dessus du plateau : le compteur remplace V<wave> pendant le tir */
+.hud.shot-in-bar.shot-on .hud-wave {
+  visibility: hidden;
+}
+.hud.shot-on .hud-daily {
+  visibility: hidden;
 }
 
 /* volée (bas) */
