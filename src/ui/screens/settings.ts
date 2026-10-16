@@ -1,6 +1,6 @@
 // ui/screens/settings.ts — pause / réglages (ui:screen 'settings') : volumes, abandon, reset.
 import type { EventBus } from '../../core/events';
-import type { AudioSystem, MetaSystem, RunState, SaveData } from '../../core/types';
+import type { AudioSystem, MetaSystem, MusicTrackId, RunState, SaveData } from '../../core/types';
 import { button, el } from '../dom';
 import { createScreen, type ScreenEl } from './screen';
 
@@ -11,6 +11,13 @@ export interface SettingsScreen extends ScreenEl {
 }
 
 const RESET_CONFIRM_MS = 4000;
+
+/** Pistes musicales proposées (ordre d'affichage) ; l'ambiance est aussi écrite, pas seulement suggérée. */
+const TRACKS: ReadonlyArray<{ id: MusicTrackId; label: string; mood: string }> = [
+  { id: 'neon', label: 'Néon', mood: 'calme' },
+  { id: 'arcade', label: 'Arcade', mood: 'entraînante' },
+  { id: 'deep', label: 'Abysses', mood: 'sombre' },
+];
 
 export function createSettingsScreen(
   meta: MetaSystem,
@@ -48,6 +55,44 @@ export function createSettingsScreen(
 
   const sfx = slider('🔊 Effets', 'sfx');
   const music = slider('🎵 Musique', 'music');
+
+  // sélecteur de piste : radios natives (clavier : flèches), une seule valeur
+  const trackGroup = el('div', 'set-row set-tracks');
+  trackGroup.setAttribute('role', 'radiogroup');
+  trackGroup.setAttribute('aria-label', 'Piste musicale');
+  trackGroup.dataset.action = 'music-track';
+  const trackName = el('span', 'set-name', '🎼 Piste');
+  const trackList = el('div', 'set-track-list');
+  const trackInputs: HTMLInputElement[] = [];
+  for (const t of TRACKS) {
+    const opt = el('label', 'settings-track');
+    opt.dataset.track = t.id;
+    const input = el('input', 'settings-track-input');
+    input.type = 'radio';
+    input.name = 'music-track';
+    input.value = t.id;
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      bus.emit({ type: 'ui:click' });
+      meta.updateSettings({ musicTrack: t.id });
+      audio?.setMusicTrack(t.id);
+      syncTracks(t.id);
+    });
+    const text = el('span', 'settings-track-text');
+    text.append(el('span', 'settings-track-label', t.label), el('span', 'settings-track-mood', t.mood));
+    opt.append(input, text);
+    trackInputs.push(input);
+    trackList.append(opt);
+  }
+  trackGroup.append(trackName, trackList);
+  s.panel.append(trackGroup);
+  function syncTracks(id: MusicTrackId): void {
+    for (const input of trackInputs) {
+      const on = input.value === id;
+      input.checked = on;
+      input.parentElement?.classList.toggle('selected', on);
+    }
+  }
 
   // abandon de la descente : confirmation en deux clics
   let abArmed = false;
@@ -109,6 +154,7 @@ export function createSettingsScreen(
     const st = data.settings;
     if (document.activeElement !== sfx) sfx.value = String(st.sfx);
     if (document.activeElement !== music) music.value = String(st.music);
+    syncTracks(st.musicTrack);
     if (!force) return;
     disarm();
     disarmAbandon();

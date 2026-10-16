@@ -4,6 +4,8 @@
 import { createEventBus } from '../core/events';
 import type { BallElement, ContractDef, ContractState, GameEvent, RewardOption } from '../core/types';
 import { createAudio, type AudioSystemDev } from './index';
+import { exportWav } from './render';
+import { TRACK_IDS, TRACKS } from './tracks';
 
 const P = { x: 4, y: 6 };
 const N = { x: 0, y: -1 };
@@ -182,7 +184,7 @@ function stress(emit: (e: GameEvent) => void, seconds: number): void {
 
 export function mountAudioPreview(root: HTMLElement): AudioSystemDev {
   const bus = createEventBus();
-  const audio = createAudio(bus, { sfx: 0.8, music: 0.5 });
+  const audio = createAudio(bus, { sfx: 0.8, music: 0.5, musicTrack: 'neon' });
   let wave = 1;
 
   root.innerHTML = '';
@@ -248,6 +250,68 @@ export function mountAudioPreview(root: HTMLElement): AudioSystemDev {
     root.appendChild(sec);
   }
 
+  // --- Musique : piste, intensité, boss, fin de run, export WAV ------------------------
+  const mus = document.createElement('section');
+  const mt = document.createElement('h2');
+  mt.textContent = 'Musique';
+  mt.style.cssText = 'font-size:14px;margin:14px 0 4px;color:#9fb0d8';
+  mus.appendChild(mt);
+  const sel = document.createElement('select');
+  sel.setAttribute('aria-label', 'Piste musicale');
+  sel.style.cssText = 'margin:3px;padding:7px;background:#22304f;color:#e6ecff;border:1px solid #3a4c78;border-radius:6px;font:inherit';
+  for (const id of TRACK_IDS) {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = TRACKS[id].title;
+    sel.appendChild(o);
+  }
+  sel.value = audio.musicTrack;
+  sel.addEventListener('change', () => {
+    audio.unlock();
+    const id = TRACK_IDS.find((t) => t === sel.value);
+    if (id) audio.setMusicTrack(id);
+  });
+  mus.appendChild(sel);
+  let boss = false;
+  const setWave = (w: number): void => {
+    wave = Math.max(1, w);
+    bus.emit({ type: 'rows:advanced', wave, newRow: true });
+  };
+  btn('Démarrer (run:started)', () => {
+    boss = false;
+    wave = 1;
+    bus.emit({ type: 'run:started', seed: 'preview' });
+  }, mus);
+  btn('intensité +', () => setWave(wave + 1), mus);
+  btn('intensité −', () => setWave(wave - 1), mus);
+  btn('boss on/off', () => {
+    boss = !boss;
+    bus.emit(boss ? { type: 'boss:spawned', bossId: 'golem', blockId: 9 } : { type: 'boss:killed', bossId: 'golem', pos: P });
+  }, mus);
+  btn('lost', () => bus.emit({ type: 'run:lost', canRevive: true, wave, depth: 10 }), mus);
+  btn('revived', () => bus.emit({ type: 'run:revived', hpLeft: 2, revivesUsed: 1 }), mus);
+  btn('over', () => bus.emit({ type: 'run:over', summary: summary() }), mus);
+  const exportBtn = document.createElement('a');
+  btn('Exporter WAV 30 s', () => {
+    const id = audio.musicTrack;
+    exportBtn.textContent = `rendu ${id} en cours…`;
+    void exportWav(id, 30, wave, boss).then(
+      (blob) => {
+        const url = URL.createObjectURL(blob);
+        exportBtn.href = url;
+        exportBtn.download = `pegbreaker-${id}-vague${wave}${boss ? '-boss' : ''}.wav`;
+        exportBtn.textContent = `télécharger ${exportBtn.download} (normalisé −1 dBFS)`;
+        exportBtn.click();
+      },
+      (err: unknown) => {
+        exportBtn.textContent = `échec du rendu : ${String(err)}`;
+      },
+    );
+  }, mus);
+  exportBtn.style.cssText = 'display:block;margin:6px 3px;color:#9fd8b0';
+  mus.appendChild(exportBtn);
+  root.appendChild(mus);
+
   const tools = document.createElement('section');
   const tt = document.createElement('h2');
   tt.textContent = 'Outils';
@@ -264,7 +328,10 @@ export function mountAudioPreview(root: HTMLElement): AudioSystemDev {
   setInterval(() => {
     const d = audio.debug;
     status.textContent =
-      `contexte: ${d.contextState}  unlocked: ${audio.unlocked}  musique: ${d.musicPlaying ? 'oui' : 'non'}  vague: ${wave}\n` +
+      `contexte: ${d.contextState}  unlocked: ${audio.unlocked}  musique: ${audio.musicTrack} (${d.musicMode})  ` +
+      `vague: ${d.musicWave}  boss: ${d.musicTension ? 'oui' : 'non'}\n` +
+      `mesures planifiées: ${d.musicStats.barsPlanned}  notes en retard: ${d.musicStats.lateNotes}  ` +
+      `recalages: ${d.musicStats.resyncs}  avance min: ${Number.isFinite(d.musicStats.minLeadMs) ? d.musicStats.minLeadMs.toFixed(0) : '—'} ms\n` +
       `nœuds créés: ${d.engine.nodesCreated}  voix actives: ${d.engine.voicesActive}  ` +
       `pic: ${d.engine.peak.toFixed(3)}  échantillons ≥0,99: ${d.engine.clipSamples}\n` +
       `limiteur: acceptés ${d.mixer.accepted}  ignorés ${d.mixer.dropped}  max/50 ms ${d.mixer.maxInWindow}\n` +

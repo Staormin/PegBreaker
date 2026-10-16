@@ -32,7 +32,7 @@ test('jeu réel : 20 tirs, aucune erreur, nœuds bornés, pas de clipping', asyn
     const w = window as unknown as W & { __pegbreaker: { bus: import('../core/events').EventBus } };
     const url = '/src/audio/index.ts';
     const mod = (await import(/* @vite-ignore */ url)) as typeof import('./index');
-    const a = mod.createAudio(w.__pegbreaker.bus, { sfx: 0.8, music: 0.5 });
+    const a = mod.createAudio(w.__pegbreaker.bus, { sfx: 0.8, music: 0.5, musicTrack: 'neon' });
     w.__audio = a;
     window.addEventListener('pointerdown', () => a.unlock(), { capture: true, once: true });
   });

@@ -11,7 +11,7 @@ import type { DailyResult, GameConfig, MetaModifiers, MetaSystem, RunSnapshot, R
 import { checkAchievements } from './achievements';
 import { dailySeedFor, dateKey, pickDailyMods, recordDaily, streakAt, streakMultiplier } from './daily';
 import { availableRunMods, canBuy, computeModifiers, findNode, nextCost, nodeLevel, normalizeMeta } from './meta';
-import { BACKUP_KEY, SAVE_KEY, clamp01, defaultSave, freezeSave, parseSave } from './save';
+import { BACKUP_KEY, SAVE_KEY, clamp01, defaultSave, freezeSave, parseMusicTrack, parseSave } from './save';
 import { applyRunStats } from './stats';
 import { safeGet, safeRemove, safeSet, type StorageLike } from './storage';
 
@@ -134,6 +134,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     const s: Settings = { ...d.settings };
     if (typeof patch.sfx === 'number' && Number.isFinite(patch.sfx)) s.sfx = clamp01(patch.sfx);
     if (typeof patch.music === 'number' && Number.isFinite(patch.music)) s.music = clamp01(patch.music);
+    if (patch.musicTrack !== undefined) s.musicTrack = parseMusicTrack(patch.musicTrack);
     commit({ ...d, settings: s });
   }
 

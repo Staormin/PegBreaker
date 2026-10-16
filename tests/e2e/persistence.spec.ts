@@ -159,7 +159,7 @@ test('(e) réglages : volumes SFX et musique coupés via le DOM, persistants, au
   await page.locator('input[data-setting="sfx"]').fill('0');
   await page.locator('input[data-setting="music"]').fill('0');
   const s1 = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.meta.data.settings);
-  expect(s1).toEqual({ sfx: 0, music: 0 });
+  expect(s1).toMatchObject({ sfx: 0, music: 0 });
 
   await page.reload();
   await waitReady(page);

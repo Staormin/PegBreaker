@@ -39,6 +39,8 @@ export interface Engine {
   delay(maxS: number): DelayNode | null;
   /** panoramique stéréo ; null si le contexte n'est pas prêt ou si StereoPannerNode est absent */
   panner(pan: number): StereoPannerNode | null;
+  /** comptabilise un nœud créé hors des fabriques (musique : synth.ts) */
+  countNode<T>(n: T): T;
   /** marque une voix active jusqu'à `endNode.onended` */
   trackVoice(endNode: AudioScheduledSourceNode): void;
   resetPeak(): void;
@@ -249,6 +251,7 @@ export function createEngine(opts: { measure: boolean }): Engine {
       p.pan.value = Math.max(-1, Math.min(1, pan));
       return p;
     },
+    countNode: count,
     trackVoice(n) {
       stats.voicesActive++;
       n.onended = () => {

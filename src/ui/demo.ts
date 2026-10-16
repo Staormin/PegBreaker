@@ -6,6 +6,7 @@ import { createEventBus } from '../core/events';
 import { loadConfig } from '../core/config';
 import type {
   AudioSystem,
+  MusicTrackId,
   BallElement,
   GameEvent,
   MetaSystem,
@@ -266,6 +267,11 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     },
     setSfxVolume() {},
     setMusicVolume() {},
+    musicTrack: 'neon',
+    setMusicTrack(id) {
+      log(`audio.setMusicTrack(${id})`);
+      (this as { musicTrack: MusicTrackId }).musicTrack = id;
+    },
   };
 
   // méta en mémoire (rien n'est écrit dans localStorage) ; ?title : premier lancement

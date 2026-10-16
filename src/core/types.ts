@@ -568,9 +568,13 @@ export interface GameConfig {
 // Sauvegarde (systems/)
 // ----------------------------------------------------------------------
 
+export type MusicTrackId = 'neon' | 'arcade' | 'deep';
+
 export interface Settings {
   sfx: number;
   music: number;
+  /** piste musicale choisie */
+  musicTrack: MusicTrackId;
 }
 
 export interface MetaState {
@@ -663,6 +667,9 @@ export interface AudioSystem {
   unlock(): void;
   setSfxVolume(v: number): void;
   setMusicVolume(v: number): void;
+  /** change de piste (fondu croisé court) */
+  setMusicTrack(id: MusicTrackId): void;
+  readonly musicTrack: MusicTrackId;
   readonly unlocked: boolean;
 }
 

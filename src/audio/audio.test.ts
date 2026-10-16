@@ -31,7 +31,7 @@ describe('audio sans WebAudio', () => {
     const err = vi.spyOn(console, 'error');
     const warn = vi.spyOn(console, 'warn');
     const bus = createEventBus();
-    const audio = createAudio(bus, { sfx: 0.8, music: 0.5 });
+    const audio = createAudio(bus, { sfx: 0.8, music: 0.5, musicTrack: 'neon' });
     expect(audio.unlocked).toBe(false);
     for (const e of EVENTS) bus.emit(e);
     audio.unlock();
@@ -51,5 +51,17 @@ describe('audio sans WebAudio', () => {
     expect(bounceFreq(12)).toBeCloseTo(440);
     expect(bounceFreq(24)).toBeCloseTo(880);
     expect(bounceFreq(160)).toBeCloseTo(880);
+  });
+
+  it('piste musicale : initiale = settings.musicTrack, setMusicTrack sans WebAudio', () => {
+    const bus = createEventBus();
+    const audio = createAudio(bus, { sfx: 0.8, music: 0.5, musicTrack: 'deep' });
+    expect(audio.musicTrack).toBe('deep');
+    audio.setMusicTrack('arcade');
+    expect(audio.musicTrack).toBe('arcade');
+    audio.setMusicTrack('polka' as never);
+    expect(audio.musicTrack).toBe('arcade');
+    expect(audio.debug.engine.nodesCreated).toBe(0);
+    audio.dispose();
   });
 });

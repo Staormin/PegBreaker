@@ -1,11 +1,15 @@
 // systems/save.ts — format SaveData v1 : défauts, lecture tolérante, gel superficiel.
-import type { BallElement, DailyResult, GlobalStats, MetaState, RunSnapshot, SaveData, Settings } from '../core/types';
+import type { BallElement, DailyResult, GlobalStats, MetaState, MusicTrackId, RunSnapshot, SaveData, Settings } from '../core/types';
 
 export const SAVE_KEY = 'pegbreaker.save.v1';
 export const BACKUP_KEY = 'pegbreaker.save.backup';
 export const SAVE_VERSION = 1;
 
-export const DEFAULT_SETTINGS: Readonly<Settings> = { sfx: 0.8, music: 0.5 };
+export const DEFAULT_SETTINGS: Readonly<Settings> = { sfx: 0.8, music: 0.5, musicTrack: 'neon' };
+export const MUSIC_TRACKS: readonly MusicTrackId[] = ['neon', 'arcade', 'deep'];
+export function parseMusicTrack(v: unknown): MusicTrackId {
+  return MUSIC_TRACKS.find((t) => t === v) ?? 'neon';
+}
 
 export function defaultStats(): GlobalStats {
   return { runs: 0, bestDepth: 0, bestWave: 0, bestCombo: 0, bestShotDamage: 0, bestScore: 0, totalFragments: 0, totalBlocks: 0 };
@@ -115,7 +119,7 @@ export function parseSave(rawText: string | null): ParseResult {
       achievements: isStrArr(raw['achievements']) ? uniq(raw['achievements']) : [],
       daily: parseDaily(raw['daily']),
       currentRun: parseRun(raw['currentRun']),
-      settings: { ...settings, sfx: clamp01(settings.sfx), music: clamp01(settings.music) },
+      settings: { ...settings, sfx: clamp01(settings.sfx), music: clamp01(settings.music), musicTrack: parseMusicTrack(settings.musicTrack) },
       onboarded: raw['onboarded'] === true,
     },
   };

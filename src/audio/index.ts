@@ -5,19 +5,20 @@
 // Modules : engine (contexte, déverrouillage, graphe master + compresseur/limiteur),
 //           sfx (recettes), music (générateur), mixer (limiteur de polyphonie).
 import type { EventBus, EventType, Handler } from '../core/events';
-import type { AudioSystem, Settings } from '../core/types';
+import type { AudioSystem, MusicTrackId, Settings } from '../core/types';
 import { createEngine, type EngineStats } from './engine';
 import { createMixer, type MixerStats, type Priority } from './mixer';
-import { createMusic } from './music';
+import { createMusic, type MusicMode, type MusicStats } from './music';
 import { createSfx, type Sfx } from './sfx';
+import { isTrackId } from './tracks';
 
 /** silence laissé au geste au début d'une run (s) */
 const MUSIC_INTRO_SILENCE_S = 2;
 /** contract:progress : au plus 4 tics par seconde */
 const CONTRACT_TICK_MIN_MS = 250;
-/** fondu de sortie de la musique à la mort (s), pendant l'accord mineur */
-const LOST_MUSIC_FADE_S = 1.2;
-/** fondu d'entrée de la musique après une seconde chance (s) */
+/** fondu d'entrée de la musique au début d'une run, après le silence (s) */
+const MUSIC_INTRO_FADE_S = 3;
+/** fondu d'entrée si la musique doit repartir de zéro après une seconde chance (s) */
 const REVIVE_MUSIC_FADE_S = 1;
 /** run:over juste après run:lost : l'accord de mort suffit, pas de descente chromatique en plus */
 const LOST_THEN_OVER_MS = 1500;
@@ -26,6 +27,10 @@ export interface AudioDebug {
   readonly engine: EngineStats;
   readonly mixer: MixerStats;
   readonly musicPlaying: boolean;
+  readonly musicMode: MusicMode;
+  readonly musicStats: MusicStats;
+  readonly musicWave: number;
+  readonly musicTension: boolean;
   readonly contextState: string;
   /** recettes directement jouables (preview, QA) — passent par le limiteur */
   readonly sfx: Sfx;
@@ -47,7 +52,7 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   const engine = createEngine({ measure });
   const mixer = createMixer();
   const sfx = createSfx(engine);
-  const music = createMusic(engine);
+  const music = createMusic(engine, isTrackId(settings.musicTrack) ? settings.musicTrack : 'neon');
 
   let sfxVolume = clamp01(settings.sfx);
   let musicVolume = clamp01(settings.music);
@@ -89,7 +94,7 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     const since = (nowMs() - runStartedAt) / 1000;
     music.setWave(wave);
     music.setTension(bossAlive);
-    music.start(Math.max(0, MUSIC_INTRO_SILENCE_S - since), fadeInS);
+    music.start(Math.max(0, MUSIC_INTRO_SILENCE_S - since), fadeInS ?? MUSIC_INTRO_FADE_S);
   }
 
   // --- SFX ---------------------------------------------------------------------------
@@ -154,6 +159,7 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   on('wave:cleared', (e) => {
     wave = e.wave + 1;
     bossAlive = false;
+    music.setWave(wave);
     music.setTension(false);
     fire(2, () => sfx.waveCleared());
   });
@@ -179,13 +185,15 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     lostAt = -Infinity;
     golden.clear();
     music.stop(0.3);
+    music.setWave(1);
+    music.setTension(false);
     wantMusic();
   });
   on('run:lost', () => {
     runActive = false;
     lostAt = nowMs();
     golden.clear();
-    music.stop(LOST_MUSIC_FADE_S);
+    music.lose(); // tout s'éteint sauf un accord tenu
     fire(2, () => sfx.runLost());
   });
   on('run:revived', () => {
@@ -193,12 +201,13 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     runStartedAt = -Infinity; // pas de silence d'intro : reprise immédiate en fondu
     lostAt = -Infinity;
     fire(2, () => sfx.runRevived());
-    wantMusic(REVIVE_MUSIC_FADE_S);
+    // reprise à la mesure suivante ; si la musique ne tournait pas, démarrage en fondu
+    if (!music.revive()) wantMusic(REVIVE_MUSIC_FADE_S);
   });
   on('run:over', () => {
     runActive = false;
     bossAlive = false;
-    music.resolve(); // sans effet si la musique s'est déjà tue sur run:lost
+    music.resolve(); // I majeur puis silence (depuis le jeu ou depuis l'accord tenu de run:lost)
     if (nowMs() - lostAt < LOST_THEN_OVER_MS) return;
     fire(2, () => sfx.runOver());
   });
@@ -236,6 +245,13 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
       if (musicVolume <= 0) music.stop(0.15);
       else if (was <= 0) wantMusic();
     },
+    setMusicTrack(id: MusicTrackId) {
+      if (!isTrackId(id)) return;
+      music.setTrack(id);
+    },
+    get musicTrack() {
+      return music.track;
+    },
     get unlocked() {
       return engine.running;
     },
@@ -249,6 +265,18 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
       get musicPlaying() {
         return music.playing;
       },
+      get musicMode() {
+        return music.mode;
+      },
+      get musicStats() {
+        return music.stats;
+      },
+      get musicWave() {
+        return music.wave;
+      },
+      get musicTension() {
+        return music.tension;
+      },
       get contextState() {
         return engine.ctx?.state ?? 'none';
       },
@@ -259,7 +287,7 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     dispose() {
       for (const u of unsubs) u();
       unsubs.length = 0;
-      music.stop(0.1);
+      music.dispose();
       if (peakTimer !== null) clearInterval(peakTimer);
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
     },

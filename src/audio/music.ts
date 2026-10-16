@@ -1,311 +1,379 @@
 // audio/music.ts — propriétaire : audio-dev.
-// Musique générative discrète : drone (deux sinus détunés) + pad filtré + arpège triangle avec
-// delay en feedback. La mineur pentatonique, 92 BPM. Toutes les 4 mesures, une phrase est tirée
-// au hasard parmi 4 motifs (jamais deux fois le même d'affilée) avec une progression de fondamentales
-// elle aussi tirée au hasard : pas de boucle fixe.
-// Intensité (vague) → volume du pad, densité et volume de l'arpège. Tension (boss) → échelle
-// dissonante, drone avec seconde mineure, filtre du pad plus ouvert.
-// Planification « lookahead » : un setInterval de 25 ms planifie les notes 120 ms à l'avance.
+// Lecteur temps réel des partitions (tracks.ts). Aucune note aléatoire : la partition est écrite,
+// seule la vélocité varie (±10 %). Planification à la mesure : un setInterval de 50 ms planifie
+// la mesure suivante EN BLOC dès qu'elle commence dans moins de PLAN_AHEAD_S (0,5 s) ; toute note
+// part donc avec ≥ 150 ms d'avance tant que le thread n'est pas bloqué plus de 350 ms.
+// Les changements (couches, boss, piste) prennent effet à la prochaine mesure non planifiée.
+//
+// Couches (vague) : 1 = basse + accords ; 3 = + mélodie ; 6 = + troisième couche (contre-chant
+// ou percussion selon la piste). Boss : mineur harmonique + basse une octave plus bas.
+// run:lost → tout s'éteint sauf un accord tenu ; run:revived → reprise à la mesure suivante ;
+// run:over → résolution sur I majeur puis silence ; setTrack → fondu croisé 1 s à la mesure.
+import type { MusicTrackId } from '../core/types';
 import type { Engine } from './engine';
+import { buildResolution, secondsPerBar, type BarOptions } from './score';
+import {
+  createRig,
+  createTrackBus,
+  fadeBus,
+  playHold,
+  playNote,
+  planBar,
+  REVERB_SECONDS,
+  type HeldChord,
+  type Layer,
+  type Rig,
+  type TrackBus,
+} from './synth';
+import { TRACKS } from './tracks';
 
-const BPM = 92;
-const EIGHTH = 60 / BPM / 2;
-const STEPS_PER_BAR = 8;
-const BARS_PER_PHRASE = 4;
-const LOOKAHEAD_S = 0.12;
-const TICK_MS = 25;
-const FLOOR = 0.0001;
+export const TICK_MS = 50;
+/** avance minimale garantie d'une note planifiée (hors blocage du thread) */
+export const MIN_LEAD_S = 0.15;
+/** une mesure est planifiée dès qu'elle commence dans moins de PLAN_AHEAD_S */
+export const PLAN_AHEAD_S = MIN_LEAD_S + 0.35;
+export const CROSSFADE_S = 1;
+const LOST_FADE_S = 0.8;
+const MELODY_WAVE = 3;
+const THIRD_WAVE = 6;
 
-const A2 = 110;
-const ARP_BASE = 220;
-const SCALE_CALM = [0, 3, 5, 7, 10] as const; // la mineur pentatonique
-const SCALE_TENSE = [0, 1, 3, 6, 7] as const; // seconde mineure + triton
+export type MusicMode = 'idle' | 'intro' | 'play' | 'lost' | 'over';
 
-/** motifs d'une mesure (degrés de l'échelle, -1 = silence) */
-const MOTIFS: readonly (readonly number[])[] = [
-  [0, -1, 2, 4, 5, -1, 4, 2],
-  [4, 3, 2, -1, 0, 2, -1, 1],
-  [5, -1, 7, 5, 4, -1, 2, -1],
-  [0, 2, 4, 2, 5, 4, 7, -1],
-];
-/** progressions de fondamentales (degrés) sur 4 mesures */
-const PROGRESSIONS: readonly (readonly number[])[] = [
-  [0, 0, 3, 2],
-  [0, 3, 2, 0],
-  [0, 2, 3, 1],
-  [0, 1, 3, 2],
-];
-
-function pick<T>(arr: readonly T[], avoid?: T): T {
-  for (let i = 0; i < 4; i++) {
-    const v = arr[Math.floor(Math.random() * arr.length)] as T;
-    if (v !== avoid) return v;
-  }
-  return arr[0] as T;
-}
-
-function degreeSemis(scale: readonly number[], d: number): number {
-  const n = scale.length;
-  const oct = Math.floor(d / n);
-  const idx = ((d % n) + n) % n;
-  return (scale[idx] ?? 0) + 12 * oct;
-}
-
-const hz = (base: number, semis: number): number => base * Math.pow(2, semis / 12);
-
-interface Layer {
-  out: GainNode;
-  drone: OscillatorNode[];
-  tensionGain: GainNode;
-  pad: OscillatorNode[];
-  padFilter: BiquadFilterNode;
-  padGain: GainNode;
-  arpIn: GainNode;
-  stoppers: AudioScheduledSourceNode[];
+export interface MusicStats {
+  barsPlanned: number;
+  notesPlanned: number;
+  /** notes dont l'instant était passé à la planification (attendu : 0) */
+  lateNotes: number;
+  /** mesures planifiées trop tard, horloge recalée (attendu : 0) */
+  resyncs: number;
+  /** plus petite avance observée au moment de planifier une mesure (ms) */
+  minLeadMs: number;
 }
 
 export interface Music {
-  /** démarre après `delayS` secondes de silence, fondu d'entrée de `fadeInS` (défaut 3 s) ; idempotent */
+  /** démarre après `delayS` s de silence, fondu d'entrée de `fadeInS` (défaut 3 s) ; idempotent */
   start(delayS: number, fadeInS?: number): void;
   /** fondu de sortie puis arrêt complet */
   stop(fadeS: number): void;
-  /** fin de run : accord de résolution (la majeur) puis extinction douce */
+  /** run:lost : tout s'éteint sauf un accord tenu */
+  lose(): void;
+  /** run:revived : reprise à la mesure suivante ; false si la musique n'était pas en « lost » */
+  revive(): boolean;
+  /** run:over : résolution sur I majeur puis silence */
   resolve(): void;
   setWave(wave: number): void;
   setTension(on: boolean): void;
-  /** onglet caché : suspend la planification et coupe la couche */
+  /** change de piste : fondu croisé 1 s à la prochaine mesure */
+  setTrack(id: MusicTrackId): void;
+  readonly track: MusicTrackId;
+  readonly mode: MusicMode;
+  readonly wave: number;
+  readonly tension: boolean;
+  /** onglet caché : suspend la planification et coupe la sortie */
   pause(): void;
   resume(): void;
   readonly playing: boolean;
+  readonly stats: MusicStats;
+  /** arrêt immédiat et libération du planificateur */
+  dispose(): void;
 }
 
-export function createMusic(e: Engine): Music {
-  let layer: Layer | null = null;
+interface Player {
+  bus: TrackBus;
+  bar: number;
+  /** début de la prochaine mesure non planifiée (temps du contexte) */
+  nextT: number;
+  /** plus aucune mesure ne commence à partir de cet instant (fondu de sortie) */
+  stopAt: number;
+  lastVoicing: readonly number[];
+  hold: HeldChord | null;
+}
+
+export function layersFor(wave: number): { melody: boolean; third: boolean } {
+  return { melody: wave >= MELODY_WAVE, third: wave >= THIRD_WAVE };
+}
+
+export function createMusic(e: Engine, initial: MusicTrackId): Music {
+  let rig: Rig | null = null;
+  let master: GainNode | null = null;
+  let current: Player | null = null;
+  const leaving: Player[] = [];
+  let trackId: MusicTrackId = initial;
+  let mode: MusicMode = 'idle';
+  let wave = 1;
+  let tension = false;
+  let paused = false;
   let timer: ReturnType<typeof setInterval> | null = null;
   let startTimer: ReturnType<typeof setTimeout> | null = null;
-  let paused = false;
   let fadeIn = 3;
-  let intensity = 0;
-  let tension = false;
-  let nextTime = 0;
-  let step = 0;
-  let motif: readonly number[] = MOTIFS[0] as readonly number[];
-  let prog: readonly number[] = PROGRESSIONS[0] as readonly number[];
+  const stats: MusicStats = { barsPlanned: 0, notesPlanned: 0, lateNotes: 0, resyncs: 0, minLeadMs: Infinity };
+  const plan = { notes: 0, late: 0 };
 
-  function buildLayer(): Layer | null {
+  function ensureRig(): Rig | null {
     const ctx = e.ctx;
-    const out = e.gain(FLOOR);
-    const droneGain = e.gain(0.09);
-    const tensionGain = e.gain(FLOOR);
-    const padFilter = e.filter('lowpass', 700, 0.8);
-    const padGain = e.gain(0.03);
-    const arpIn = e.gain(1);
-    const delay = e.delay(1);
-    const fb = e.gain(0.35);
-    const wet = e.gain(0.5);
-    const d1 = e.osc('sine', 55);
-    const d2 = e.osc('sine', 55.35);
-    const dt = e.osc('sine', 58.27);
-    if (!ctx || !out || !droneGain || !tensionGain || !padFilter || !padGain || !arpIn || !delay || !fb || !wet || !d1 || !d2 || !dt || !e.musicOut) return null;
-    const pad: OscillatorNode[] = [];
-    for (const s of [0, 7, 12]) {
-      const o = e.osc('sawtooth', hz(A2, s));
-      if (!o) return null;
-      o.detune.value = (Math.random() * 2 - 1) * 6;
-      o.connect(padFilter);
-      pad.push(o);
+    if (!ctx || !e.running || !e.musicOut) return null;
+    if (!rig) {
+      master = e.countNode(ctx.createGain());
+      master.connect(e.musicOut);
+      rig = createRig(ctx, master, (n) => e.countNode(n));
     }
-    out.connect(e.musicOut);
-    d1.connect(droneGain);
-    d2.connect(droneGain);
-    droneGain.connect(out);
-    dt.connect(tensionGain);
-    tensionGain.connect(out);
-    padFilter.connect(padGain);
-    padGain.connect(out);
-    // arpège : sec + delay en feedback (0,35 ; 375 ms)
-    delay.delayTime.value = 0.375;
-    arpIn.connect(out);
-    arpIn.connect(delay);
-    delay.connect(fb);
-    fb.connect(delay);
-    delay.connect(wet);
-    wet.connect(out);
-    const t = ctx.currentTime;
-    const stoppers: AudioScheduledSourceNode[] = [d1, d2, dt, ...pad];
-    for (const s of stoppers) s.start(t);
-    return { out, drone: [d1, d2], tensionGain, pad, padFilter, padGain, arpIn, stoppers };
+    return rig;
   }
 
-  function teardown(at: number): void {
-    if (!layer) return;
-    for (const s of layer.stoppers) {
-      try {
-        s.stop(at);
-      } catch {
-        /* déjà arrêté */
+  const opts = (): BarOptions => ({ ...layersFor(wave), boss: tension, rand: Math.random });
+
+  function newPlayer(r: Rig, id: MusicTrackId, t: number, fade: number): Player {
+    const bus = createTrackBus(r, TRACKS[id], 0);
+    const p: Player = { bus, bar: 0, nextT: t, stopAt: Infinity, lastVoicing: [], hold: null };
+    fadeBus(bus, Math.max(r.ctx.currentTime, t - 0.01), t + Math.max(0.05, fade), 1);
+    return p;
+  }
+
+  function retire(p: Player, at: number, fadeS: number): void {
+    const r = rig;
+    if (!r) return;
+    p.stopAt = at;
+    fadeBus(p.bus, Math.max(r.ctx.currentTime, at), at + Math.max(0.05, fadeS), 0);
+    p.hold?.release(at, fadeS);
+    p.hold = null;
+    leaving.push(p);
+    const bar = secondsPerBar(p.bus.def);
+    const ms = (at + fadeS + bar + REVERB_SECONDS + 0.5 - r.ctx.currentTime) * 1000;
+    setTimeout(() => {
+      p.bus.disconnect();
+      const i = leaving.indexOf(p);
+      if (i >= 0) leaving.splice(i, 1);
+    }, Math.max(0, ms));
+  }
+
+  function planPlayer(r: Rig, p: Player, now: number): void {
+    const bar = secondsPerBar(p.bus.def);
+    while (p.nextT < now + PLAN_AHEAD_S && p.nextT < p.stopAt) {
+      const lead = p.nextT - now;
+      if (lead < 0.01) {
+        // thread bloqué trop longtemps : on recale l'horloge plutôt que de jouer en retard
+        stats.resyncs++;
+        p.nextT = now + 0.05;
       }
+      stats.minLeadMs = Math.min(stats.minLeadMs, (p.nextT - now) * 1000);
+      plan.notes = 0;
+      plan.late = 0;
+      const bp = planBar(r, p.bus, p.bar, p.nextT, opts(), plan);
+      stats.notesPlanned += plan.notes;
+      stats.lateNotes += plan.late;
+      stats.barsPlanned++;
+      p.lastVoicing = bp.chord.voicing;
+      p.bar++;
+      p.nextT += bar;
     }
-    const out = layer.out;
-    setTimeout(() => out.disconnect(), Math.max(0, (at - (e.ctx?.currentTime ?? 0)) * 1000) + 3000);
-    layer = null;
-  }
-
-  function applyMix(t: number): void {
-    if (!layer) return;
-    const padLevel = (tension ? 0.06 : 0.025) + 0.05 * intensity;
-    layer.padGain.gain.setTargetAtTime(padLevel, t, 0.8);
-    layer.padFilter.frequency.setTargetAtTime(tension ? 1400 : 600 + 500 * intensity, t, 0.8);
-    layer.tensionGain.gain.setTargetAtTime(tension ? 0.07 : FLOOR, t, 0.6);
-  }
-
-  function setPadChord(rootSemis: number, t: number): void {
-    if (!layer) return;
-    const chord = tension ? [0, 1, 6] : [0, 7, 12];
-    layer.pad.forEach((o, i) => o.frequency.setTargetAtTime(hz(A2, rootSemis + (chord[i] ?? 0)), t, 0.15));
-  }
-
-  function arpNote(freq: number, t: number, dur: number, gain: number): void {
-    if (!layer) return;
-    const o = e.osc('triangle', freq);
-    const g = e.gain(FLOOR);
-    if (!o || !g) return;
-    g.gain.setValueAtTime(FLOOR, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(FLOOR, t + dur);
-    o.connect(g);
-    g.connect(layer.arpIn);
-    o.start(t);
-    o.stop(t + dur + 0.02);
-  }
-
-  function scheduleStep(t: number): void {
-    const inPhrase = step % (STEPS_PER_BAR * BARS_PER_PHRASE);
-    if (inPhrase === 0) {
-      motif = pick(MOTIFS, motif);
-      prog = pick(PROGRESSIONS);
-    }
-    const bar = Math.floor(inPhrase / STEPS_PER_BAR);
-    const s = inPhrase % STEPS_PER_BAR;
-    const scale = tension ? SCALE_TENSE : SCALE_CALM;
-    const rootDeg = prog[bar] ?? 0;
-    if (s === 0) setPadChord(degreeSemis(scale, rootDeg) - 12 * Math.floor(rootDeg / 5), t);
-    const deg = motif[s] ?? -1;
-    const density = 0.35 + 0.55 * intensity + (tension ? 0.1 : 0);
-    if (deg >= 0 && Math.random() < density) {
-      const f = hz(ARP_BASE, degreeSemis(scale, deg + rootDeg));
-      const g = 0.035 + 0.03 * intensity;
-      arpNote(f, t, EIGHTH * 0.9, g);
-      // intensité haute : double-croche ornementale occasionnelle
-      if (intensity > 0.5 && Math.random() < intensity * 0.4) {
-        arpNote(hz(ARP_BASE, degreeSemis(scale, deg + rootDeg + 2)), t + EIGHTH / 2, EIGHTH * 0.45, g * 0.7);
-      }
-    }
-    step++;
   }
 
   function tick(): void {
-    const ctx = e.ctx;
-    if (!ctx || !layer || !e.running || paused) return;
-    // contexte resté suspendu : on ne rattrape pas le retard, on repart d'ici
-    if (nextTime < ctx.currentTime - 0.2) nextTime = ctx.currentTime + 0.05;
-    while (nextTime < ctx.currentTime + LOOKAHEAD_S) {
-      scheduleStep(nextTime);
-      nextTime += EIGHTH;
-    }
+    const r = rig;
+    if (!r || !e.running || paused) return;
+    const now = r.ctx.currentTime;
+    if (mode === 'play' && current) planPlayer(r, current, now);
+    for (const p of leaving) if (mode === 'play') planPlayer(r, p, now);
   }
 
-  function clearTimers(): void {
-    if (timer !== null) clearInterval(timer);
-    if (startTimer !== null) clearTimeout(startTimer);
-    timer = null;
-    startTimer = null;
-  }
-
-  function begin(): void {
-    startTimer = null;
-    const ctx = e.ctx;
-    if (!ctx || !e.running) return;
-    if (!layer) layer = buildLayer();
-    if (!layer) return;
-    const t = ctx.currentTime;
-    applyMix(t);
-    layer.out.gain.cancelScheduledValues(t);
-    layer.out.gain.setValueAtTime(Math.max(FLOOR, layer.out.gain.value), t);
-    layer.out.gain.exponentialRampToValueAtTime(1, t + Math.max(0.05, fadeIn));
-    step = 0;
-    nextTime = t + 0.1;
+  function ensureTimer(): void {
     if (timer === null) timer = setInterval(tick, TICK_MS);
   }
 
+  function clearStart(): void {
+    if (startTimer !== null) clearTimeout(startTimer);
+    startTimer = null;
+  }
+
+  /** prochaine frontière de mesure du lecteur courant, au moins MIN_LEAD_S après maintenant */
+  function nextBoundary(p: Player, now: number): number {
+    const bar = secondsPerBar(p.bus.def);
+    if (p.nextT >= now + MIN_LEAD_S) return p.nextT;
+    const k = Math.ceil((now + MIN_LEAD_S - p.nextT) / bar);
+    p.bar += k;
+    p.nextT += k * bar;
+    return p.nextT;
+  }
+
+  function setLayers(p: Player, layers: readonly Layer[], at: number, to: number, dur: number): void {
+    for (const l of layers) {
+      const g = p.bus.layers[l].gain;
+      g.cancelScheduledValues(at);
+      g.setValueAtTime(g.value, at);
+      g.linearRampToValueAtTime(to, at + dur);
+    }
+  }
+  const PLAY_LAYERS: readonly Layer[] = ['bass', 'chord', 'melody', 'counter', 'perc'];
+
+  function begin(): void {
+    startTimer = null;
+    const r = ensureRig();
+    if (!r) return;
+    const t = r.ctx.currentTime + MIN_LEAD_S + 0.05;
+    if (current) retire(current, r.ctx.currentTime, 0.2);
+    current = newPlayer(r, trackId, t, fadeIn);
+    mode = 'play';
+    ensureTimer();
+    tick();
+  }
+
+  function stopAll(fadeS: number): void {
+    clearStart();
+    const r = rig;
+    if (r && current) retire(current, r.ctx.currentTime, fadeS);
+    current = null;
+    mode = 'idle';
+  }
+
   return {
-    get playing() {
-      return layer !== null && timer !== null;
+    get track() {
+      return trackId;
     },
+    get mode() {
+      return mode;
+    },
+    get wave() {
+      return wave;
+    },
+    get tension() {
+      return tension;
+    },
+    get playing() {
+      return mode === 'play' && current !== null;
+    },
+    stats,
+
     start(delayS, fadeInS = 3) {
       if (!e.running) return;
-      if (layer && timer !== null) return;
-      clearTimers();
+      if (mode === 'play' || mode === 'intro' || mode === 'lost') return;
+      clearStart();
       fadeIn = fadeInS;
+      mode = 'intro';
       startTimer = setTimeout(begin, Math.max(0, delayS) * 1000);
     },
+
     stop(fadeS) {
-      clearTimers();
-      const ctx = e.ctx;
-      if (!ctx || !layer) return;
-      const t = ctx.currentTime;
-      const g = layer.out.gain;
-      g.cancelScheduledValues(t);
-      g.setValueAtTime(Math.max(FLOOR, g.value), t);
-      g.exponentialRampToValueAtTime(FLOOR, t + Math.max(0.05, fadeS));
-      teardown(t + Math.max(0.05, fadeS) + 0.05);
+      stopAll(fadeS);
     },
+
+    lose() {
+      const r = rig;
+      if (mode === 'intro') {
+        stopAll(0.1);
+        return;
+      }
+      if (mode !== 'play' || !r || !current) return;
+      const now = r.ctx.currentTime;
+      mode = 'lost';
+      setLayers(current, PLAY_LAYERS, now, 0, LOST_FADE_S);
+      current.hold?.release(now, 0.3);
+      current.hold = playHold(r, current.bus, current.lastVoicing, now + 0.05);
+    },
+
+    revive() {
+      const r = rig;
+      if (mode !== 'lost' || !r || !current) return false;
+      const now = r.ctx.currentTime;
+      const p = current;
+      const T = nextBoundary(p, now);
+      p.hold?.release(T, 0.6);
+      p.hold = null;
+      for (const l of PLAY_LAYERS) {
+        const g = p.bus.layers[l].gain;
+        g.cancelScheduledValues(now);
+        g.setValueAtTime(g.value, now);
+        g.linearRampToValueAtTime(0, Math.min(T, now + 0.1));
+        g.setValueAtTime(0, T - 0.005);
+        g.linearRampToValueAtTime(1, T + 0.04);
+      }
+      mode = 'play';
+      if (p.bus.def.id !== trackId) {
+        // piste changée pendant l'écran de mort : on repart directement sur la nouvelle
+        retire(p, T, 0.05);
+        current = newPlayer(r, trackId, T, 0.6);
+      }
+      ensureTimer();
+      tick();
+      return true;
+    },
+
     resolve() {
-      clearTimers();
-      const ctx = e.ctx;
-      if (!ctx || !layer) return;
-      const t = ctx.currentTime;
-      // pad vers la majeur (la, do#, mi), drone qui s'éteint, dernière arpège lente
-      tension = false;
-      layer.tensionGain.gain.setTargetAtTime(FLOOR, t, 0.3);
-      const chord = [0, 4, 7];
-      layer.pad.forEach((o, i) => o.frequency.setTargetAtTime(hz(A2 * 2, chord[i] ?? 0), t, 0.4));
-      layer.padFilter.frequency.setTargetAtTime(900, t, 0.5);
-      layer.padGain.gain.setTargetAtTime(0.06, t, 0.4);
-      [0, 4, 7, 12].forEach((s, i) => arpNote(hz(440, s), t + 0.3 + i * 0.35, 0.9, 0.04));
-      const g = layer.out.gain;
-      g.cancelScheduledValues(t);
-      g.setValueAtTime(Math.max(FLOOR, g.value), t);
-      g.setValueAtTime(Math.max(FLOOR, g.value), t + 1.8);
-      g.exponentialRampToValueAtTime(FLOOR, t + 5.5);
-      teardown(t + 5.6);
+      const r = rig;
+      clearStart();
+      if (!r || !current || (mode !== 'play' && mode !== 'lost')) {
+        stopAll(0.3);
+        return;
+      }
+      const now = r.ctx.currentTime;
+      const p = current;
+      const def = p.bus.def;
+      const wasLost = mode === 'lost';
+      const T = wasLost ? now + 0.1 : Math.max(p.nextT, now + 0.05);
+      mode = 'over';
+      p.stopAt = T;
+      const dest: Layer | undefined = wasLost ? 'hold' : undefined;
+      if (wasLost) p.hold?.release(T, 1.2);
+      p.hold = null;
+      const spb = 60 / def.bpm;
+      let end = T;
+      for (const ev of buildResolution(def, layersFor(wave).melody)) {
+        playNote(r, p.bus, ev, T + ev.beat * spb, dest);
+        end = Math.max(end, T + (ev.beat + ev.dur) * spb);
+      }
+      current = null;
+      retire(p, end + 0.2, 1.5);
+      setTimeout(() => {
+        if (mode === 'over') mode = 'idle';
+      }, Math.max(0, (end + 1.7 - now) * 1000));
     },
-    setWave(wave) {
-      intensity = Math.max(0, Math.min(1, (wave - 1) / 12));
-      if (e.ctx) applyMix(e.ctx.currentTime);
+
+    setWave(w) {
+      wave = Number.isFinite(w) ? Math.max(1, Math.floor(w)) : 1;
     },
     setTension(on) {
       tension = on;
-      if (e.ctx) applyMix(e.ctx.currentTime);
     },
+
+    setTrack(id) {
+      if (!(id in TRACKS) || id === trackId) return;
+      trackId = id;
+      const r = rig;
+      if (mode !== 'play' || !r || !current) return; // appliqué au prochain démarrage / à la reprise
+      const now = r.ctx.currentTime;
+      const old = current;
+      let T = nextBoundary(old, now);
+      // la mesure en T est peut-être déjà planifiée : l'ancienne piste la joue en s'effaçant
+      if (T - now < 0.03) T += secondsPerBar(old.bus.def);
+      retire(old, T, CROSSFADE_S);
+      old.stopAt = T + CROSSFADE_S;
+      current = newPlayer(r, id, T, CROSSFADE_S);
+      tick();
+    },
+
+    dispose() {
+      stopAll(0.1);
+      if (timer !== null) clearInterval(timer);
+      timer = null;
+    },
+
     pause() {
       if (paused) return;
       paused = true;
-      const ctx = e.ctx;
-      if (!ctx || !layer) return;
-      const t = ctx.currentTime;
-      layer.out.gain.cancelScheduledValues(t);
-      layer.out.gain.setTargetAtTime(FLOOR, t, 0.05);
+      const r = rig;
+      if (!r || !master) return;
+      const t = r.ctx.currentTime;
+      master.gain.cancelScheduledValues(t);
+      master.gain.setTargetAtTime(0, t, 0.05);
     },
     resume() {
       if (!paused) return;
       paused = false;
-      const ctx = e.ctx;
-      if (!ctx || !layer) return;
-      const t = ctx.currentTime;
-      nextTime = t + 0.1;
-      layer.out.gain.cancelScheduledValues(t);
-      layer.out.gain.setTargetAtTime(1, t, 0.4);
+      const r = rig;
+      if (!r || !master) return;
+      const t = r.ctx.currentTime;
+      if (current) nextBoundary(current, t);
+      master.gain.cancelScheduledValues(t);
+      master.gain.setTargetAtTime(1, t, 0.4);
     },
   };
 }

@@ -96,6 +96,7 @@ export function createUI(deps: UiDeps): UI {
   if (meta) {
     audio?.setSfxVolume(meta.data.settings.sfx);
     audio?.setMusicVolume(meta.data.settings.music);
+    audio?.setMusicTrack(meta.data.settings.musicTrack);
   }
 
   // ouverture de la volée : sélecteur explicite, persistant d'un tir à l'autre, remis à 0 par run
