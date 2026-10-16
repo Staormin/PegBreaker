@@ -1,12 +1,12 @@
 {
   "normal": {
     "destroyedAvg": 15.416666666666666,
-    "maxParticles": 90,
+    "maxParticles": 88,
     "frozenFrames": 4
   },
   "reduced": {
-    "destroyedAvg": 6.384615384615385,
-    "maxParticles": 49,
+    "destroyedAvg": 6.769230769230769,
+    "maxParticles": 51,
     "frozenFrames": 0,
     "triggers": 5,
     "frozenTriggers": 0,

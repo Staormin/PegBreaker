@@ -35,7 +35,7 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 |---|---|---|---|---|
 | T13 | gameplay-dev | done | T12 | 7 éléments, 20 reliques, blocs blindés, 3 boss, équilibrage via waves.json selon rapport QA. |
 | T14 | ui-dev | done | T12 | Onboarding sans texte (flèche animée, premier tir guidé), écran titre, polish des transitions. |
-| T15 | qa-tester | doing | T13,T14 | Rapport j4 : première récompense < 10 s, courbe de difficulté mesurée sur 10 runs. |
+| T15 | qa-tester | done | T13,T14 | Rapport j4 : première récompense < 10 s, courbe de difficulté mesurée sur 10 runs. |
 
 ## Jalon 5 — Build de prod, perf, mobile
 
@@ -43,7 +43,7 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 |---|---|---|---|---|
 | T16 | feel-artist | done | T15 | Profilage, aucune allocation dans la boucle, 60 fps sur CPU 4× ralenti (Playwright). |
 | T17 | ui-dev | done | T15 | Viewport mobile 375×812 et 1440×900, manifest PWA, hors ligne, README. |
-| T18 | qa-tester | doing | T16,T17 | Rapport final : tous les tests passent, zéro erreur console, perf. |
+| T18 | qa-tester | done | T16,T17 | Rapport final : tous les tests passent, zéro erreur console, perf. |
 
 ## Tâches de correction issues des rapports QA
 
@@ -53,3 +53,8 @@ Statuts : `todo` · `doing` · `review` · `done` · `blocked`
 | T10c | systems-dev | done | T12 | Seuils de succès relevés (2-4 succès sur une première run), coûts el_ice/ghost/lead. |
 | T4c | ui-dev | done | T7 | Compteur de dégâts dans la bande HUD. |
 | T10b | systems-dev | done | T13 | 4 reliques épiques verrouillées dans le Puits, succès déclaratifs. |
+| T16b | feel-artist | done | T18 | Résolution plafonnée par surface, bascule préventive : 720×1280 DPR 2 CPU 4× ≥ 56 fps dès le tir 2. |
+| T17b | ui-dev | done | T18 | Bouton Puits 48 px, ⚙ hors du plateau pendant la volée. |
+
+## État final (2026-10-16)
+Definition of done : `npm run build` → `dist/` statique jouable hors ligne (service worker) ; 101 tests unitaires et 30 tests Playwright verts, 0 erreur console ; 60 fps à CPU 4× (mobile DPR 2 et desktop 720×1280 après plafond de résolution) ; README complet. Rapports : docs/qa/j1.md, j2-j3.md, final.md.
