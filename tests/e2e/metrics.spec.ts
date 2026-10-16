@@ -11,11 +11,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
+  SHOTS_DIR,
   configureBot,
   installBot,
   mean,
   openGame,
   play,
+  waitReady,
+  watchErrors,
   quantile,
   setSpeed,
   type BotKind,
@@ -23,8 +26,8 @@ import {
   type QaWindow,
 } from './bots';
 
-const OUT = 'docs/qa/j1-metrics.json';
-const SHOTS = 'docs/qa/j1-shots';
+const OUT = 'docs/qa/j2-j3-metrics.json';
+const SHOTS = SHOTS_DIR;
 const SEEDS = ['qa-1', 'qa-2', 'qa-3', 'qa-4', 'qa-5'];
 const AIM_MS = 1500;
 const FATAL_STOPS = ['page-error', 'softlock', 'sim-frozen'];
@@ -191,14 +194,33 @@ async function runFast(page: Page, bot: BotKind, seed: string): Promise<RunRow> 
 
 test.describe.configure({ mode: 'serial' });
 
-test('métriques J1 : 5 runs naïf + 5 runs greedy', async ({ context }) => {
+test('métriques : 5 runs naïf + 5 runs greedy', async ({ context }) => {
   test.setTimeout(210_000);
   mkdirSync('docs/qa', { recursive: true });
 
   // --- A. naïf qa-1, vitesse 1 avec délais humains --------------------------------
   const pageA = await context.newPage();
   const tA = Date.now();
-  const sA = await openGame(pageA, 'qa-1');
+  // temps de chargement jusqu'au premier tir possible (sim en 'aiming', avant le clic sur l'écran titre)
+  const errA = watchErrors(pageA);
+  await pageA.goto('/?seed=qa-1');
+  const readyAtMs = (await (
+    await pageA.waitForFunction(
+      () => {
+        const api = (window as unknown as QaWindow).__pegbreaker;
+        return api?.sim?.state.phase === 'aiming' ? Math.round(performance.now()) : 0;
+      },
+      null,
+      { polling: 'raf' },
+    )
+  ).jsonValue()) as number;
+  const nav = await pageA.evaluate(() => {
+    const n = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return n ? { domContentLoadedMs: Math.round(n.domContentLoadedEventEnd), loadMs: Math.round(n.loadEventEnd) } : null;
+  });
+  const titleShown = (await pageA.locator('.screen-title.visible').count()) > 0;
+  await waitReady(pageA);
+  const sA = { consoleErrors: errA };
   await installBot(pageA, { bot: 'naive', seed: 'qa-1', humanDelayMs: AIM_MS });
   await setSpeed(pageA, 1);
   let rA = await play(pageA, { untilFirstReward: true, maxRealMs: 60_000, fpsBucket: 'speed1' });
@@ -232,6 +254,7 @@ test('métriques J1 : 5 runs naïf + 5 runs greedy', async ({ context }) => {
   const out = {
     generatedAt: new Date().toISOString(),
     build: await pageA.evaluate(() => (window as unknown as QaWindow).__pegbreaker.version),
+    load: { readyToAimMs: readyAtMs, ...nav, titleScreenShown: titleShown },
     method: {
       speed: 'run naive/qa-1 : vitesse 1 + 1,5 s de visée jusqu\'au 1er écran de récompense, 1 volée en CPU 4× (vague 2), puis vitesse 8 ; autres runs : vitesse 8 en parallèle (10 pages, fps vitesse 8 non significatifs : CPU partagé)',
       durationSpecMs: 'stats.durationMs + 1500 ms × tirs',
@@ -248,47 +271,62 @@ test('métriques J1 : 5 runs naïf + 5 runs greedy', async ({ context }) => {
   for (const row of rows) assertHealthy(row);
 });
 
-test('perf : volée de 30 balles sous CPU 4×', async ({ page }) => {
-  test.setTimeout(90_000);
-  const { consoleErrors } = await openGame(page, 'qa-perf');
-  await installBot(page, { bot: 'greedy', seed: 'qa-perf' });
-  // debug : on porte la volée à 30 balles de pierre (plafond maxVolley) pour mesurer le pire cas de rendu
-  const n = await page.evaluate(() => {
-    const api = (window as unknown as QaWindow).__pegbreaker;
-    const v = api.sim.state.volley;
-    const max = api.sim.config.balls.maxVolley;
-    while (v.length < max) v.push({ element: 'stone', tier: 1 });
-    return v.length;
+const ELEMENTS = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'] as const;
+
+for (const dpr of [1, 2]) {
+  test(`perf : volée de 30 balles (7 éléments) sous CPU 4×, DPR ${dpr}`, async ({ browser }, testInfo) => {
+    test.setTimeout(90_000);
+    const ctx = await browser.newContext({
+      baseURL: testInfo.project.use.baseURL,
+      viewport: { width: 540, height: 960 },
+      deviceScaleFactor: dpr,
+    });
+    const page = await ctx.newPage();
+    const { consoleErrors } = await openGame(page, 'qa-perf');
+    await installBot(page, { bot: 'greedy', seed: 'qa-perf' });
+    // debug : volée portée à 30 balles, les 7 éléments en alternance (pire cas de rendu : sprites, trails, effets)
+    const fill = (): Promise<number> =>
+      page.evaluate((els) => {
+        const api = (window as unknown as QaWindow).__pegbreaker;
+        const v = api.sim.state.volley;
+        let i = 0;
+        while (v.length < api.sim.config.balls.maxVolley) v.push({ element: els[i++ % els.length]!, tier: 1 });
+        return v.length;
+      }, [...ELEMENTS]);
+    expect(await fill()).toBe(30);
+    await page.waitForTimeout(1200);
+    const dprBefore = await page.evaluate(() => ((window as unknown as QaWindow).__pegbreaker.renderer as unknown as { dpr?: number }).dpr ?? null);
+    const cdp = await ctx.newCDPSession(page);
+    const idle = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.fps);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    const shot = play(page, { shots: 1, maxRealMs: 30_000, fpsBucket: 'cpu4-30', fpsOnlyFiring: true });
+    await page.waitForTimeout(700);
+    if (dpr === 2) await page.screenshot({ path: `${SHOTS}/09-volee-30-balles-7-elements.png` });
+    const r = await shot;
+    const dprAfter = await page.evaluate(() => ((window as unknown as QaWindow).__pegbreaker.renderer as unknown as { dpr?: number }).dpr ?? null);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await fill();
+    const r2 = await play(page, { shots: 1, maxRealMs: 30_000, fpsBucket: 'cpu1-30', fpsOnlyFiring: true });
+    const perf = {
+      deviceScaleFactor: dpr,
+      rendererDprBefore: dprBefore,
+      rendererDprAfter: dprAfter,
+      idleFpsBefore: idle,
+      cpu4Volley30: fpsStat(r, 'cpu4-30'),
+      cpu1Volley30: fpsStat(r2, 'cpu1-30'),
+      shotLog: [...r.shotLog.slice(-1), ...r2.shotLog.slice(-1)],
+    };
+    try {
+      const cur = JSON.parse(readFileSync(OUT, 'utf8')) as Record<string, unknown>;
+      cur[`perf30_dpr${dpr}`] = perf;
+      writeFileSync(OUT, JSON.stringify(cur, null, 2) + '\n');
+    } catch {
+      writeFileSync(OUT.replace('.json', `-perf-dpr${dpr}.json`), JSON.stringify(perf, null, 2) + '\n');
+    }
+    test.info().annotations.push({ type: `perf30-dpr${dpr}`, description: JSON.stringify(perf) });
+    expect(r.pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+    expect(r.softlocks).toEqual([]);
+    await ctx.close();
   });
-  expect(n).toBe(30);
-  await page.waitForTimeout(1200);
-  const cdp = await page.context().newCDPSession(page);
-  const idle = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.fps);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
-  const shot = play(page, { shots: 1, maxRealMs: 30_000, fpsBucket: 'cpu4-30', fpsOnlyFiring: true });
-  await page.waitForTimeout(700);
-  await page.screenshot({ path: `${SHOTS}/08-volee-30-balles.png` });
-  const r = await shot;
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  // même volée sans throttling
-  await page.evaluate(() => {
-    const api = (window as unknown as QaWindow).__pegbreaker;
-    const v = api.sim.state.volley;
-    while (v.length < api.sim.config.balls.maxVolley) v.push({ element: 'stone', tier: 1 });
-  });
-  const r2 = await play(page, { shots: 1, maxRealMs: 30_000, fpsBucket: 'cpu1-30', fpsOnlyFiring: true });
-  const s4 = fpsStat(r, 'cpu4-30');
-  const s1 = fpsStat(r2, 'cpu1-30');
-  const perf = { idleFpsBefore: idle, cpu4Volley30: s4, cpu1Volley30: s1, shotLog: r2.shotLog.slice(-2) };
-  try {
-    const cur = JSON.parse(readFileSync(OUT, 'utf8')) as Record<string, unknown>;
-    cur.perf30 = perf;
-    writeFileSync(OUT, JSON.stringify(cur, null, 2) + '\n');
-  } catch {
-    writeFileSync(OUT.replace('.json', '-perf.json'), JSON.stringify(perf, null, 2) + '\n');
-  }
-  test.info().annotations.push({ type: 'perf30', description: JSON.stringify(perf) });
-  expect(r.pageErrors).toEqual([]);
-  expect(consoleErrors).toEqual([]);
-  expect(r.softlocks).toEqual([]);
-});
+}

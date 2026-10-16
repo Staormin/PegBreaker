@@ -1,0 +1,22 @@
+{
+  "normal": {
+    "destroyedAvg": 15.833333333333334,
+    "maxParticles": 89,
+    "frozenFrames": 4
+  },
+  "reduced": {
+    "destroyedAvg": 7.8,
+    "maxParticles": 88,
+    "frozenFrames": 17,
+    "triggers": 16,
+    "frozenTriggers": 13,
+    "slowmo": {
+      "level3": 0,
+      "ratioMin": null
+    },
+    "milestones": {
+      "1": 8,
+      "2": 4
+    }
+  }
+}

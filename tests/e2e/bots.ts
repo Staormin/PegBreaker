@@ -608,15 +608,44 @@ export interface Session {
   consoleErrors: string[];
 }
 
-/** Ouvre le jeu sur une seed, branche la collecte d'erreurs console, attend l'API de debug. */
-export async function openGame(page: Page, seed: string): Promise<Session> {
+export interface OpenOptions {
+  /** URL relative (ex. '/?fresh=1') ; sinon `/?seed=<seed>` */
+  url?: string;
+  /** ferme l'écran titre (premier lancement) par un clic ; défaut true */
+  dismissTitle?: boolean;
+}
+
+/** Collecte les erreurs console / page d'une page (à appeler une fois par page). */
+export function watchErrors(page: Page): string[] {
   const consoleErrors: string[] = [];
   page.on('console', (m) => {
     if (m.type() === 'error') consoleErrors.push(m.text());
   });
   page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
-  await page.goto(`/?seed=${encodeURIComponent(seed)}`);
+  return consoleErrors;
+}
+
+/** Attend l'API de debug ; ferme l'écran titre s'il est affiché (clic = premier pointerdown, déverrouille l'audio). */
+export async function waitReady(page: Page, dismissTitle = true): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as QaWindow).__pegbreaker?.sim);
+  if (!dismissTitle) return;
+  // écran « titre » : ancien écran .screen-title ou logo d'onboarding ; dans les deux cas #ui[data-screen=title]
+  // (écran 'title' ou logo d'onboarding `.intro-logo.on` selon la version de l'UI)
+  const isTitle = await page.evaluate(
+    () => document.getElementById('ui')?.dataset.screen === 'title' || !!document.querySelector('.intro-logo.on'),
+  );
+  if (isTitle) {
+    const vp = page.viewportSize() ?? { width: 540, height: 960 };
+    await page.mouse.click(vp.width / 2, vp.height / 2);
+    await page.waitForFunction(() => document.getElementById('ui')?.dataset.screen !== 'title');
+  }
+}
+
+/** Ouvre le jeu (seed forcée par défaut : run jamais sauvegardée), branche la collecte d'erreurs, ferme le titre. */
+export async function openGame(page: Page, seed: string, o: OpenOptions = {}): Promise<Session> {
+  const consoleErrors = watchErrors(page);
+  await page.goto(o.url ?? `/?seed=${encodeURIComponent(seed)}`);
+  await waitReady(page, o.dismissTitle ?? true);
   return { page, consoleErrors };
 }
 
@@ -686,3 +715,6 @@ export function quantile(xs: number[], q: number): number {
 export function mean(xs: number[]): number {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN;
 }
+
+/** dossier des captures du jalon courant */
+export const SHOTS_DIR = 'docs/qa/j2-j3-shots';

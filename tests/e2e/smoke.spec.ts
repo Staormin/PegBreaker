@@ -3,9 +3,9 @@
 // clics DOM sur les écrans récompense / boutique / fin de run. Captures dans docs/qa/j1-shots/.
 import { expect, test, type Page } from '@playwright/test';
 import type { Vec2 } from '../../src/core/types';
-import { boardToClient, configureBot, installBot, lowestBlockTarget, openGame, play, setSpeed, type QaWindow } from './bots';
+import { SHOTS_DIR, boardToClient, configureBot, installBot, lowestBlockTarget, openGame, play, setSpeed, type QaWindow } from './bots';
 
-const SHOTS = 'docs/qa/j1-shots';
+const SHOTS = SHOTS_DIR;
 
 async function phase(page: Page): Promise<string> {
   return page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.state.phase);

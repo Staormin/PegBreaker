@@ -1,0 +1,42 @@
+{
+  "atUnlock": {
+    "unlocked": true,
+    "state": "running",
+    "nodes": 7,
+    "accepted": 0,
+    "dropped": 0,
+    "peak": 0,
+    "clip": 0,
+    "samples": 3
+  },
+  "after20Shots": {
+    "unlocked": true,
+    "state": "running",
+    "nodes": 7187,
+    "accepted": 1687,
+    "dropped": 320,
+    "peak": 0.855,
+    "clip": 0,
+    "samples": 1698
+  },
+  "afterMute": {
+    "unlocked": true,
+    "state": "running",
+    "nodes": 7187,
+    "accepted": 1687,
+    "dropped": 320,
+    "peak": 0.855,
+    "clip": 0,
+    "samples": 1773
+  },
+  "after3MutedShots": {
+    "unlocked": true,
+    "state": "running",
+    "nodes": 7187,
+    "accepted": 1687,
+    "dropped": 320,
+    "peak": 0.855,
+    "clip": 0,
+    "samples": 2075
+  }
+}
