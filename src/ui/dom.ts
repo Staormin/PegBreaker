@@ -32,13 +32,6 @@ export function button(
   return b;
 }
 
-/** Relance une animation CSS de classe (`pop`, `shake`...) même si elle est déjà présente. */
-export function retrigger(e: HTMLElement, cls: string): void {
-  e.classList.remove(cls);
-  void e.offsetWidth; // force le reflow pour redémarrer l'animation
-  e.classList.add(cls);
-}
-
 const nf = new Intl.NumberFormat('fr-FR');
 export function fmt(n: number): string {
   return nf.format(Math.round(n));

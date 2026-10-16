@@ -3,7 +3,7 @@
 // que si une valeur affichée a changé (valeurs mises en cache).
 import type { EventBus } from '../core/events';
 import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, VolleyBall } from '../core/types';
-import { coinIcon, el, fmt, retrigger } from './dom';
+import { coinIcon, el, fmt } from './dom';
 import { ballColor, ballName } from './options';
 
 const MAX_HEARTS = 10;
@@ -86,7 +86,6 @@ export function createHud(deps: HudDeps): Hud {
     e.stopPropagation();
     bus.emit({ type: 'ui:click' });
     sim.recall();
-    retrigger(recall, 'pop');
   });
   // clavier (Entrée / Espace sur le bouton focalisé)
   recall.addEventListener('click', (e) => {
@@ -129,49 +128,22 @@ export function createHud(deps: HudDeps): Hud {
   let shotVisible = false;
   let recallVisible = false;
   let menuVisible = false;
-  // compteurs qui roulent (tween 300 ms) : valeur affichée → cible
-  const ROLL_MS = 300;
-  const roll = {
-    coins: { from: 0, to: 0, t0: 0, shown: -1, el: coinVal },
-    frags: { from: 0, to: 0, t0: 0, shown: -1, el: fragVal },
-  };
-  type Roll = (typeof roll)['coins'];
-  function rollTo(r: Roll, v: number, now: number, instant: boolean): void {
-    const cur = r.shown < 0 ? v : r.shown;
-    r.from = instant ? v : cur;
-    r.to = v;
-    r.t0 = now;
-  }
-  function rollStep(r: Roll, now: number): void {
-    if (r.shown === r.to) return;
-    const t = Math.min(1, (now - r.t0) / ROLL_MS);
-    const k = 1 - Math.pow(1 - t, 3);
-    const v = t >= 1 ? r.to : Math.round(r.from + (r.to - r.from) * k);
-    if (v !== r.shown) {
-      r.shown = v;
-      r.el.textContent = fmt(v);
-    }
-  }
   let comboHintTimer = 0;
   let shotHideAt = 0;
   let shotLingering = false;
-  let pendingPulse = -1; // clé (élément, rang) à faire pulser après fusion
 
   function setVisible(e: HTMLElement, v: boolean): void {
     e.classList.toggle('on', v);
   }
 
-  function renderHp(hp: number, maxHp: number, prevHp: number, prevMax: number): void {
+  function renderHp(hp: number, maxHp: number, prevMax: number): void {
     hpBox.setAttribute('aria-label', `PV ${hp} sur ${maxHp}`);
     if (maxHp <= MAX_HEARTS && maxHp === prevMax && hpBox.children.length === maxHp) {
-      // même nombre de cœurs : on anime seulement ceux qui changent (vidage 300 ms)
+      // même nombre de cœurs : on ne bascule que l'état plein/vide
       for (let i = 0; i < maxHp; i++) {
         const h = hpBox.children[i] as HTMLElement;
         const full = i < hp;
-        const was = i < prevHp;
-        h.classList.toggle('full', full);
-        if (was && !full) retrigger(h, 'lost');
-        else if (!was && full) retrigger(h, 'gain');
+          h.classList.toggle('full', full);
       }
       return;
     }
@@ -219,9 +191,7 @@ export function createHud(deps: HudDeps): Hud {
       // rang écrit dans la balle (II / III) : le rang ne repose pas que sur les anneaux
       pill.append(el('span', 'ball', it.tier === 1 ? '' : it.tier === 2 ? 'II' : 'III'), el('span', 'num cnt', `×${n}`));
       volleyBox.append(pill);
-      if (keys[i] === pendingPulse) retrigger(pill, 'pulse');
     }
-    pendingPulse = -1;
     fitVolley(counts);
   }
 
@@ -255,7 +225,6 @@ export function createHud(deps: HudDeps): Hud {
   bus.on('combo:milestone', (e) => {
     const cur = Number(shot.dataset.level ?? '0');
     if (e.level > cur) shot.dataset.level = String(e.level);
-    retrigger(shot, 'pop');
   });
   bus.on('volley:end', (e) => {
     shotLingering = true;
@@ -265,18 +234,9 @@ export function createHud(deps: HudDeps): Hud {
       shotVal.textContent = fmt(e.shotDamage);
     }
   });
-  bus.on('volley:fusion', (e) => {
-    pendingPulse = ELEMENT_INDEX[e.element] * 4 + e.tier;
-    volleyDirty = true; // force le rendu pour appliquer la pulsation
+  bus.on('volley:fusion', () => {
+    volleyDirty = true;
   });
-  bus.on('drop:collected', (e) => {
-    if (e.kind === 'coin') retrigger(coinBox, 'pop');
-    else if (e.kind === 'fragment') retrigger(fragBox, 'pop');
-    else if (e.kind === 'heart') retrigger(hpBox, 'pop');
-    else retrigger(volleyBox, 'pop');
-  });
-  bus.on('player:damaged', () => retrigger(hpBox, 'shake'));
-  bus.on('player:healed', () => retrigger(hpBox, 'pop'));
 
   // --- cadre calé sur le canvas ------------------------------------------
   /** place le compteur de dégâts dans la bande au-dessus du plateau, sinon à la place de V<wave> */
@@ -323,7 +283,7 @@ export function createHud(deps: HudDeps): Hud {
 
   function update(s: Readonly<RunState>): void {
     if (s.hp !== cHp || s.maxHp !== cMaxHp) {
-      renderHp(s.hp, s.maxHp, cHp, cMaxHp);
+      renderHp(s.hp, s.maxHp, cMaxHp);
       cHp = s.hp;
       cMaxHp = s.maxHp;
     }
@@ -331,18 +291,15 @@ export function createHud(deps: HudDeps): Hud {
       cWave = s.wave;
       waveBox.textContent = `V${s.wave}`;
     }
-    const now = performance.now();
     if (s.coins !== cCoins) {
-      rollTo(roll.coins, s.coins, now, cCoins < 0 || s.coins < cCoins);
       cCoins = s.coins;
+      coinVal.textContent = fmt(s.coins);
     }
-    rollStep(roll.coins, now);
     const frags = s.stats.fragmentsEarned;
     if (frags !== cFrags) {
-      rollTo(roll.frags, frags, now, cFrags < 0 || frags < cFrags);
       cFrags = frags;
+      fragVal.textContent = fmt(frags);
     }
-    rollStep(roll.frags, now);
     if (volleyDirty || s.volley.length !== cVolleyLen || volleySignature(s.volley) !== cVolleySig) {
       cVolleyLen = s.volley.length;
       cVolleySig = volleySignature(s.volley);
@@ -382,7 +339,6 @@ export function createHud(deps: HudDeps): Hud {
   }
 
   function showComboHint(combo: number): void {
-    retrigger(shot, 'pop-big');
     comboHint.textContent = `↻ ×${combo}`;
     comboHint.style.top = `calc(${shot.style.top || '0px'} + var(--shot-size, 28px) + 6px)`;
     setVisible(comboHint, true);
@@ -392,7 +348,6 @@ export function createHud(deps: HudDeps): Hud {
 
   function reset(): void {
     cHp = cMaxHp = cWave = cCoins = cFrags = cVolleyLen = cShot = -1;
-    roll.coins.shown = roll.frags.shown = -1;
     volleyDirty = true;
     shotLingering = false;
     shot.dataset.level = '0';

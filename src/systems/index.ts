@@ -107,8 +107,6 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     const s: Settings = { ...d.settings };
     if (typeof patch.sfx === 'number' && Number.isFinite(patch.sfx)) s.sfx = clamp01(patch.sfx);
     if (typeof patch.music === 'number' && Number.isFinite(patch.music)) s.music = clamp01(patch.music);
-    if (typeof patch.shake === 'boolean') s.shake = patch.shake;
-    if (typeof patch.reduceMotion === 'boolean') s.reduceMotion = patch.reduceMotion;
     commit({ ...d, settings: s });
   }
 

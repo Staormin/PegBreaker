@@ -53,8 +53,6 @@ export function createUI(deps: UiDeps): UI {
   let lastPhase: RunPhase | null = null;
   let lastCoins = -1;
 
-  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-  const reduceMotion = (): boolean => (meta?.data.settings.reduceMotion ?? false) || (prefersReduced?.matches ?? false);
 
   // --- HUD + input ---------------------------------------------------------
   const isDaily = new URLSearchParams(location.search).get('daily') === '1';
@@ -134,7 +132,7 @@ export function createUI(deps: UiDeps): UI {
     : null;
   const dailyScreen = meta ? createDailyScreen(meta, bus, back) : null;
   const settingsScreen = meta
-    ? createSettingsScreen(meta, bus, audio, renderer, back, () => {
+    ? createSettingsScreen(meta, bus, audio, back, () => {
         // abandon : nouvelle run (mêmes modificateurs méta que la sim courante)
         meta.setCurrentRun(null);
         sim.restart();
@@ -154,22 +152,12 @@ export function createUI(deps: UiDeps): UI {
   let keyboardUser = false;
   window.addEventListener('keydown', () => (keyboardUser = true), true);
   window.addEventListener('pointerdown', () => (keyboardUser = false), true);
-  /** transitions : fondu + glissé 200 ms (ouverture via CSS, fermeture via .closing) */
-  const TRANSITION_MS = 200;
+  /** changement d'écran : fondu court (100 ms, CSS) à l'ouverture, fermeture instantanée */
   function show(next: UiScreen): void {
     if (next === screen) return;
-    const prev = screen;
     screen = next;
     if (next === 'title') onboarding.showLogo();
-    const animate = !reduceMotion();
-    for (const s of screens) {
-      const was = s.id === prev && s.root.classList.contains('visible');
-      s.root.classList.toggle('visible', s.id === next);
-      if (was && animate && s.id !== next) {
-        s.root.classList.add('closing');
-        setTimeout(() => s.root.classList.remove('closing'), TRANSITION_MS);
-      }
-    }
+    for (const s of screens) s.root.classList.toggle('visible', s.id === next);
     root.dataset.screen = next;
     if (next === 'game') hud.layout();
     if (next === 'meta') well?.refresh(true);
@@ -231,7 +219,7 @@ export function createUI(deps: UiDeps): UI {
   function openGameover(summary: RunSummary): void {
     gameoverPending = false;
     clearTimeout(gameoverTimer);
-    gameover.open(summary, reduceMotion(), bestDepthBefore);
+    gameover.open(summary, bestDepthBefore);
     show('gameover');
   }
   function scheduleGameover(summary: RunSummary): void {
@@ -325,7 +313,6 @@ export function createUI(deps: UiDeps): UI {
   requestAnimationFrame(relayout);
 
   // pas d'écran titre bloquant : le jeu est visible et jouable dès le chargement
-  let lastMetaRef: unknown = null;
 
   function update(state: Readonly<RunState>): void {
     // secours : écran cohérent avec la phase (reprise de run, événement manqué)
@@ -343,11 +330,6 @@ export function createUI(deps: UiDeps): UI {
     if (screen === 'shop' && state.coins !== lastCoins) {
       lastCoins = state.coins;
       shop.refreshAffordability(state.coins);
-    }
-    // mouvements réduits (réglage méta) : coupe les transitions CSS de l'UI
-    if (meta && meta.data !== lastMetaRef) {
-      lastMetaRef = meta.data;
-      root.classList.toggle('pb-reduce', meta.data.settings.reduceMotion);
     }
     if (screen === 'settings') settingsScreen?.tick(state);
     hud.update(state);

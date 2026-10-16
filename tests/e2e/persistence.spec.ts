@@ -147,31 +147,28 @@ test('(d) sauvegarde corrompue : le jeu charge, backup créé, 0 erreur console'
   expect(errors).toEqual([]);
 });
 
-test('(e) réglages : secousses et SFX coupés via le DOM, persistants, aucun SFX joué après unlock', async ({ page }) => {
+test('(e) réglages : volumes SFX et musique coupés via le DOM, persistants, aucun SFX joué après unlock', async ({ page }) => {
   test.setTimeout(60_000);
   const errors = watchErrors(page);
   await page.goto('/');
   await waitReady(page);
   await page.locator('.hud-gear').click();
   await screenIs(page, 'settings');
-  const shake = page.locator('[data-setting="shake"]');
-  await expect(shake).toHaveClass(/\bon\b/);
-  await shake.click();
-  await expect(shake).not.toHaveClass(/\bon\b/);
+  // le mode « mouvements réduits » est le comportement unique : plus d'options secousses / mouvements
+  await expect(page.locator('[data-setting="shake"], [data-setting="reduceMotion"]')).toHaveCount(0);
   await page.locator('input[data-setting="sfx"]').fill('0');
+  await page.locator('input[data-setting="music"]').fill('0');
   const s1 = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.meta.data.settings);
-  expect(s1.shake).toBe(false);
-  expect(s1.sfx).toBe(0);
+  expect(s1).toEqual({ sfx: 0, music: 0 });
 
   await page.reload();
-  await waitReady(page); // le titre (si présent) est fermé par un clic = unlock audio
+  await waitReady(page);
   const s2 = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.meta.data.settings);
-  expect(s2.shake).toBe(false);
-  expect(s2.sfx).toBe(0);
+  expect(s2).toEqual({ sfx: 0, music: 0 });
   await page.locator('.hud-gear').click();
   await screenIs(page, 'settings');
-  await expect(page.locator('[data-setting="shake"]')).not.toHaveClass(/\bon\b/);
   await expect(page.locator('input[data-setting="sfx"]')).toHaveValue('0');
+  await expect(page.locator('input[data-setting="music"]')).toHaveValue('0');
   await page.locator('.screen-settings .btn-primary').click();
   await screenIs(page, 'game');
 
@@ -183,13 +180,14 @@ test('(e) réglages : secousses et SFX coupés via le DOM, persistants, aucun SF
   const audio = await page.evaluate(() => {
     const a = (window as unknown as QaWindow).__pegbreaker.audio as unknown as {
       unlocked: boolean;
-      debug: { contextState: string; mixer: { accepted: number; dropped: number }; engine: { nodesCreated: number } };
+      debug: { contextState: string; mixer: { accepted: number; dropped: number }; engine: { nodesCreated: number }; musicPlaying: boolean };
     };
-    return { unlocked: a.unlocked, state: a.debug.contextState, accepted: a.debug.mixer.accepted, nodes: a.debug.engine.nodesCreated };
+    return { unlocked: a.unlocked, state: a.debug.contextState, accepted: a.debug.mixer.accepted, nodes: a.debug.engine.nodesCreated, music: a.debug.musicPlaying };
   });
-  test.info().annotations.push({ type: 'audio sfx=0', description: JSON.stringify(audio) });
+  test.info().annotations.push({ type: 'audio volumes=0', description: JSON.stringify(audio) });
   expect(audio.unlocked, 'contexte audio déverrouillé').toBe(true);
   expect(audio.accepted, 'aucune voix SFX admise avec sfx = 0').toBe(0);
+  expect(audio.music, 'pas de musique avec music = 0').toBe(false);
   expect(errors).toEqual([]);
 });
 

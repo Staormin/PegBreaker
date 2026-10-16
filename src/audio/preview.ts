@@ -142,7 +142,7 @@ function stress(emit: (e: GameEvent) => void, seconds: number): void {
 
 export function mountAudioPreview(root: HTMLElement): AudioSystemDev {
   const bus = createEventBus();
-  const audio = createAudio(bus, { sfx: 0.8, music: 0.5, shake: true, reduceMotion: false });
+  const audio = createAudio(bus, { sfx: 0.8, music: 0.5 });
   let wave = 1;
 
   root.innerHTML = '';

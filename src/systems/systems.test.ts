@@ -56,7 +56,7 @@ describe('sauvegarde', () => {
     expect(d.stats.runs).toBe(0);
     expect(d.achievements).toEqual([]);
     expect(d.currentRun).toBeNull();
-    expect(d.settings).toEqual({ sfx: 0.8, music: 0.5, shake: true, reduceMotion: false });
+    expect(d.settings).toEqual({ sfx: 0.8, music: 0.5 });
     expect(d.onboarded).toBe(false);
     expect(st.getItem(SAVE_KEY)).toBeNull(); // load n'écrit pas
   });
@@ -94,7 +94,7 @@ describe('sauvegarde', () => {
         version: 1,
         meta: { fragments: 120, unlockedElements: ['fire'], nodes: { hp: 2, bogus: 'x' } },
         stats: { runs: 12, bestCombo: 'beaucoup' },
-        settings: { sfx: 0.3 },
+        settings: { sfx: 0.3, shake: false, reduceMotion: true }, // anciennes clés : ignorées
         daily: { '2026-10-15': { depth: 7, score: 1234 }, bad: 3 },
       }),
     );
@@ -109,7 +109,7 @@ describe('sauvegarde', () => {
     expect(d.stats.runs).toBe(12);
     expect(d.stats.bestCombo).toBe(0);
     expect(d.stats.totalBlocks).toBe(0);
-    expect(d.settings).toEqual({ sfx: 0.3, music: 0.5, shake: true, reduceMotion: false });
+    expect(d.settings).toEqual({ sfx: 0.3, music: 0.5 });
     expect(d.achievements).toEqual([]);
     expect(d.daily).toEqual({ '2026-10-15': { depth: 7, score: 1234, completedAt: '' } });
     expect(d.currentRun).toBeNull();
@@ -167,7 +167,7 @@ describe('sauvegarde', () => {
       m.onRunEnd(summary({}, { fragmentsEarned: 100 }));
       m.buyNode('hp');
       m.setCurrentRun(null);
-      m.updateSettings({ shake: false });
+      m.updateSettings({ music: 0.1 });
       m.reset();
     }).not.toThrow();
     // quota seulement : l'état en mémoire reste cohérent
@@ -209,8 +209,8 @@ describe('sauvegarde', () => {
   it('updateSettings borne les volumes ; setOnboarded persiste', () => {
     const st = createMemoryStorage();
     const m = createMeta(st, cfg(), fixedNow);
-    m.updateSettings({ sfx: 3, music: -1, reduceMotion: true });
-    expect(m.data.settings).toEqual({ sfx: 1, music: 0, shake: true, reduceMotion: true });
+    m.updateSettings({ sfx: 3, music: -1 });
+    expect(m.data.settings).toEqual({ sfx: 1, music: 0 });
     m.setOnboarded();
     expect(createMeta(st, cfg(), fixedNow).data.onboarded).toBe(true);
   });

@@ -1,8 +1,9 @@
 // render/index.ts — renderer canvas 2D de Pegbreaker (propriétaire : feel-artist).
-// Lit RunState en lecture seule, s'abonne au bus pour le juice, appelle TimeControl
-// pour hit-stop / slow-mo. Ne touche jamais à la sim.
+// Lit RunState en lecture seule et s'abonne au bus pour le feedback. Ne touche jamais à la sim
+// ni au temps : pas de hit-stop, pas de slow-mo, pas de secousse, pas de flash plein écran
+// (choix produit : tout le feedback reste local, à l'endroit de l'événement).
 import type { EventBus, Unsubscribe } from '../core/events';
-import type { GameConfig, Renderer, RunState, TimeControl, Vec2 } from '../core/types';
+import type { GameConfig, Renderer, RunState, Vec2 } from '../core/types';
 import { boardToScreen, computeLayout, createLayout, MAX_DPR, screenToBoard } from './layout';
 import { buildSprites, type Sprites } from './sprites';
 import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK, PRIO_HIGH, PRIO_LOW } from './particles';
@@ -30,7 +31,6 @@ export interface PegRenderer extends Renderer {
 export function createRenderer(
   canvas: HTMLCanvasElement,
   bus: EventBus,
-  time: TimeControl,
   config: GameConfig,
 ): PegRenderer {
   // canvas transparent : le fond statique est posé en CSS (backdrop.ts), bien moins cher
@@ -46,7 +46,6 @@ export function createRenderer(
   let sprites: Sprites | null = null;
   let frame = 0;
   let lastState: Readonly<RunState> | null = null;
-  let reduceMotion = false;
   let backdrops: string[] = [];
   let backdropWave = -1;
   let backdropLevel = 0;
@@ -72,7 +71,6 @@ export function createRenderer(
     vfx.ring(x, y, 0.1, 0.8 + 0.2 * tier, 280, c, 0.09);
     vfx.ring(x, y, 0.05, 0.5, 200, '#ffffff', 0.04);
     particles.burst(x, y, 10 + 4 * tier, c, P_SPARK, 2, 6, 0, Math.PI, 0.2, 0.4, 0.04, 0.08, 0);
-    vfx.addShake(2 + tier);
   });
 
   // Qualité adaptative. La résolution interne effective = min(DPR de l'écran, plafond surface,
@@ -178,9 +176,9 @@ export function createRenderer(
   const kindColor = (k: number): string => colors.kind[k] ?? PALETTE.block;
   const elemColor = (e: keyof typeof ELEMENT_INDEX): string => colors.element[ELEMENT_INDEX[e]] ?? PALETTE.stone;
   const subs: Unsubscribe[] = [];
-  /** J2-01 : en mouvements réduits, la sim n'est jamais gelée (le flash/vignette local reste) */
-  const hitStop = (ms: number): void => {
-    if (!reduceMotion) time.requestHitStop(ms);
+  /** flash rouge local de la rangée du joueur (brèche, dégâts) */
+  const flashPlayerRow = (ms: number): void => {
+    vfx.flashRect(0, board.rows - 1, board.cols, 1, ms, PALETTE.danger);
   };
 
   subs.push(bus.on('ball:bounce', (e) => {
@@ -222,7 +220,6 @@ export function createRenderer(
     particles.burst(cx, cy, n, kindColor(k), P_SHARD, 3, 8, -Math.PI / 2, Math.PI, 0.35, 0.6, 0.07, 0.13, 7);
     particles.burst(cx, cy, 4, '#ffffff', P_SPARK, 3, 7, -Math.PI / 2, Math.PI, 0.1, 0.2, 0.04, 0.06, 0);
     vfx.flashRect(cx - w * 0.5 + 0.05, cy - 0.45, w - 0.1, 0.9, 70, '#ffffff');
-    vfx.addShake(2);
     vfx.releaseBlockFx(e.blockId);
   }));
 
@@ -231,56 +228,46 @@ export function createRenderer(
     vfx.ring(e.pos.x, e.pos.y, 0.05, Math.max(0.4, e.radius * 0.75), 200, '#ffffff', 0.06);
     vfx.flashCircle(e.pos.x, e.pos.y, Math.max(0.4, e.radius * 0.6), 120, '#ffe0b0');
     particles.burst(e.pos.x, e.pos.y, 14, elemColor('fire'), P_SPARK, 4, 9, 0, Math.PI, 0.15, 0.35, 0.05, 0.08, 0, PRIO_HIGH);
-    vfx.addShake(6);
-    hitStop(30);
   }));
 
   subs.push(bus.on('combo:milestone', (e) => {
-    // gradation nette : le niveau 3 doit se sentir dans les mains, le 1 rester un clin d'œil
+    // gradation lisible sans secousse ni gel : 1 = petit éclat, 2 = gerbe de rayons,
+    // 3 = grandes ondes + particules + gros libellé + tous les blocs « sautent »
     const lvl = e.level;
+    const x = e.pos.x, y = e.pos.y;
     const label = `COMBO ×${e.combo}`;
     // libellé gardé à l'intérieur du plateau (il est large)
-    const lx = Math.min(board.cols - 1.3, Math.max(1.3, e.pos.x));
-    // mouvements réduits : pas de flash plein écran ni de gel, mais un éclat local lisible
-    if (reduceMotion && lvl > 1) vfx.flashCircle(lx, e.pos.y, 0.5 + 0.3 * lvl, 220, PALETTE.accent);
+    const lx = Math.min(board.cols - 1.3, Math.max(1.3, x));
     if (lvl === 1) {
-      vfx.screenFlash(0.08, '#ffffff');
-      vfx.addShake(3);
-      vfx.ring(e.pos.x, e.pos.y, 0.1, 0.9, 260, PALETTE.accent, 0.06);
-      particles.burst(e.pos.x, e.pos.y, 8, PALETTE.accent, P_SPARK, 2.5, 6, 0, Math.PI, 0.15, 0.3, 0.04, 0.06, 0, PRIO_HIGH);
-      numbers.addLabel(lx, e.pos.y - 0.35, label, PALETTE.accent, 5, COMBO_SLOT);
+      vfx.flashCircle(x, y, 0.35, 140, PALETTE.accent);
+      vfx.ring(x, y, 0.1, 0.9, 260, PALETTE.accent, 0.06);
+      particles.burst(x, y, 8, PALETTE.accent, P_SPARK, 2.5, 6, 0, Math.PI, 0.15, 0.3, 0.04, 0.06, 0, PRIO_HIGH);
+      numbers.addLabel(lx, y - 0.35, label, PALETTE.accent, 5, COMBO_SLOT);
     } else if (lvl === 2) {
-      vfx.screenFlash(0.18, '#ffffff');
-      vfx.addShake(5);
-      vfx.ring(e.pos.x, e.pos.y, 0.1, 1.5, 320, PALETTE.accent, 0.1);
-      vfx.rays(e.pos.x, e.pos.y, 260, PALETTE.accent, 12, 1.2);
-      particles.burst(e.pos.x, e.pos.y, 18, PALETTE.accent, P_SPARK, 3, 8, 0, Math.PI, 0.2, 0.4, 0.05, 0.08, 0, PRIO_HIGH);
-      numbers.addLabel(lx, e.pos.y - 0.4, label, PALETTE.accent, 8, COMBO_SLOT);
-      hitStop(40);
+      vfx.flashCircle(x, y, 0.6, 180, PALETTE.accent);
+      vfx.ring(x, y, 0.1, 1.5, 320, PALETTE.accent, 0.1);
+      vfx.rays(x, y, 320, PALETTE.accent, 14, 1.4);
+      particles.burst(x, y, 22, PALETTE.accent, P_SPARK, 3, 8, 0, Math.PI, 0.2, 0.4, 0.05, 0.08, 0, PRIO_HIGH);
+      numbers.addLabel(lx, y - 0.4, label, PALETTE.accent, 8, COMBO_SLOT);
     } else {
-      vfx.screenFlash(0.35, PALETTE.accent);
-      vfx.addShake(9);
-      vfx.ring(e.pos.x, e.pos.y, 0.2, 3.2, 450, PALETTE.accent, 0.16);
-      vfx.ring(e.pos.x, e.pos.y, 0.1, 2.0, 350, '#ffffff', 0.07);
-      vfx.rays(e.pos.x, e.pos.y, 420, '#ffffff', 24, 2.6);
-      particles.burst(e.pos.x, e.pos.y, 36, PALETTE.accent, P_SPARK, 4, 11, 0, Math.PI, 0.25, 0.5, 0.06, 0.1, 0, PRIO_HIGH);
-      particles.burst(e.pos.x, e.pos.y, 12, '#ffffff', P_SHARD, 3, 7, 0, Math.PI, 0.3, 0.5, 0.05, 0.09, 4, PRIO_HIGH);
-      numbers.addLabel(lx, e.pos.y - 0.45, label, PALETTE.accent, FONT_BUCKETS - 1, COMBO_SLOT);
+      vfx.flashCircle(x, y, 1.0, 240, '#ffffff');
+      vfx.ring(x, y, 0.2, 3.4, 500, PALETTE.accent, 0.18);
+      vfx.ring(x, y, 0.1, 2.2, 400, '#ffffff', 0.08);
+      vfx.ring(x, y, 0.05, 1.2, 300, PALETTE.accent, 0.05);
+      vfx.rays(x, y, 450, '#ffffff', 24, 2.8);
+      particles.burst(x, y, 48, PALETTE.accent, P_SPARK, 4, 11, 0, Math.PI, 0.25, 0.5, 0.06, 0.1, 0, PRIO_HIGH);
+      particles.burst(x, y, 16, '#ffffff', P_SHARD, 3, 7, 0, Math.PI, 0.3, 0.5, 0.05, 0.09, 4, PRIO_HIGH);
+      numbers.addLabel(lx, y - 0.45, label, PALETTE.accent, FONT_BUCKETS - 1, COMBO_SLOT);
       // onde : tous les blocs « sautent »
       if (lastState) {
         const blocks = lastState.blocks;
         for (let i = 0; i < blocks.length; i++) vfx.blockFx(blocks[i]!.id).squashT = 0;
       }
-      hitStop(70);
-      if (!reduceMotion) time.requestSlowMo(0.3, 200);
-      vfx.vignette(650);
     }
   }));
 
   subs.push(bus.on('player:damaged', () => {
-    vfx.redEdges(500);
-    vfx.addShake(8);
-    hitStop(60);
+    flashPlayerRow(360);
   }));
 
   subs.push(bus.on('drop:collected', (e) => {
@@ -312,20 +299,29 @@ export function createRenderer(
     vfx.ring(e.pos.x, e.pos.y, 0.1, 0.55, 220, elemColor('ice'), 0.05);
   }));
 
-  subs.push(bus.on('boss:spawned', () => {
-    vfx.tremble(400, 4);
+  subs.push(bus.on('boss:spawned', (e) => {
+    // arrivée du boss : onde et gerbe locales sur le bloc (son « pop » d'apparition s'y ajoute)
+    const blocks = lastState ? lastState.blocks : null;
+    if (!blocks) return;
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i]!;
+      if (b.id !== e.blockId) continue;
+      const x = b.col + b.width * 0.5, y = b.row + 0.5;
+      vfx.ring(x, y, 0.3, b.width * 0.9, 400, kindColor(KIND_INDEX.boss), 0.12);
+      vfx.rays(x, y, 380, kindColor(KIND_INDEX.boss), 18, 1.6);
+      break;
+    }
   }));
 
   subs.push(bus.on('boss:killed', (e) => {
     particles.burst(e.pos.x, e.pos.y, 40, kindColor(KIND_INDEX.boss), P_SHARD, 3, 9, 0, Math.PI, 0.4, 0.6, 0.08, 0.16, 6, PRIO_HIGH);
     vfx.ring(e.pos.x, e.pos.y, 0.2, 2.5, 400, PALETTE.accent, 0.12);
-    vfx.screenFlash(0.3, '#ffffff');
-    vfx.addShake(9);
-    hitStop(80);
+    vfx.flashCircle(e.pos.x, e.pos.y, 1.2, 200, '#ffffff');
+    vfx.rays(e.pos.x, e.pos.y, 420, PALETTE.accent, 24, 2.4);
   }));
 
   subs.push(bus.on('block:breached', () => {
-    vfx.flashRect(0, board.rows - 1, board.cols, 1, 220, PALETTE.danger);
+    flashPlayerRow(220);
   }));
 
   subs.push(bus.on('ball:split', (e) => {
@@ -383,15 +379,6 @@ export function createRenderer(
     boardToScreen(p: Vec2): Vec2 {
       ensureSprites();
       return boardToScreen(layout, p);
-    },
-    setReduceMotion(v: boolean) {
-      reduceMotion = v;
-      vfx.reduceMotion = v;
-      // « au moins divisé par deux » : 0,45 garde une marge face à l'aléa des tirages
-      particles.density = v ? 0.45 : 1;
-    },
-    setShake(v: boolean) {
-      vfx.shakeEnabled = v;
     },
     /** résolution interne courante (qualité adaptative), pour QA */
     get dpr() {

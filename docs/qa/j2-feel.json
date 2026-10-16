@@ -18,8 +18,8 @@
     },
     "block:hit": {
       "n": 156,
-      "withParticles": 156,
-      "particleSum": 312,
+      "withParticles": 137,
+      "particleSum": 137,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -27,7 +27,7 @@
     "ball:bounce:block": {
       "n": 122,
       "withParticles": 122,
-      "particleSum": 489,
+      "particleSum": 216,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -35,7 +35,7 @@
     "ball:bounce:wall": {
       "n": 483,
       "withParticles": 483,
-      "particleSum": 1922,
+      "particleSum": 844,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -43,7 +43,7 @@
     "block:destroyed": {
       "n": 31,
       "withParticles": 31,
-      "particleSum": 474,
+      "particleSum": 216,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -59,23 +59,23 @@
     "drop:collected": {
       "n": 13,
       "withParticles": 13,
-      "particleSum": 104,
-      "domOk": 13,
+      "particleSum": 44,
+      "domOk": 0,
       "domChecked": 13,
       "saturated": 0
     },
     "block:explode": {
       "n": 18,
       "withParticles": 18,
-      "particleSum": 252,
+      "particleSum": 114,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
     },
     "ball:grounded": {
       "n": 156,
-      "withParticles": 156,
-      "particleSum": 312,
+      "withParticles": 139,
+      "particleSum": 139,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -83,7 +83,7 @@
     "combo:milestone": {
       "n": 26,
       "withParticles": 26,
-      "particleSum": 318,
+      "particleSum": 166,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -107,7 +107,7 @@
     "ball:bounce:peg": {
       "n": 93,
       "withParticles": 93,
-      "particleSum": 370,
+      "particleSum": 168,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -115,7 +115,7 @@
     "ball:split": {
       "n": 6,
       "withParticles": 6,
-      "particleSum": 36,
+      "particleSum": 17,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -155,7 +155,7 @@
     "lightning:chain": {
       "n": 6,
       "withParticles": 6,
-      "particleSum": 24,
+      "particleSum": 9,
       "domOk": 0,
       "domChecked": 0,
       "saturated": 0
@@ -172,7 +172,7 @@
       "n": 2,
       "withParticles": 0,
       "particleSum": 0,
-      "domOk": 2,
+      "domOk": 0,
       "domChecked": 2,
       "saturated": 0
     }
@@ -185,112 +185,114 @@
   "triggers": [
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "combo:milestone:2",
-      "frozenAfter": true,
+      "frozenAfter": false,
       "level": 2
     },
     {
       "type": "combo:milestone:3",
-      "frozenAfter": true,
+      "frozenAfter": false,
       "level": 3
     },
     {
       "type": "combo:milestone:2",
-      "frozenAfter": true,
+      "frozenAfter": false,
       "level": 2
     },
     {
       "type": "combo:milestone:2",
-      "frozenAfter": true,
+      "frozenAfter": false,
       "level": 2
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "combo:milestone:3",
-      "frozenAfter": true,
+      "frozenAfter": false,
       "level": 3
     },
     {
       "type": "block:explode",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "player:damaged",
-      "frozenAfter": true
+      "frozenAfter": false
     },
     {
       "type": "player:damaged",
       "frozenAfter": false
     }
   ],
-  "frozenFrames": 34,
+  "frozenFrames": 0,
   "frozenUnexplained": 0,
+  "firingFrozen": 0,
+  "firingFrames": 1121,
   "advanceSamples": [
     0.03,
     0.17,
@@ -337,9 +339,8 @@
     0.65,
     0.78,
     0.92,
-    0.13,
-    0.53,
-    0.93,
+    0.27,
+    0.67,
     0.35,
     0.75,
     0.12,
@@ -353,15 +354,16 @@
     0,
     0.4,
     0.8,
-    0.27,
-    0.67,
+    0,
+    0.4,
+    0.8,
     0.17,
     0.57,
     0.97
   ],
   "slowmo": {
     "level3": 2,
-    "ratioMin": 0.16500345513008047
+    "ratioMin": 0.8158557879096874
   },
-  "maxParticles": 265
+  "maxParticles": 121
 }

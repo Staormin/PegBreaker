@@ -5,7 +5,7 @@ export const SAVE_KEY = 'pegbreaker.save.v1';
 export const BACKUP_KEY = 'pegbreaker.save.backup';
 export const SAVE_VERSION = 1;
 
-export const DEFAULT_SETTINGS: Readonly<Settings> = { sfx: 0.8, music: 0.5, shake: true, reduceMotion: false };
+export const DEFAULT_SETTINGS: Readonly<Settings> = { sfx: 0.8, music: 0.5 };
 
 export function defaultStats(): GlobalStats {
   return { runs: 0, bestDepth: 0, bestWave: 0, bestCombo: 0, bestShotDamage: 0, bestScore: 0, totalFragments: 0, totalBlocks: 0 };

@@ -168,3 +168,34 @@ Corrigés depuis le passage précédent, vérifiés par un test vert :
   - sortie dans `final-metrics.json`.
 - **`progression.spec.ts`** : succès nouveaux par run ; sortie dans `final-progression.json`.
 - **`feel.spec.ts`** : `test.fail` retiré ; J2-01 devient un test de non-régression.
+
+## 8. Retrait du mode mouvement (2026-10-16)
+
+Décision produit : l'ancien mode « mouvements réduits » devient le seul comportement du jeu. Les secousses, le hit-stop, le ralenti, les flashs plein écran, les lignes de vitesse, les animations « pop » et « shake » du HUD et les deux options de réglages disparaissent. `Settings` ne contient plus que `{sfx, music}`.
+
+**Résultat de la suite :** `npm run build`, puis `npx playwright test -c tests/e2e/playwright.qa.config.ts` → **29 tests sur 29 verts en 2 min 09**. Aucune erreur console, aucun softlock, aucun moment mort sur les 10 runs, et 0 violation d'invariant.
+
+Pourquoi une config dédiée : un `vite preview` étranger, lancé à 16:27 depuis l'ancien emplacement du projet, occupe encore le port 4173 et sert l'ancien bundle (`index-jU5Bng04.js` au lieu de `index-CHCa7HbA.js`). Avec `reuseExistingServer`, `npm run test:e2e` testerait ce vieux build. La config `tests/e2e/playwright.qa.config.ts` reprend la config racine mais sert `dist/` sur le port 4177.
+
+**Non-régression « sim jamais figée »** (`feel.spec.ts`, seed `feel-3`, volée de 29 balles) :
+- 1 487 frames de volée observées, **0 frame** où `stats.durationMs` stagne pendant `firing` (onglet visible, écran de jeu) ;
+- 31 anciens déclencheurs de hit-stop présents (explosions, paliers 2+, dégâts) ; au palier 3, la sim tourne à ≥ 0,71× de sa vitesse : il n'y a plus de ralenti ;
+- particules : pic à **191**, pour un plafond de 1 024.
+
+**Tests adaptés :**
+- éclats par bloc détruit : seuil abaissé à ≥ 5 (densité de base 0,45, environ 7 mesurés) ;
+- fusion : on vérifie que le renderer émet des particules, la pulsation HUD n'existant plus ;
+- `drop:collected` : on vérifie les particules et non plus le « pop » du HUD ;
+- réglages : ne testent plus que les volumes ; ils vérifient aussi l'absence des interrupteurs `shake` et `reduceMotion`, et l'absence de musique et de voix SFX avec les volumes à 0.
+
+**fps à CPU 4×, volée de 30 balles (7 éléments), après le retrait :**
+
+| Cas | `renderer.dpr` | fps min / moy. | Frame max |
+|---|---|---|---|
+| Desktop 720×1280, `deviceScaleFactor` 1,5 | **1,25** | 56 / 58,8 | 37 ms |
+| Desktop 720×1280, `deviceScaleFactor` 2 | **1,25** (plafond par surface de pixels) | 53 / 58,3 | 38 ms |
+| Desktop 720×1280, DPR 1 | 1 | 60 / 60 | 34 ms |
+| **Mobile 375×812, DPR 2** | **1,5** | **60 / 60** | 35 ms |
+| Partie normale (qa-1), vitesse 1 et CPU 4× | 1 | 60 / 60 | 29 ms |
+
+J5-01 est très amélioré : en DPR 2 desktop, le minimum passe de 34–36 à **53**, et les frames de bascule de qualité (61–92 ms) disparaissent. Le minimum de 53 reste juste sous les 55 visés, sur une seule mesure en rendu logiciel. Les bugs J4-01 et J4-02 sont signalés corrigés par les tests mobiles, que leur propriétaire a mis à jour.

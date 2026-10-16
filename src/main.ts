@@ -1,5 +1,5 @@
-// main.ts — propriétaire : architecte. Bootstrap, boucle, TimeControl, API de debug.
-import type { DebugApi, GameEvent, MetaSystem, TimeControl, AudioSystem, RunPhase } from './core/types';
+// main.ts — propriétaire : architecte. Bootstrap, boucle, API de debug.
+import type { DebugApi, GameEvent, MetaSystem, AudioSystem, RunPhase } from './core/types';
 import { createEventBus } from './core/events';
 import { loadConfig } from './core/config';
 import { createSim } from './sim';
@@ -11,32 +11,14 @@ import { createAudio } from './audio';
 const VERSION = '0.4.0-j4';
 const FIXED_MS = 1000 / 60;
 
-// --- TimeControl : hit-stop et slow-mo ------------------------------------
-function createTimeControl(): TimeControl & { tick(dtReal: number): void; speed: number; hitStops: number } {
-  let hitStopLeft = 0;
-  let slowLeft = 0;
-  let slowScale = 1;
-  const tc = {
+// --- Vitesse de la simulation (QA : setSpeed) ------------------------------
+function createTimeControl(): { speed: number; readonly timeScale: number } {
+  return {
     speed: 1,
     get timeScale(): number {
-      if (hitStopLeft > 0) return 0;
-      return (slowLeft > 0 ? slowScale : 1) * tc.speed;
-    },
-    hitStops: 0,
-    requestHitStop(ms: number): void {
-      tc.hitStops++;
-      hitStopLeft = Math.max(hitStopLeft, ms);
-    },
-    requestSlowMo(scale: number, ms: number): void {
-      slowScale = Math.min(scale, slowLeft > 0 ? slowScale : 1);
-      slowLeft = Math.max(slowLeft, ms);
-    },
-    tick(dtReal: number): void {
-      if (hitStopLeft > 0) hitStopLeft -= dtReal;
-      else if (slowLeft > 0) slowLeft -= dtReal;
+      return this.speed;
     },
   };
-  return tc;
 }
 
 function boot(): void {
@@ -68,9 +50,7 @@ function boot(): void {
     isDaily,
     dailyDate: isDaily ? meta.todayKey() : null,
   });
-  const renderer = createRenderer(canvas, bus, time, config);
-  renderer.setShake(meta.data.settings.shake);
-  renderer.setReduceMotion(meta.data.settings.reduceMotion);
+  const renderer = createRenderer(canvas, bus, config);
   const ui = createUI({ root: uiRoot, canvas, sim, bus, renderer, audio, meta, config });
 
   // --- API de debug / QA ---------------------------------------------------
@@ -114,9 +94,6 @@ function boot(): void {
       time.speed = Math.max(0.1, Math.min(50, mult));
     },
     fps: 0,
-    get hitStops() {
-      return time.hitStops;
-    },
     get timeScale() {
       return time.timeScale;
     },
@@ -158,7 +135,6 @@ function boot(): void {
       fpsFrames = 0;
     }
 
-    time.tick(dtReal);
     acc += dtReal * time.timeScale;
     // garde-fou : jamais plus de 20 pas par frame (speed élevé en QA)
     let steps = 0;

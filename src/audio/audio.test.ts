@@ -22,7 +22,7 @@ describe('audio sans WebAudio', () => {
     const err = vi.spyOn(console, 'error');
     const warn = vi.spyOn(console, 'warn');
     const bus = createEventBus();
-    const audio = createAudio(bus, { sfx: 0.8, music: 0.5, shake: true, reduceMotion: false });
+    const audio = createAudio(bus, { sfx: 0.8, music: 0.5 });
     expect(audio.unlocked).toBe(false);
     for (const e of EVENTS) bus.emit(e);
     audio.unlock();

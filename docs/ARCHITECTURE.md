@@ -58,9 +58,9 @@ Toutes les interfaces sont dans [`src/core/types.ts`](../src/core/types.ts). Ré
 - `Sim.snapshot()` / `createSim(..., { snapshot })` : reprise d'une run.
 - Entrées de la sim : `GameConfig`, `MetaModifiers` (fournis par `systems`), seed. **Rien d'autre** : pas de DOM, pas de `Date`, pas de `Math.random`.
 
-### `render` → expose `createRenderer(canvas, bus, time): Renderer`
+### `render` → expose `createRenderer(canvas, bus, config): Renderer`
 - `Renderer.draw(state, alpha)` chaque frame ; lit `state` en lecture seule.
-- S'abonne au `EventBus` pour les effets (particules, shake, flash, nombres de dégâts) et appelle `time.requestHitStop(ms)` / `time.requestSlowMo(scale, ms)` via l'interface `TimeControl` (implémentée dans `main.ts`).
+- S'abonne au `EventBus` pour les effets (particules, flashs locaux, nombres de dégâts). Pas de secousse d'écran, de hit-stop ni de ralenti : décision du 2026-10-16 après test, le jeu est meilleur sans.
 - Gère le redimensionnement : plateau en unités logiques (7 × 10 cellules) → pixels avec un `fit` portrait.
 
 ### `audio` → expose `createAudio(bus, settings): AudioSystem`
@@ -80,7 +80,7 @@ Toutes les interfaces sont dans [`src/core/types.ts`](../src/core/types.ts). Ré
 
 ### `main.ts` (architecte)
 - Boucle : `requestAnimationFrame` → accumulateur → `sim.step(fixedDt × timeScale)` → dispatch des événements sur le bus → `renderer.draw`.
-- Implémente `TimeControl` (hit-stop : timeScale 0 pendant N ms ; slow-mo).
+- `timeScale` = vitesse de la sim (1 par défaut, `setSpeed` pour la QA).
 - Expose `window.__pegbreaker: DebugApi` (état, actions, compteurs d'événements, `setSpeed()`) pour Playwright.
 
 ### Convention `advancing`
@@ -110,7 +110,7 @@ Plateau : 7 colonnes × 10 rangées logiques (rangée 0 en haut, rangée 9 = lig
   "achievements": ["combo10", "fusion2"],
   "daily": { "2026-10-16": { "depth": 7, "score": 1234, "completedAt": "2026-10-16T18:00:00.000Z" } },
   "currentRun": null,
-  "settings": { "sfx": 0.8, "music": 0.5, "shake": true, "reduceMotion": false },
+  "settings": { "sfx": 0.8, "music": 0.5 },
   "onboarded": true
 }
 ```

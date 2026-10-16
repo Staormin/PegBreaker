@@ -26,7 +26,7 @@
 1. Le fun est **physique et immédiat** : le premier tir est déjà satisfaisant avant toute mécanique de build, ce qui colle à l'objectif « boucle avant contenu ».
 2. Une seule entrée (glisser pour viser, relâcher pour tirer) : parfait sur mobile comme sur desktop, aucun tutoriel nécessaire.
 3. Le genre est prouvé (Ball x Pit, Peglin, Nubby's) mais **encore peu présent sur les portails web**, contrairement aux survivors.
-4. Très « juicable » : chaque rebond est une occasion de feedback (son, particules, hit-stop), et peu d'entités laissent un large budget de 60 fps.
+4. Très « juicable » : chaque rebond est une occasion de feedback (son, particules, squash), et peu d'entités laissent un large budget de 60 fps.
 5. La structure tour par tour donne une **décision toutes les 5 secondes** et une physique déterministe testable en headless.
 
 ## 1. Pitch

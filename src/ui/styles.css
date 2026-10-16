@@ -15,8 +15,6 @@
   --frag: #c08cff;
   --overlay: rgba(11, 15, 26, 0.86);
   --radius: 14px;
-  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -181,9 +179,6 @@ body {
     0 2px 0 rgba(0, 0, 0, 0.55),
     0 0 14px rgba(255, 233, 92, 0.25);
   opacity: 0;
-  transition:
-    opacity 160ms linear,
-    transform 160ms var(--ease-out);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -205,17 +200,6 @@ body {
   text-shadow:
     0 2px 0 rgba(0, 0, 0, 0.6),
     0 0 18px rgba(255, 94, 94, 0.6);
-}
-.hud-shot.pop {
-  animation: shot-pop 220ms var(--ease-back);
-}
-@keyframes shot-pop {
-  0% {
-    transform: translateX(-50%) scale(calc(var(--s, 1) * 1.06));
-  }
-  100% {
-    transform: translateX(-50%) scale(var(--s, 1));
-  }
 }
 /* pas de place au-dessus du plateau : le compteur remplace V<wave> pendant le tir */
 .hud.shot-in-bar.shot-on .hud-wave {
@@ -293,19 +277,6 @@ body {
   color: var(--text);
   min-width: 1.6em;
 }
-.pill.pulse {
-  animation: pulse 420ms var(--ease-back);
-}
-@keyframes pulse {
-  0% {
-    transform: scale(1.6);
-    filter: brightness(2);
-  }
-  100% {
-    transform: scale(1);
-    filter: none;
-  }
-}
 
 /* bouton Rappel */
 .hud-recall {
@@ -327,56 +298,12 @@ body {
 }
 .hud-recall.on {
   display: flex;
-  animation: appear 200ms var(--ease-back);
 }
 .hud-recall:active {
   transform: translateY(2px);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
 }
 
-/* micro-feedbacks */
-.pop {
-  animation: pop 240ms var(--ease-back);
-}
-@keyframes pop {
-  0% {
-    transform: scale(1.35);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-.shake {
-  animation: shake 320ms linear;
-}
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-5px);
-  }
-  40% {
-    transform: translateX(5px);
-  }
-  60% {
-    transform: translateX(-3px);
-  }
-  80% {
-    transform: translateX(3px);
-  }
-}
-@keyframes appear {
-  0% {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
 
 /* ---------------------------------------------------------------- écrans */
 .screen {
@@ -396,44 +323,12 @@ body {
 }
 .screen.visible {
   display: flex;
-  animation: fade-in 200ms linear;
+  /* seul mouvement d'écran conservé : fondu court à l'ouverture (fermeture instantanée) */
+  animation: screen-in 100ms linear;
 }
-.screen.visible > .panel {
-  animation: panel-in 200ms var(--ease-out);
-}
-/* fermeture : l'écran reste affiché le temps du fondu (sans intercepter les clics) */
-.screen.closing {
-  display: flex;
-  pointer-events: none;
-  animation: fade-out 200ms linear forwards;
-}
-.screen.closing > .panel {
-  animation: panel-out 200ms linear forwards;
-}
-@keyframes fade-out {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes panel-in {
-  from {
-    transform: translateY(18px);
-  }
-  to {
-    transform: none;
-  }
-}
-@keyframes panel-out {
-  to {
-    transform: translateY(12px);
-  }
-}
-@keyframes fade-in {
+@keyframes screen-in {
   from {
     opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 .panel {
@@ -472,7 +367,6 @@ body {
   gap: 6px;
   border: 2px solid transparent;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
-  transition: transform 80ms linear;
 }
 .btn:active:not(:disabled) {
   transform: translateY(2px);
@@ -543,7 +437,6 @@ body {
     0 4px 0 rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   cursor: pointer;
-  animation: card-in 340ms var(--ease-back) both;
 }
 .card:hover:not(:disabled) {
   border-color: var(--c, var(--accent));
@@ -553,16 +446,6 @@ body {
 }
 .card:disabled {
   cursor: default;
-}
-@keyframes card-in {
-  0% {
-    opacity: 0;
-    transform: translateY(22px) scale(0.92);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
 }
 .card-icon {
   width: 56px;
@@ -595,7 +478,6 @@ body {
   color: var(--text);
 }
 .screen-reward .btn-ghost {
-  animation: card-in 340ms var(--ease-back) both;
   align-self: center;
 }
 
@@ -675,9 +557,6 @@ body {
 }
 .frag-gain .stat-label {
   font-size: 15px;
-}
-.frag-gain.done {
-  animation: pop 300ms var(--ease-back);
 }
 
 /* logo (intro du premier lancement) */
@@ -792,10 +671,6 @@ body {
   background: var(--bg1);
   border: 2px solid var(--frag);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
-  animation: toast-in 320ms var(--ease-back) both;
-}
-.toast.out {
-  animation: toast-out 250ms linear both;
 }
 .toast-kicker {
   grid-area: kicker;
@@ -815,22 +690,6 @@ body {
   font-weight: 900;
   font-size: 20px;
   color: var(--frag);
-}
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(-16px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes toast-out {
-  to {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
 }
 
 /* boutons supplémentaires */
@@ -857,7 +716,6 @@ body {
   color: var(--accent);
   font-weight: 900;
   font-size: 17px;
-  animation: pop 360ms var(--ease-back);
 }
 
 /* ---------------------------------------------------------------- le Puits */
@@ -1030,7 +888,6 @@ body {
   height: 26px;
   border-radius: 999px;
   background: var(--wall);
-  transition: background 120ms linear;
 }
 .switch-track::after {
   content: '';
@@ -1041,7 +898,6 @@ body {
   height: 20px;
   border-radius: 50%;
   background: var(--text);
-  transition: transform 160ms var(--ease-out);
 }
 .switch.on .switch-track {
   background: var(--good);
@@ -1170,9 +1026,6 @@ body {
   pointer-events: auto;
   cursor: pointer;
 }
-.set-switch {
-  width: 100%;
-}
 
 @media (min-width: 720px) {
   .tabs {
@@ -1214,20 +1067,9 @@ body {
 }
 .intro-logo.on {
   display: flex;
-  animation: fade-in 400ms linear;
-}
-.intro-logo.out {
-  animation: logo-out 600ms var(--ease-out) forwards;
 }
 .intro-logo .logo {
   font-size: clamp(32px, 11vw, 72px);
-}
-@keyframes logo-out {
-  to {
-    opacity: 0;
-    transform: translateY(calc(-50% - 24px)) scale(1.06);
-    filter: blur(4px);
-  }
 }
 
 /* fantôme de geste : main + ligne de visée, rejoués en boucle */
@@ -1236,7 +1078,6 @@ body {
   inset: 0;
   pointer-events: none;
   display: none;
-  --dur: 2.6s;
   --hs: 1;
   --sw: 3px;
 }
@@ -1244,7 +1085,6 @@ body {
   display: block;
 }
 .ghost.insist {
-  --dur: 3.8s;
   --hs: 1.45;
   --sw: 5px;
 }
@@ -1260,18 +1100,16 @@ body {
   stroke-width: var(--sw);
   stroke-linecap: round;
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  opacity: 0;
-  animation: ghost-line var(--dur) var(--ease-out) infinite;
+  stroke-dashoffset: 0;
+  opacity: 0.8;
 }
 .ghost-target {
   fill: none;
   stroke: var(--accent);
   stroke-width: 3;
-  opacity: 0;
+  opacity: 0.9;
   transform-box: fill-box;
   transform-origin: center;
-  animation: ghost-target var(--dur) linear infinite;
 }
 .ghost-hand {
   position: absolute;
@@ -1280,7 +1118,8 @@ body {
   width: 40px;
   height: 48px;
   transform-origin: 13px 6px;
-  animation: ghost-hand var(--dur) var(--ease-out) infinite;
+  /* fantôme statique : la main est posée sur le bloc visé, la ligne montre la trajectoire */
+  transform: translate(calc(var(--x1) - 13px), calc(var(--y1) - 6px)) scale(var(--hs));
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
 }
 .ghost-fingers {
@@ -1292,107 +1131,12 @@ body {
   fill: var(--accent);
   opacity: 0.7;
 }
-@keyframes ghost-hand {
-  0% {
-    transform: translate(calc(var(--x0) - 13px), calc(var(--y0) - 6px)) scale(calc(var(--hs) * 1.15));
-    opacity: 0;
-  }
-  10% {
-    transform: translate(calc(var(--x0) - 13px), calc(var(--y0) - 6px)) scale(calc(var(--hs) * 1.15));
-    opacity: 1;
-  }
-  20% {
-    transform: translate(calc(var(--x0) - 13px), calc(var(--y0) - 6px)) scale(calc(var(--hs) * 0.9));
-    opacity: 1;
-  }
-  62% {
-    transform: translate(calc(var(--x1) - 13px), calc(var(--y1) - 6px)) scale(calc(var(--hs) * 0.9));
-    opacity: 1;
-  }
-  72% {
-    transform: translate(calc(var(--x1) - 13px), calc(var(--y1) - 6px)) scale(calc(var(--hs) * 1.15));
-    opacity: 1;
-  }
-  88%,
-  100% {
-    transform: translate(calc(var(--x1) - 13px), calc(var(--y1) - 6px)) scale(calc(var(--hs) * 1.15));
-    opacity: 0;
-  }
-}
-@keyframes ghost-line {
-  0%,
-  20% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-  24% {
-    opacity: 0.9;
-  }
-  62%,
-  72% {
-    stroke-dashoffset: 0;
-    opacity: 0.9;
-  }
-  88%,
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-  }
-}
-@keyframes ghost-target {
-  0%,
-  60% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  70% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-  88%,
-  100% {
-    opacity: 0;
-    transform: scale(1.6);
-  }
-}
 
 /* cœurs : vidage animé */
 .heart {
   display: inline-block;
-  transition: color 300ms linear;
-}
-.heart.lost {
-  animation: heart-lost 300ms var(--ease-out);
-}
-.heart.gain {
-  animation: pop 300ms var(--ease-back);
-}
-@keyframes heart-lost {
-  0% {
-    color: var(--heart);
-    transform: scale(1.5);
-  }
-  40% {
-    color: #fff;
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
 }
 
-/* indice du premier palier de combo */
-.hud-shot.pop-big {
-  animation: shot-pop-big 450ms var(--ease-back);
-}
-@keyframes shot-pop-big {
-  0% {
-    transform: translateX(-50%) scale(calc(var(--s, 1) * 1.6));
-  }
-  100% {
-    transform: translateX(-50%) scale(var(--s, 1));
-  }
-}
 .hud-combo-hint {
   position: absolute;
   left: 50%;
@@ -1405,12 +1149,10 @@ body {
   border-radius: 999px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms linear;
   white-space: nowrap;
 }
 .hud-combo-hint.on {
   opacity: 1;
-  animation: pop 300ms var(--ease-back);
 }
 
 /* indice de carte recommandée : anneau pulsé + flèche */
@@ -1423,7 +1165,6 @@ body {
   border-radius: calc(var(--radius) + 6px);
   border: 3px solid var(--accent);
   pointer-events: none;
-  animation: ping 700ms var(--ease-out) 3;
 }
 .hint-ping::after {
   content: '▼';
@@ -1433,37 +1174,9 @@ body {
   transform: translateX(-50%);
   color: var(--accent);
   font-size: 20px;
-  animation: bob 500ms ease-in-out infinite alternate;
-}
-@keyframes ping {
-  0% {
-    opacity: 1;
-    transform: scale(0.97);
-  }
-  100% {
-    opacity: 0.55;
-    transform: scale(1.03);
-  }
-}
-@keyframes bob {
-  to {
-    transform: translate(-50%, 6px);
-  }
 }
 .hint-pulse {
-  animation: icon-pulse 600ms var(--ease-back) 4;
   box-shadow: 0 0 0 3px var(--accent);
-}
-@keyframes icon-pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.18);
-  }
-  100% {
-    transform: scale(1);
-  }
 }
 
 /* pause */
@@ -1480,26 +1193,6 @@ body {
   text-align: center;
   font-weight: 800;
   color: var(--accent);
-}
-
-/* mouvements réduits (réglage) : coupe animations et transitions de l'UI */
-.pb-reduce *,
-.pb-reduce *::before,
-.pb-reduce *::after {
-  animation-duration: 1ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 1ms !important;
-}
-.pb-reduce .ghost-hand,
-.pb-reduce .ghost-line {
-  animation: none !important;
-}
-.pb-reduce .ghost-line {
-  opacity: 0.8;
-  stroke-dashoffset: 0;
-}
-.pb-reduce .ghost-hand {
-  transform: translate(calc(var(--x1) - 13px), calc(var(--y1) - 6px));
 }
 
 /* ---------------------------------------------------------------- responsive */
@@ -1560,23 +1253,3 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ghost-hand,
-  .ghost-line {
-    animation: none !important;
-  }
-  .ghost-line {
-    opacity: 0.8;
-    stroke-dashoffset: 0;
-  }
-  .ghost-hand {
-    transform: translate(calc(var(--x1) - 13px), calc(var(--y1) - 6px));
-  }
-  .pb-ui *,
-  .pb-ui *::before,
-  .pb-ui *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-  }
-}

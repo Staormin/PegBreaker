@@ -3,7 +3,7 @@
 // Observable sans toucher au code du jeu :
 //  - particules : `bus.emit` est enveloppé ; on lit renderer.particleCount avant/après chaque événement
 //    (les handlers du renderer sont synchrones) ;
-//  - hit-stop : la sim ne progresse pas (stats.durationMs figé) sur au moins une frame après le déclencheur ;
+//  - pas de hit-stop (retiré le 2026-10-16) : stats.durationMs ne stagne jamais pendant 'firing' ;
 //  - HUD : classes « pop »/« shake »/« pulse » posées par l'UI ;
 //  - avancée des rangées : advanceProgress pris dans ]0,1[ (pas de téléportation) ;
 //  - audio : audio.debug (nœuds, voix admises) + un AnalyserNode QA branché en parallèle de tout ce qui
@@ -34,6 +34,9 @@ interface FeelReport {
   triggers: { type: string; frozenAfter: boolean; level?: number }[];
   frozenFrames: number;
   frozenUnexplained: number;
+  /** frames où durationMs stagne en phase 'firing', onglet visible et écran de jeu (hors pause) */
+  firingFrozen: number;
+  firingFrames: number;
   advanceSamples: number[];
   slowmo: { level3: number; ratioMin: number | null };
   maxParticles: number;
@@ -50,12 +53,14 @@ function feelInstall(): void {
   const sim = api.sim;
   const HITSTOP = ['block:explode', 'player:damaged', 'boss:killed'];
   /** capacité du pool de particules (render/particles.ts) */
-  const POOL = 512;
+  const POOL = 1024;
   let ev: Record<string, EvStat> = {};
   let milestoneByLevel: Record<string, number> = {};
   let triggers: { type: string; t: number; frozenAfter: boolean; level?: number }[] = [];
   let frozenFrames = 0;
   let frozenUnexplained = 0;
+  let firingFrozen = 0;
+  let firingFrames = 0;
   let advanceSamples: number[] = [];
   let maxParticles = 0;
   const slow = { level3: 0, ratios: [] as number[] };
@@ -108,6 +113,11 @@ function feelInstall(): void {
     lastT = now;
     // la sim compte le temps dans toutes les phases sauf gameover : un gel est observable aussi en 'aiming'
     // (player:damaged survient en fin d'avancée, juste avant le retour en visée)
+    const playing = !document.hidden && document.getElementById('ui')?.dataset.screen === 'game';
+    if (s.phase === 'firing' && playing && dt > 0) {
+      firingFrames++;
+      if (d === 0) firingFrozen++;
+    }
     const live = s.phase === 'firing' || s.phase === 'advancing' || s.phase === 'aiming';
     if (live && d === 0) {
       let explained = false;
@@ -137,6 +147,8 @@ function feelInstall(): void {
       triggers: triggers.map((t) => ({ type: t.type, frozenAfter: t.frozenAfter, ...(t.level ? { level: t.level } : {}) })),
       frozenFrames,
       frozenUnexplained,
+      firingFrozen,
+      firingFrames,
       advanceSamples: advanceSamples.slice(0, 400),
       slowmo: { level3: slow.level3, ratioMin: slow.ratios.length ? Math.min(...slow.ratios) : null },
       maxParticles,
@@ -147,6 +159,8 @@ function feelInstall(): void {
       triggers = [];
       frozenFrames = 0;
       frozenUnexplained = 0;
+      firingFrozen = 0;
+      firingFrames = 0;
       advanceSamples = [];
       maxParticles = 0;
       slow.level3 = 0;
@@ -263,88 +277,52 @@ test('feedback visuel par événement (table game-feel)', async ({ page }) => {
   must('block:hit', 0.8);
   must('block:destroyed', 0.9);
   const ds = rep.ev['block:destroyed']!;
-  expect(ds.particleSum / ds.withParticles, 'éclats par bloc détruit ≥ 8').toBeGreaterThanOrEqual(8);
+  // densité de base 0,45 depuis le retrait du mode mouvement (2026-10-16) : ~7 éclats mesurés
+  expect(ds.particleSum / ds.withParticles, 'éclats par bloc détruit ≥ 5').toBeGreaterThanOrEqual(5);
   must('combo:milestone', 0.9);
   if (rep.ev['block:explode']) must('block:explode', 0.8);
   if (rep.ev['lightning:chain']) must('lightning:chain', 0.8);
   if (rep.ev['ball:split']) must('ball:split', 0.8);
   if (rep.ev['block:frozen']) must('block:frozen', 0.8);
-  if (rep.ev['drop:collected']) {
-    const d = rep.ev['drop:collected'];
-    expect(d.domOk / d.domChecked, 'drop:collected → compteur HUD « pop »').toBeGreaterThanOrEqual(0.9);
-  }
+  // les « pop » / « shake » du HUD ont été retirés avec le mode mouvement (2026-10-16) :
+  // le feedback des drops est côté renderer (particules) ; player:damaged n'a plus d'effet mesurable hors canvas
+  if (rep.ev['drop:collected']) must('drop:collected', 0.8);
   expect(rep.ev['player:damaged']?.n ?? 0, 'dégâts joueur provoqués').toBeGreaterThan(0);
-  const dmg = rep.ev['player:damaged']!;
-  expect(dmg.domOk, 'player:damaged → PV du HUD « shake »').toBe(dmg.domChecked);
-  // hit-stop : chaque déclencheur (palier 2+, explosion, dégâts) est suivi d'au moins une frame figée
-  const hs = rep.triggers;
-  expect(hs.length, 'déclencheurs de hit-stop observés').toBeGreaterThan(0);
-  const frozenShare = hs.filter((t) => t.frozenAfter).length / hs.length;
-  expect(frozenShare, 'part des déclencheurs suivis d’un gel de la sim').toBeGreaterThanOrEqual(0.9);
+  // plus de hit-stop ni de ralenti (décision produit du 2026-10-16) : la sim ne se fige jamais
+  expect(rep.firingFrozen, `frames figées pendant 'firing' (sur ${rep.firingFrames})`).toBe(0);
+  expect(rep.maxParticles, 'particules sous le plafond du pool (1024)').toBeLessThanOrEqual(1024);
   // rows:advanced : glissement interpolé
   const mid = rep.advanceSamples.filter((x) => x > 0.05 && x < 0.95).length;
   expect(mid, 'advanceProgress observé entre 0 et 1 (pas de téléportation)').toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });
 
-test('reduceMotion : particules divisées par 2 au moins, pas de slow-mo', async ({ page }) => {
-  test.setTimeout(120_000);
-  // volée de base (pas d'injection) : le pool de 512 particules ne sature pas, la comparaison est propre
-  const errors = await setupFeel(page, 'feel-2', []);
-  await setSpeed(page, 2);
-  await play(page, { shots: 6, maxRealMs: 30_000 });
-  const normal = await page.evaluate(() => (window as unknown as FeelWindow).__feel.report());
-  await page.evaluate(() => {
-    const api = (window as unknown as FeelWindow).__pegbreaker;
-    api.meta.updateSettings({ reduceMotion: true });
-    api.renderer.setReduceMotion(true);
-    (window as unknown as FeelWindow).__feel.resetCounters();
-  });
-  await play(page, { shots: 6, maxRealMs: 40_000 });
-  await setSpeed(page, 6);
-  await passiveShots(page, 20);
-  const reduced = await page.evaluate(() => (window as unknown as FeelWindow).__feel.report());
-  const avg = (r: FeelReport): number => {
-    const d = r.ev['block:destroyed'];
-    return d && d.n ? d.particleSum / d.n : 0;
-  };
-  const out = {
-    normal: { destroyedAvg: avg(normal), maxParticles: normal.maxParticles, frozenFrames: normal.frozenFrames },
-    reduced: {
-      destroyedAvg: avg(reduced),
-      maxParticles: reduced.maxParticles,
-      frozenFrames: reduced.frozenFrames,
-      triggers: reduced.triggers.length,
-      frozenTriggers: reduced.triggers.filter((t) => t.frozenAfter).length,
-      slowmo: reduced.slowmo,
-      milestones: reduced.milestoneByLevel,
-    },
-  };
-  writeFileSync('docs/qa/j2-reduce-motion.json', JSON.stringify(out, null, 2) + '\n');
-  test.info().annotations.push({ type: 'reduceMotion', description: JSON.stringify(out) });
-  expect(avg(normal)).toBeGreaterThan(0);
-  expect(avg(reduced), 'éclats par bloc détruit ≤ moitié du mode normal').toBeLessThanOrEqual(avg(normal) * 0.5 + 1);
-  if (reduced.slowmo.ratioMin !== null) expect(reduced.slowmo.ratioMin, 'pas de slow-mo en reduceMotion').toBeGreaterThan(0.6);
-  expect(errors).toEqual([]);
-});
-
-test('reduceMotion : la sim n’est jamais gelée (hit-stop) — non-régression J2-01', async ({ page }) => {
+test('non-régression : la sim ne se fige jamais pendant une volée (hit-stop retiré), particules sous le plafond', async ({ page }) => {
   test.setTimeout(90_000);
-  const errors = await setupFeel(page, 'feel-3', RICH);
-  await page.evaluate(() => {
-    const api = (window as unknown as FeelWindow).__pegbreaker;
-    api.meta.updateSettings({ reduceMotion: true });
-    api.renderer.setReduceMotion(true);
-  });
+  // volée enrichie : explosions, paliers de combo, dégâts — tous ces événements déclenchaient un hit-stop avant
+  const errors = await setupFeel(page, 'feel-3', [...RICH, ...RICH]);
   await setSpeed(page, 2);
-  await play(page, { shots: 6, maxRealMs: 40_000 });
+  await play(page, { shots: 6, maxRealMs: 45_000 });
   await setSpeed(page, 6);
   await passiveShots(page, 20);
   const rep = await page.evaluate(() => (window as unknown as FeelWindow).__feel.report());
-  test.info().annotations.push({ type: 'reduceMotion freeze', description: JSON.stringify({ frozenFrames: rep.frozenFrames, triggers: rep.triggers.length }) });
+  const out = {
+    firingFrames: rep.firingFrames,
+    firingFrozen: rep.firingFrozen,
+    triggers: rep.triggers.length,
+    milestones: rep.milestoneByLevel,
+    maxParticles: rep.maxParticles,
+    slowmo: rep.slowmo,
+    timeScale: await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.timeScale),
+  };
+  writeFileSync('docs/qa/final-no-freeze.json', JSON.stringify(out, null, 2) + '\n');
+  test.info().annotations.push({ type: 'no-freeze', description: JSON.stringify(out) });
+  expect(rep.firingFrames, 'frames de volée observées').toBeGreaterThan(100);
+  expect(out.triggers, 'anciens déclencheurs de hit-stop présents (explosions, paliers 2+, dégâts)').toBeGreaterThan(0);
+  expect(rep.firingFrozen, 'aucune frame où durationMs stagne pendant firing').toBe(0);
+  if (rep.slowmo.ratioMin !== null) expect(rep.slowmo.ratioMin, 'pas de ralenti au palier 3').toBeGreaterThan(0.6);
+  expect(rep.maxParticles, 'particules ≤ plafond 1024').toBeLessThanOrEqual(1024);
   expect(errors).toEqual([]);
-  expect(rep.triggers.length, 'déclencheurs observés').toBeGreaterThan(0);
-  expect(rep.frozenFrames, 'frames de sim figées en reduceMotion').toBe(0);
 });
 
 test('audio : nœuds créés, pic < 0,99, SFX à 0 → plus aucune voix ni nœud', async ({ page }) => {
@@ -396,7 +374,7 @@ test('audio : nœuds créés, pic < 0,99, SFX à 0 → plus aucune voix ni nœud
   expect(errors).toEqual([]);
 });
 
-test('fusion : carte de récompense « fuse » cliquée au DOM → animation + pulsation HUD', async ({ page }) => {
+test('fusion : carte de récompense « fuse » cliquée au DOM → animation (particules renderer)', async ({ page }) => {
   test.setTimeout(90_000);
   const errors = watchErrors(page);
   let found = '';
@@ -414,6 +392,22 @@ test('fusion : carte de récompense « fuse » cliquée au DOM → animation + p
   await setSpeed(page, 1);
   await page.waitForTimeout(400);
   const before = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.state.volley.length);
+  const pc0 = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.renderer.particleCount);
+  // pic de particules pendant l'animation de fusion (échantillonné en parallèle du clic)
+  const peak = page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const r = (window as unknown as QaWindow).__pegbreaker.renderer;
+        let max = 0;
+        const t0 = performance.now();
+        const tick = (): void => {
+          if (r.particleCount > max) max = r.particleCount;
+          if (performance.now() - t0 < 900) requestAnimationFrame(tick);
+          else resolve(max);
+        };
+        requestAnimationFrame(tick);
+      }),
+  );
   await page.locator('.card-fuse').first().click();
   await page.waitForTimeout(120);
   await page.screenshot({ path: `${SHOTS_DIR}/15-fusion-animation.png` });
@@ -422,7 +416,9 @@ test('fusion : carte de récompense « fuse » cliquée au DOM → animation + p
   const after = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.state.volley.length);
   expect(after, 'deux balles fusionnées en une').toBe(before - 1);
   expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.eventCounts['volley:fusion'] ?? 0)).toBeGreaterThan(0);
-  await expect(page.locator('.hud-volley .pulse')).toHaveCount(1, { timeout: 2000 });
-  test.info().annotations.push({ type: 'fusion', description: found });
+  // la pulsation HUD n'existe plus : l'effet observable est côté renderer (particules de l'animation de fusion)
+  const pcPeak = await peak;
+  test.info().annotations.push({ type: 'fusion', description: JSON.stringify({ seed: found, particlesBefore: pc0, particlesPeak: pcPeak }) });
+  expect(pcPeak, 'volley:fusion → particules émises par le renderer').toBeGreaterThan(pc0);
   expect(errors).toEqual([]);
 });

@@ -1,5 +1,4 @@
-// render/particles.ts — pool fixe de particules (1024, budget par priorité). Avance avec le dt réel :
-// les particules continuent de bouger pendant un hit-stop.
+// render/particles.ts — pool fixe de particules (1024, budget par priorité). Avance avec le dt réel.
 
 export const MAX_PARTICLES = 1024;
 
@@ -9,6 +8,12 @@ export const MAX_PARTICLES = 1024;
  * - PRIO_NORMAL : ×1/2 au-delà de 70 %, ×1/4 au-delà de 85 % ;
  * - PRIO_HIGH (combo 3, boss, explosions) : jamais réduit (seulement borné par la capacité).
  */
+/**
+ * Densité de base : les nombres de particules passés à burst() sont des « intentions » ; le rendu
+ * en émet 45 % (choix produit : feedback sobre, lisible, sans surcharge).
+ */
+const DENSITY = 0.45;
+
 export const PRIO_LOW = 0;
 export const PRIO_NORMAL = 1;
 export const PRIO_HIGH = 2;
@@ -26,8 +31,6 @@ interface Particle {
 
 export interface Particles {
   readonly count: number;
-  /** densité (1 = normal, 0,45 = reduceMotion) */
-  density: number;
   /** n particules en éventail autour de l'angle `dir` (±spread rad), vitesses en u/s, vie en s */
   burst(
     x: number, y: number, n: number, color: string, shape: number,
@@ -51,7 +54,6 @@ export function createParticles(): Particles {
 
   const api: Particles = {
     get count() { return live; },
-    density: 1,
     burst(x, y, n, color, shape, speedMin, speedMax, dir, spread, lifeMin, lifeMax, sizeMin, sizeMax, gravity, prio = PRIO_NORMAL) {
       // budget dégressif selon le remplissage du pool
       const fill = live / MAX_PARTICLES;
@@ -60,7 +62,7 @@ export function createParticles(): Particles {
       else if (prio === PRIO_NORMAL) budget = fill > 0.85 ? 0.25 : fill > 0.7 ? 0.5 : 1;
       if (budget === 0) return;
       // densité fractionnaire : on accumule le reste pour rester juste en moyenne
-      const want = n * api.density * budget + carry;
+      const want = n * DENSITY * budget + carry;
       const count = Math.floor(want);
       carry = want - count;
       for (let i = 0; i < count && live < MAX_PARTICLES; i++) {

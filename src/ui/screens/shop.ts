@@ -59,7 +59,6 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig): S
       const b = button(bus, `card shop-item card-${it.option.kind}`, '', () => sim.buy(i));
       b.dataset.shopIndex = String(i);
       b.style.setProperty('--c', v.color);
-      b.style.animationDelay = `${i * 60}ms`;
       b.setAttribute('aria-label', `${v.name}, ${it.sold ? 'vendu' : `${it.price} pièces`} : ${v.desc}`);
       const ico = el('div', 'card-icon');
       ico.append(optionIcon(config, it.option));

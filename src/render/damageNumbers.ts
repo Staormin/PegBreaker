@@ -36,8 +36,8 @@ export interface DamageNumbers {
   /** slot < −1 : un seul libellé vivant par slot (remplacé plutôt qu'empilé) */
   addLabel(x: number, y: number, label: string, color: string, bucket: number, slot?: number): void;
   update(dt: number): void;
-  /** contexte en pixels physiques (transform = dpr + shake) ; l = layout courant */
-  draw(ctx: CanvasRenderingContext2D, l: Layout, shakeX: number, shakeY: number): void;
+  /** contexte en pixels physiques (transform = dpr) ; l = layout courant */
+  draw(ctx: CanvasRenderingContext2D, l: Layout): void;
   rebuildFonts(l: Layout): void;
   clear(): void;
   readonly count: number;
@@ -136,10 +136,10 @@ export function createDamageNumbers(): DamageNumbers {
         live++;
       }
     },
-    draw(ctx, l, shakeX, shakeY) {
+    draw(ctx, l) {
       if (live === 0) return;
       const k = l.scale * l.dpr;
-      const ox = (l.offX + shakeX) * l.dpr, oy = (l.offY + shakeY) * l.dpr;
+      const ox = l.offX * l.dpr, oy = l.offY * l.dpr;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineJoin = 'round';

@@ -6,7 +6,6 @@ import { el } from '../dom';
 const TOAST_MS = 2200;
 const MAX_VISIBLE = 2;
 const MAX_QUEUED = 5;
-const OUT_MS = 250;
 
 interface Item {
   kicker: string;
@@ -35,12 +34,9 @@ export function createToasts(root: HTMLElement): Toasts {
     t.append(el('span', 'toast-kicker', it.kicker), el('span', 'toast-title', it.title), el('span', 'num toast-detail', `+${it.frags} ◆`));
     box.append(t);
     setTimeout(() => {
-      t.classList.add('out');
-      setTimeout(() => {
-        t.remove();
-        visible--;
-        pump();
-      }, OUT_MS);
+      t.remove();
+      visible--;
+      pump();
     }, TOAST_MS);
   }
 

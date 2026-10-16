@@ -1,6 +1,6 @@
-// ui/screens/settings.ts — réglages (ui:screen 'settings') : volumes, secousses, mouvements réduits, reset.
+// ui/screens/settings.ts — pause / réglages (ui:screen 'settings') : volumes, abandon, reset.
 import type { EventBus } from '../../core/events';
-import type { AudioSystem, MetaSystem, Renderer, RunState, SaveData } from '../../core/types';
+import type { AudioSystem, MetaSystem, RunState, SaveData } from '../../core/types';
 import { button, el } from '../dom';
 import { createScreen, type ScreenEl } from './screen';
 
@@ -16,7 +16,6 @@ export function createSettingsScreen(
   meta: MetaSystem,
   bus: EventBus,
   audio: AudioSystem | null,
-  renderer: Renderer,
   onBack: () => void,
   onAbandon: (() => void) | null = null,
 ): SettingsScreen {
@@ -47,25 +46,8 @@ export function createSettingsScreen(
     return input;
   }
 
-  function toggle(label: string, key: 'shake' | 'reduceMotion'): HTMLButtonElement {
-    const b = button(bus, 'switch set-switch', '', () => {
-      const v = !(meta.data.settings[key]);
-      meta.updateSettings(key === 'shake' ? { shake: v } : { reduceMotion: v });
-      if (key === 'shake') renderer.setShake(v);
-      else renderer.setReduceMotion(v);
-      refresh();
-    });
-    b.setAttribute('role', 'switch');
-    b.dataset.setting = key;
-    b.append(el('span', 'switch-track'), el('span', 'switch-label', label));
-    s.panel.append(b);
-    return b;
-  }
-
   const sfx = slider('🔊 Effets', 'sfx');
   const music = slider('🎵 Musique', 'music');
-  const shake = toggle('Secousses d’écran', 'shake');
-  const reduce = toggle('Mouvements réduits', 'reduceMotion');
 
   // abandon de la descente : confirmation en deux clics
   let abArmed = false;
@@ -127,13 +109,6 @@ export function createSettingsScreen(
     const st = data.settings;
     if (document.activeElement !== sfx) sfx.value = String(st.sfx);
     if (document.activeElement !== music) music.value = String(st.music);
-    for (const [b, on] of [
-      [shake, st.shake],
-      [reduce, st.reduceMotion],
-    ] as const) {
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-checked', String(on));
-    }
     if (!force) return;
     disarm();
     disarmAbandon();

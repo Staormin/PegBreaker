@@ -1,4 +1,4 @@
-// ui/screens/gameover.ts — fin de run : stats, fragments (compteur animé), Rejouer, Puits.
+// ui/screens/gameover.ts — fin de run : stats, fragments gagnés, Rejouer, Puits.
 import type { EventBus } from '../../core/events';
 import type { RunSummary } from '../../core/types';
 import { button, el, fmt } from '../dom';
@@ -6,10 +6,8 @@ import { createScreen, type ScreenEl } from './screen';
 
 export interface GameoverScreen extends ScreenEl {
   /** `bestDepthBefore` : record de profondeur avant cette run (null = inconnu, pas de méta) */
-  open(summary: RunSummary, reduceMotion: boolean, bestDepthBefore: number | null): void;
+  open(summary: RunSummary, bestDepthBefore: number | null): void;
 }
-
-const COUNT_MS = 900;
 
 export interface GameoverDeps {
   bus: EventBus;
@@ -61,8 +59,7 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
   actions.append(restart, row2);
   s.panel.append(record, grid, fragRow, actions);
 
-  let raf = 0;
-  function open(summary: RunSummary, reduceMotion: boolean, bestDepthBefore: number | null): void {
+  function open(summary: RunSummary, bestDepthBefore: number | null): void {
     const isRecord = bestDepthBefore !== null && summary.depth > 0 && summary.depth >= bestDepthBefore;
     record.hidden = !isRecord;
     if (isRecord) {
@@ -72,28 +69,7 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     vWave.textContent = fmt(summary.wave);
     vCombo.textContent = fmt(summary.stats.bestCombo);
     vDmg.textContent = fmt(summary.stats.bestShotDamage);
-    const target = summary.stats.fragmentsEarned;
-    cancelAnimationFrame(raf);
-    if (reduceMotion || target <= 0) {
-      fragVal.textContent = `+${fmt(target)}`;
-      return;
-    }
-    fragVal.textContent = '+0';
-    const t0 = performance.now() + 250; // laisse l'écran apparaître
-    let shown = -1;
-    const tick = (now: number): void => {
-      const t = Math.min(1, Math.max(0, (now - t0) / COUNT_MS));
-      const k = 1 - Math.pow(1 - t, 3); // easeOutCubic
-      const v = Math.round(target * k);
-      if (v !== shown) {
-        shown = v;
-        fragVal.textContent = `+${fmt(v)}`;
-      }
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else fragRow.classList.add('done');
-    };
-    fragRow.classList.remove('done');
-    raf = requestAnimationFrame(tick);
+    fragVal.textContent = `+${fmt(summary.stats.fragmentsEarned)}`;
   }
 
   return { ...s, open };

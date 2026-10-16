@@ -235,8 +235,6 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     resize: sizeCanvas,
     screenToBoard: (px, py) => ({ x: px, y: py }),
     boardToScreen: (p) => ({ x: p.x, y: p.y }),
-    setReduceMotion() {},
-    setShake() {},
     particleCount: 0,
     dpr: 1,
   };

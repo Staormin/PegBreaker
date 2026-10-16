@@ -1,15 +1,15 @@
 // tests/e2e/offline.spec.ts — propriétaire : qa-tester. Build statique jouable hors ligne (service worker).
-// Le SW ne s'enregistre pas sur localhost (ui/pwa.ts) : un second `vite preview` est lancé sur 127.0.0.1:4174.
+// Le SW ne s'enregistre pas sur localhost (ui/pwa.ts) : un second `vite preview` est lancé sur 127.0.0.1:4176.
 import { expect, test } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { FINAL_SHOTS, watchErrors, type QaWindow } from './bots';
 
-const ORIGIN = 'http://127.0.0.1:4174';
+const ORIGIN = 'http://127.0.0.1:4176';
 let server: ChildProcess | null = null;
 
 test.beforeAll(async () => {
-  server = spawn('npx', ['vite', 'preview', '--host', '127.0.0.1', '--port', '4174', '--strictPort'], { stdio: 'ignore', detached: true });
+  server = spawn('npx', ['vite', 'preview', '--host', '127.0.0.1', '--port', '4176', '--strictPort'], { stdio: 'ignore', detached: true });
   for (let i = 0; i < 100; i++) {
     try {
       const r = await fetch(`${ORIGIN}/`);
@@ -19,7 +19,7 @@ test.beforeAll(async () => {
     }
     await new Promise((r) => setTimeout(r, 150));
   }
-  throw new Error('vite preview sur 127.0.0.1:4174 injoignable');
+  throw new Error('vite preview sur 127.0.0.1:4176 injoignable');
 });
 
 test.afterAll(() => {

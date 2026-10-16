@@ -18,7 +18,6 @@ import { ELEMENT_INDEX, KIND_INDEX, PALETTE, type Colors } from './palette';
 const TRAIL_CAP = 14;
 const MAX_TRAILS = 96;
 const DUST = 24;
-const SPEED_LINES = 22;
 const AIM_REFLECT_LEN = 1.5;
 const DASH: number[] = [0.14, 0.11];
 const DASH_FINE: number[] = [0.07, 0.09];
@@ -88,11 +87,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     dust[i * 3 + 1] = Math.random() * l.rows;
     dust[i * 3 + 2] = 0.05 + Math.random() * 0.12;
   }
-  const speedLines = new Float32Array(SPEED_LINES * 2); // angle, phase
-  for (let i = 0; i < SPEED_LINES; i++) {
-    speedLines[i * 2] = (i / SPEED_LINES) * Math.PI * 2 + Math.random() * 0.2;
-    speedLines[i * 2 + 1] = Math.random();
-  }
+
   const hit: RayHit = { t: 0, nx: 0, ny: 0 };
   /** chaînes « ×N » mises en cache (allocation uniquement à la 1re apparition de N) */
   const countLabels: string[] = [];
@@ -103,10 +98,9 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   let time = 0;
   let power = 0;
   let powerLevel = -1;
-  let speedFx = 0;
   /** vrai jusqu'à la fin de la première frame de run : les blocs initiaux n'ont pas de « pop » */
   let suppressPop = true;
-  /** transform plateau → pixels physiques de la frame courante (shake inclus) */
+  /** transform plateau → pixels physiques de la frame courante */
   let K = 1, OX = 0, OY = 0;
 
   /**
@@ -242,7 +236,6 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     const advancing = state.phase === 'advancing';
     // la sim incrémente row à la FIN de 'advancing' : on interpole row → row + 1
     const shift = advancing ? easeOutBack(state.advanceProgress < 0 ? 0 : state.advanceProgress > 1 ? 1 : state.advanceProgress) : 0;
-    const calm = vfx.reduceMotion;
     pixelTransform();
 
     for (let i = 0; i < blocks.length; i++) {
@@ -272,19 +265,16 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const isPeg = b.kind === 'peg';
       const ratio = !isPeg && b.maxHp > 0 ? (b.hp > b.maxHp ? 1 : b.hp / b.maxHp) : 1;
       const lv = isPeg ? 0 : damageLevel(ratio);
-      const low = lv === DMG_LEVELS - 1;
       const sp0 = fx.spawnT < SPAWN_DUR ? easeOutBack(fx.spawnT / SPAWN_DUR) : 1;
       const s = vfx.squashScale(fx) * (sp0 < 0.05 ? 0.05 : sp0);
       const x0 = b.col + b.width * (1 - s) * 0.5, y0 = y + (1 - s) * 0.5;
       // sprite pré-composé (assombri / fissuré) : un seul blit
       blit((lv > 0 ? sp.damagedAt(kind, b.width, lv) : undefined) ?? img, x0, y0, s);
-      // PV bas : le bloc « respire » (pulsation lumineuse)
-      const breath = low && !calm ? 0.16 * (0.5 + 0.5 * Math.sin(time * 9 + b.id * 1.3)) : 0;
       const flash = fx.squashT < 0.08 ? 0.7 * (1 - fx.squashT / 0.08) : 0;
-      if (flash > 0 || breath > 0.01) {
+      if (flash > 0) {
         const wimg = sp.whiteAt(kind, b.width);
         if (wimg) {
-          ctx.globalAlpha = flash > breath ? flash : breath;
+          ctx.globalAlpha = flash;
           blit(wimg, x0, y0, s);
           ctx.globalAlpha = 1;
         }
@@ -357,7 +347,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   function drawHpLabels(state: Readonly<RunState>): void {
     const blocks = state.blocks;
     const k = l.scale * l.dpr;
-    const ox = (l.offX + vfx.shakeX) * l.dpr, oy = (l.offY + vfx.shakeY) * l.dpr;
+    const ox = l.offX * l.dpr, oy = l.offY * l.dpr;
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]!;
       if (b.kind === 'peg') continue;
@@ -533,30 +523,6 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     }
   }
 
-  /** Lignes de vitesse radiales très discrètes quand la volée accélère (recallSpeed > 1). */
-  function drawSpeedLines(state: Readonly<RunState>, dt: number): void {
-    const target = state.phase === 'firing' && state.recallSpeed > 1 && !vfx.reduceMotion ? (state.recallSpeed - 1) / 2 : 0;
-    speedFx += ((target > 1 ? 1 : target) - speedFx) * (dt * 4 > 1 ? 1 : dt * 4);
-    if (speedFx < 0.02) return;
-    const cx = l.cols / 2, cy = l.rows * 0.55;
-    const maxR = 6.5;
-    ctx.strokeStyle = PALETTE.text;
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 0.025;
-    ctx.globalAlpha = 0.09 * speedFx;
-    ctx.beginPath();
-    for (let i = 0; i < SPEED_LINES; i++) {
-      const a = speedLines[i * 2]!;
-      const ph = (speedLines[i * 2 + 1]! + time * (0.9 + 0.6 * speedFx)) % 1;
-      const r0 = 1.2 + ph * maxR, r1 = r0 + 0.5 + 0.9 * speedFx;
-      const ca = Math.cos(a), sa = Math.sin(a);
-      ctx.moveTo(cx + ca * r0, cy + sa * r0);
-      ctx.lineTo(cx + ca * r1, cy + sa * r1);
-    }
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
   function drawLaunch(state: Readonly<RunState>): void {
     if (state.phase !== 'aiming' && state.phase !== 'firing') return;
     const sp = d.getSprites();
@@ -588,8 +554,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     // juste au-dessus du point de lancement, décalé vers l'intérieur du plateau (la bande
     // sous le plateau appartient au HUD DOM)
     const side = state.launchPos.x > l.cols - 1 ? -1 : 1;
-    const px = (l.offX + vfx.shakeX + state.launchPos.x * l.scale) * l.dpr + side * k * 0.5;
-    const py = (l.offY + vfx.shakeY + state.launchPos.y * l.scale) * l.dpr - k * 0.3;
+    const px = (l.offX + state.launchPos.x * l.scale) * l.dpr + side * k * 0.5;
+    const py = (l.offY + state.launchPos.y * l.scale) * l.dpr - k * 0.3;
     ctx.font = smallFont;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -660,8 +626,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
 
     // unités plateau
     K = l.scale * dpr;
-    OX = (l.offX + vfx.shakeX) * dpr;
-    OY = (l.offY + vfx.shakeY) * dpr;
+    OX = l.offX * dpr;
+    OY = l.offY * dpr;
     // clip aligné sur les pixels physiques (un clip fractionnaire force le chemin anti-aliasé)
     ctx.save();
     ctx.beginPath();
@@ -670,7 +636,6 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     boardTransform();
     drawGrid(state);
     drawDust(state, dt);
-    drawSpeedLines(state, dt);
 
     // ligne du joueur : trait danger discret (franchie = dégâts)
     ctx.strokeStyle = PALETTE.danger;
@@ -708,15 +673,11 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     ctx.beginPath(); ctx.moveTo(0, rows); ctx.lineTo(cols, rows); ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // texte en pixels physiques (avec shake)
+    // texte en pixels physiques
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     drawHpLabels(state);
     drawPending(state);
-    numbers.draw(ctx, l, vfx.shakeX, vfx.shakeY);
-
-    // overlays plein écran (sans shake)
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    vfx.drawOverlay(ctx, W, H, sp.vignette, sp.redEdge);
+    numbers.draw(ctx, l);
 
     vfx.sweepBlockFx(frame);
   }

@@ -8,7 +8,6 @@ import { el } from './dom';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** sans tir au bout de ce délai, le geste s'accentue */
 const INSIST_MS = 8000;
-const LOGO_FADE_MS = 600;
 
 export interface Onboarding {
   /** à appeler chaque frame ; `allowed` = écran de jeu, phase de visée, pas de drag en cours */
@@ -29,14 +28,12 @@ export function createOnboarding(frame: HTMLElement, renderer: Renderer, bus: Ev
   let logoOn = false;
   function showLogo(): void {
     logoOn = true;
-    logo.classList.remove('out');
     logo.classList.add('on');
   }
   function hideLogo(): void {
     if (!logoOn) return;
     logoOn = false;
-    logo.classList.add('out');
-    setTimeout(() => logo.classList.remove('on', 'out'), LOGO_FADE_MS);
+    logo.classList.remove('on');
   }
   window.addEventListener('pointerdown', hideLogo, true);
   window.addEventListener('keydown', hideLogo, true);

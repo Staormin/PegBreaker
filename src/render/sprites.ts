@@ -52,9 +52,6 @@ export interface Sprites {
   fragment: HTMLCanvasElement;
   heart: HTMLCanvasElement;
   halo: HTMLCanvasElement;
-  /** plein canvas */
-  vignette: HTMLCanvasElement;
-  redEdge: HTMLCanvasElement;
 }
 
 function makeCanvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -467,7 +464,6 @@ function makeHalo(cell: number): HTMLCanvasElement {
 
 export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Sprites {
   const cell = l.cellPx;
-  const Wfull = Math.round(l.cssW * l.dpr), Hfull = Math.round(l.cssH * l.dpr);
 
   // largeurs nécessaires : 1 + largeurs des boss de la config
   const widths: number[] = [1];
@@ -534,34 +530,9 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
     return c;
   }
 
-  // vignette (combo niv. 3) et bords rouges (dégâts joueur) : dégradés lisses → générés au
-  // quart de résolution et étirés à l'affichage (4 Mpx de moins à remplir à chaque resize)
-  const W = Math.max(8, Math.ceil(Wfull / 4)), H = Math.max(8, Math.ceil(Hfull / 4));
-  const [vignette, gv] = makeCanvas(W, H);
-  const vr = Math.hypot(W, H) / 2;
-  const vg = gv.createRadialGradient(W / 2, H / 2, vr * 0.45, W / 2, H / 2, vr);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.75)');
-  gv.fillStyle = vg; gv.fillRect(0, 0, W, H);
-  const vg2 = gv.createRadialGradient(W / 2, H / 2, vr * 0.6, W / 2, H / 2, vr);
-  vg2.addColorStop(0, 'rgba(255,233,92,0)');
-  vg2.addColorStop(1, 'rgba(255,233,92,0.22)');
-  gv.fillStyle = vg2; gv.fillRect(0, 0, W, H);
-
-  const [redEdge, gr] = makeCanvas(W, H);
-  const e = Math.min(W, H) * 0.14;
-  const sides: [number, number, number, number][] = [[0, 0, 0, e], [0, H, 0, H - e], [0, 0, e, 0], [W, 0, W - e, 0]];
-  for (const [x0, y0, x1, y1] of sides) {
-    const lg = gr.createLinearGradient(x0, y0, x1, y1);
-    lg.addColorStop(0, 'rgba(255,94,94,0.85)');
-    lg.addColorStop(1, 'rgba(255,94,94,0)');
-    gr.fillStyle = lg;
-    gr.fillRect(0, 0, W, H);
-  }
-
   return {
     block, damagedAt, whiteAt, frozenAt, ballAt, ballExt,
     coin: makeDrop('coin', cell), fragment: makeDrop('fragment', cell), heart: makeDrop('heart', cell),
-    halo: makeHalo(cell), vignette, redEdge,
+    halo: makeHalo(cell),
   };
 }

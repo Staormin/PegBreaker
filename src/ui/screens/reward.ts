@@ -9,8 +9,6 @@ export interface RewardScreen extends ScreenEl {
   open(options: readonly RewardOption[]): void;
 }
 
-/** décalage de la cascade d'apparition des cartes (ms) */
-const CASCADE_MS = 60;
 
 export function createRewardScreen(sim: Sim, bus: EventBus, config: GameConfig): RewardScreen {
   const s = createScreen('reward', 'Choisis');
@@ -45,7 +43,6 @@ export function createRewardScreen(sim: Sim, bus: EventBus, config: GameConfig):
       });
       card.dataset.rewardIndex = String(i);
       card.style.setProperty('--c', v.color);
-      card.style.animationDelay = `${i * CASCADE_MS}ms`;
       card.setAttribute('aria-label', `${v.name} : ${v.desc}`);
       const ico = el('div', 'card-icon');
       ico.append(optionIcon(config, o));
@@ -54,7 +51,6 @@ export function createRewardScreen(sim: Sim, bus: EventBus, config: GameConfig):
       card.append(ico, body);
       cards.append(card);
     });
-    skip.style.animationDelay = `${options.length * CASCADE_MS}ms`;
   }
 
   return { ...s, open };

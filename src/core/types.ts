@@ -482,8 +482,6 @@ export interface GameConfig {
 export interface Settings {
   sfx: number;
   music: number;
-  shake: boolean;
-  reduceMotion: boolean;
 }
 
 export interface MetaState {
@@ -543,18 +541,6 @@ export interface MetaSystem {
 }
 
 // ----------------------------------------------------------------------
-// Contrôle du temps (main.ts implémente ; render/ui appellent)
-// ----------------------------------------------------------------------
-
-export interface TimeControl {
-  /** gèle la sim pendant ms (hit-stop). Les appels se cumulent par max, pas par somme. */
-  requestHitStop(ms: number): void;
-  /** ralenti (scale dans ]0,1]) pendant ms */
-  requestSlowMo(scale: number, ms: number): void;
-  readonly timeScale: number;
-}
-
-// ----------------------------------------------------------------------
 // Renderer, audio, UI
 // ----------------------------------------------------------------------
 
@@ -565,8 +551,6 @@ export interface Renderer {
   /** conversion pixel écran → unités plateau (pour ui/input) */
   screenToBoard(px: number, py: number): Vec2;
   boardToScreen(p: Vec2): Vec2;
-  setReduceMotion(v: boolean): void;
-  setShake(v: boolean): void;
   /** nombre de particules vivantes (QA/perf) */
   readonly particleCount: number;
   /** résolution interne courante (qualité adaptative), 1..2 */
@@ -604,8 +588,7 @@ export interface DebugApi {
   setSpeed(mult: number): void;
   /** fps moyen sur la dernière seconde */
   fps: number;
-  /** nombre de hit-stops demandés depuis le chargement et timeScale courant */
-  hitStops: number;
+  /** timeScale courant (vitesse de la sim, 1 = normal) */
   readonly timeScale: number;
   /** erreurs capturées (window.onerror, unhandledrejection) */
   errors: string[];

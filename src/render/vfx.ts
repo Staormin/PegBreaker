@@ -1,11 +1,8 @@
-// render/vfx.ts — effets d'écran et effets localisés, tous en pools fixes.
-// - shake (décroissance exponentielle, plafonné à 10 px, coupé par setShake(false)/reduceMotion)
-// - flash plein écran, vignette, bords rouges (coupés/atténués par reduceMotion)
-// - anneaux (explosions), éclairs en zigzag, flashs locaux (blocs, lancement)
+// render/vfx.ts — effets localisés sur le plateau, tous en pools fixes. Pas de secousse d'écran,
+// pas de flash plein écran : tout le feedback reste à l'endroit de l'événement.
+// - anneaux (explosions), éclairs en zigzag, gerbes de rayons, flashs locaux (blocs, rangée, lancement)
 // - état visuel par bloc (squash, flash, cache de la chaîne de PV), alimenté par les événements.
 
-export const SHAKE_CAP = 10; // px CSS
-const SHAKE_TAU = 0.075; // s (constante de décroissance)
 const SQUASH_DUR = 0.12; // s
 const MAX_RINGS = 24;
 const MAX_BOLTS = 16;
@@ -42,16 +39,6 @@ export interface BlockFx {
 }
 
 export interface Vfx {
-  shakeEnabled: boolean;
-  reduceMotion: boolean;
-  /** offset de shake courant (px CSS) */
-  shakeX: number;
-  shakeY: number;
-  addShake(px: number): void;
-  tremble(ms: number, px: number): void;
-  screenFlash(alpha: number, color: string): void;
-  vignette(ms: number): void;
-  redEdges(ms: number): void;
   ring(x: number, y: number, r0: number, r1: number, ms: number, color: string, width: number): void;
   bolt(x0: number, y0: number, x1: number, y1: number, ms: number, color: string): void;
   flashRect(x: number, y: number, w: number, h: number, ms: number, color: string): void;
@@ -71,20 +58,10 @@ export interface Vfx {
   update(dt: number): void;
   /** k = px physiques par unité, (ox, oy) = origine du plateau ; laisse le contexte en unités plateau */
   drawWorld(ctx: CanvasRenderingContext2D, k: number, ox: number, oy: number): void;
-  /** contexte en pixels physiques, sans shake */
-  drawOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, vignette: CanvasImageSource, redEdge: CanvasImageSource): void;
   clear(): void;
 }
 
 export function createVfx(): Vfx {
-  let shakeAmp = 0;
-  let trembleT = 0;
-  let trembleAmp = 0;
-  let flashA = 0;
-  let flashColor = '#ffffff';
-  let vignetteT = 0, vignetteDur = 1;
-  let redT = 0, redDur = 1;
-
   const rings: Ring[] = [];
   for (let i = 0; i < MAX_RINGS; i++) rings.push({ active: false, x: 0, y: 0, r0: 0, r1: 1, t: 0, dur: 1, color: '#fff', width: 0.05 });
   const bolts: Bolt[] = [];
@@ -115,32 +92,6 @@ export function createVfx(): Vfx {
   }
 
   const api: Vfx = {
-    shakeEnabled: true,
-    reduceMotion: false,
-    shakeX: 0,
-    shakeY: 0,
-    addShake(px) {
-      if (!api.shakeEnabled || api.reduceMotion) return;
-      // max + petite part additive : plusieurs coups rapprochés s'additionnent un peu
-      const next = Math.max(shakeAmp, px) + 0.25 * Math.min(shakeAmp, px);
-      shakeAmp = next > SHAKE_CAP ? SHAKE_CAP : next;
-    },
-    tremble(ms, px) {
-      if (!api.shakeEnabled || api.reduceMotion) return;
-      trembleT = Math.max(trembleT, ms / 1000);
-      trembleAmp = Math.max(trembleAmp, px);
-    },
-    screenFlash(alpha, color) {
-      if (api.reduceMotion) return;
-      if (alpha > flashA) { flashA = alpha; flashColor = color; }
-    },
-    vignette(ms) {
-      // gardée en mouvements réduits : assombrissement lent, pas un flash (lisibilité du palier)
-      vignetteDur = ms / 1000; vignetteT = vignetteDur;
-    },
-    redEdges(ms) {
-      redDur = ms / 1000; redT = redDur;
-    },
     ring(x, y, r0, r1, ms, color, width) {
       const r = freeSlot(rings);
       r.active = true; r.x = x; r.y = y; r.r0 = r0; r.r1 = r1; r.t = 0; r.dur = ms / 1000; r.color = color; r.width = width;
@@ -213,19 +164,6 @@ export function createVfx(): Vfx {
     },
 
     update(dt) {
-      // shake : décroissance exponentielle
-      shakeAmp *= Math.exp(-dt / SHAKE_TAU);
-      if (shakeAmp < 0.05) shakeAmp = 0;
-      if (trembleT > 0) { trembleT -= dt; if (trembleT <= 0) { trembleT = 0; trembleAmp = 0; } }
-      let amp = shakeAmp > trembleAmp ? shakeAmp : trembleAmp;
-      if (!api.shakeEnabled || api.reduceMotion) { amp = 0; shakeAmp = 0; trembleT = 0; }
-      if (amp > SHAKE_CAP) amp = SHAKE_CAP;
-      api.shakeX = amp > 0 ? (Math.random() * 2 - 1) * amp : 0;
-      api.shakeY = amp > 0 ? (Math.random() * 2 - 1) * amp : 0;
-
-      flashA -= dt * 4; if (flashA < 0) flashA = 0;
-      if (vignetteT > 0) vignetteT -= dt;
-      if (redT > 0) redT -= dt;
       for (let i = 0; i < MAX_RINGS; i++) { const r = rings[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
       for (let i = 0; i < MAX_BOLTS; i++) { const b = bolts[i]!; if (b.active && (b.t += dt) >= b.dur) b.active = false; }
       for (let i = 0; i < MAX_FLASHES; i++) { const f = flashes[i]!; if (f.active && (f.t += dt) >= f.dur) f.active = false; }
@@ -303,27 +241,7 @@ export function createVfx(): Vfx {
       ctx.globalAlpha = 1;
     },
 
-    drawOverlay(ctx, w, h, vignetteImg, redImg) {
-      if (vignetteT > 0) {
-        const t = vignetteT / vignetteDur;
-        ctx.globalAlpha = t > 0.7 ? 1 : t / 0.7;
-        ctx.drawImage(vignetteImg, 0, 0, w, h);
-      }
-      if (redT > 0) {
-        const t = redT / redDur;
-        ctx.globalAlpha = (api.reduceMotion ? 0.5 : 1) * t;
-        ctx.drawImage(redImg, 0, 0, w, h);
-      }
-      if (flashA > 0) {
-        ctx.globalAlpha = flashA;
-        ctx.fillStyle = flashColor;
-        ctx.fillRect(0, 0, w, h);
-      }
-      ctx.globalAlpha = 1;
-    },
-
     clear() {
-      shakeAmp = 0; trembleT = 0; flashA = 0; vignetteT = 0; redT = 0;
       for (const r of rings) r.active = false;
       for (const b of bolts) b.active = false;
       for (const f of flashes) f.active = false;

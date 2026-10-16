@@ -1,24 +1,10 @@
 // render/demo.ts — démo autonome du renderer, sans la sim : RunState factice, mini-physique
-// locale (5 balles), événements synthétiques sur un vrai EventBus, TimeControl factice.
+// locale (5 balles), événements synthétiques sur un vrai EventBus.
 // Usage : const stop = mountRenderDemo(canvas); ... stop();
 import { createEventBus } from '../core/events';
 import { loadConfig } from '../core/config';
-import type { Ball, BallElement, Block, BlockKind, Drop, GameEvent, RunState, TimeControl } from '../core/types';
+import type { Ball, BallElement, Block, BlockKind, Drop, GameEvent, RunState } from '../core/types';
 import { createRenderer } from './index';
-
-interface DemoTime extends TimeControl {
-  tick(dtReal: number): void;
-}
-
-function createDemoTime(): DemoTime {
-  let hitStop = 0, slowLeft = 0, slowScale = 1;
-  return {
-    get timeScale() { return hitStop > 0 ? 0 : slowLeft > 0 ? slowScale : 1; },
-    requestHitStop(ms) { hitStop = Math.max(hitStop, ms); },
-    requestSlowMo(scale, ms) { slowScale = Math.min(scale, slowLeft > 0 ? slowScale : 1); slowLeft = Math.max(slowLeft, ms); },
-    tick(dt) { if (hitStop > 0) hitStop -= dt; else if (slowLeft > 0) slowLeft -= dt; },
-  };
-}
 
 const ELEMS: BallElement[] = ['stone', 'fire', 'lightning', 'ice', 'ghost', 'lead', 'split'];
 
@@ -32,8 +18,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
   const config = loadConfig();
   const { cols, rows, ballRadius: R } = config.blocks.board;
   const bus = createEventBus();
-  const time = createDemoTime();
-  const renderer = createRenderer(canvas, bus, time, config);
+  const renderer = createRenderer(canvas, bus, config);
 
   let nextId = 1;
   const mkBlock = (kind: BlockKind, col: number, row: number, hp: number, extra?: Partial<Block>): Block => ({
@@ -234,8 +219,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
     raf = requestAnimationFrame(loop);
     const dt = Math.min(100, now - last);
     last = now;
-    time.tick(dt);
-    acc += dt * time.timeScale;
+    acc += dt;
     while (acc >= FIXED) { simStep(FIXED); acc -= FIXED; }
     renderer.draw(state, dt);
   };
