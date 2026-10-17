@@ -147,6 +147,8 @@ export interface ShopItem {
   option: RewardOption;
   price: number;
   sold: boolean;
+  /** catalyseur de forge : partenaire manquant d'une recette (voir docs/HYBRIDS.md) */
+  catalyst?: boolean;
 }
 
 export interface ShopState {
@@ -180,6 +182,8 @@ export interface RunStats {
   /** vagues nettoyées sans perdre de PV */
   perfectWaves: number;
   contractsCompleted: number;
+  /** hybrides et Divine forgées pendant la run */
+  forged?: number;
   /** ms simulés */
   durationMs: number;
 }
@@ -398,7 +402,7 @@ export interface BallDef {
   family: BallFamily;
   /** hybride : les deux parents (rang III requis) ; l'hybride porte leurs effets + le sien */
   recipe?: [BallElement, BallElement];
-  /** paramètres de la mécanique par rang (index 0 = rang I) ; clés libres lues par sim/elements/<id>.ts */
+  /** paramètres de la mécanique par rang (index 0 = rang I) ; clés libres lues par sim/elements/<id>.ts ; hybrides : `rankMult` = multiplicateur de dégâts par rang */
   params?: Record<string, [number, number, number]>;
   baseDamage: number;
   /** poids dans les tirages (0 = jamais en drop aléatoire) */

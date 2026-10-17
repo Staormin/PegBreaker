@@ -4,11 +4,11 @@
 Chaque groupe de la volée a un bouton « Vendre » : `economy.sell.byTier` pièces par balle de base (rang I/II/III), `economy.sell.hybridByTier` pour une hybride, `economy.sell.divine` pour la Divine. On ne peut jamais vendre la dernière balle de la volée. Vendre est le moyen de convertir un build raté en pièces pour la forge.
 
 ## Forge (boutique)
-La boutique affiche une section **Forge** : les paires de balles de **rang II ou plus** de la volée qui forment une recette, avec l'aperçu de l'hybride produite (nom, description, effet propre) et son coût `economy.forge.hybridCost` pièces. Forger consomme les deux parents et donne l'hybride au rang I.
+La boutique affiche une section **Forge** : les paires de balles de la volée qui forment une recette avec **au moins un parent de rang II** (l'autre peut être de rang I), avec l'aperçu de l'hybride produite (nom, description, effet propre) et son coût `economy.forge.hybridCost` pièces. Forger consomme les deux parents et donne l'hybride au rang I.
 
 - **Upgrade** : deux hybrides identiques fusionnent comme les autres balles (carte Fusion), et la forge propose aussi l'upgrade payant d'une hybride seule : I → II (`forge.upgradeCost[0]`), II → III (`forge.upgradeCost[1]`).
 - **Divine** : deux hybrides de **rang III** (identiques ou non) → la **Divine** (`forge.divineCost`). Deux Divines ne fusionnent pas.
-- **Catalyseur** : quand la volée contient un parent d'une recette au rang II+ et pas l'autre, la boutique propose en article le partenaire manquant **au rang II** pour `forge.catalystCost` pièces (un seul catalyseur par boutique, tiré parmi les recettes ouvertes). C'est la voie principale vers une hybride dans une bonne run.
+- **Catalyseur** : quand la volée contient un parent d'une recette (n'importe quel rang) et pas l'autre, la boutique propose en article le partenaire manquant **au rang II** pour `forge.catalystCost` pièces (un seul catalyseur par boutique, tiré parmi les recettes ouvertes). C'est la voie principale vers une hybride dans une bonne run.
 - Accessibilité visée : une forge possible dans au moins 1 boutique sur 4 pour un bot qui achète le catalyseur (mesure QA).
 - Les hybrides et la Divine n'apparaissent jamais en drop, en offre ni en vente de boutique (`weight: 0`) : elles ne viennent que de la forge.
 - **Codex** : chaque hybride forgée est inscrite dans `save.codex` ; le Puits affiche la page Codex (recettes découvertes en clair, les autres en « ? + ? ») ; succès `hybrid1` (première hybride), `hybrid5`, `divine1`.
