@@ -10,7 +10,7 @@
 // invariants. Aucun code du jeu n'est modifié. Résultats : docs/qa/balls-data/<id>.json, capture en vol :
 // docs/qa/balls-shots/<id>.png. Dernier test : perf (30 balles des nouvelles familles, CPU 4×, DPR 1,5).
 // Forge (docs/HYBRIDS.md) : un test par hybride + Divine (effet propre, `forge-<id>.json/png`), dégâts par rang contre
-// 5 pierres (`forge-rank-<id>.json`), BUG FG-01 (test.fail), perf « hybrides + 2 Divines » (`perf-forge.json`).
+// 5 pierres (`forge-rank-<id>.json`), non-régression FG-01, perf « hybrides + 2 Divines » (`perf-forge.json`).
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import type { BallElement } from '../../src/core/types';
@@ -755,6 +755,9 @@ for (const el of [...HYBRIDS, 'divine' as BallElement]) {
       // supernova : depuis e35c8cf (dégâts relevés) les blocs de vague 1-2 meurent avant le premier palier (combo max 2) →
       // blocs de 400 PV pour que la balle rebondisse jusqu'aux paliers
       ...(el === 'supernova' ? { beef: 400 } : {}),
+      // marteau : depuis 5d0b54c (perte de PV max convertie en dégâts / rankMult) il tue les blocs de vague 1-2 au premier
+      // contact → plus de bloc vivant à éroder/repousser (scénario, pas régression) → blocs de 400 PV
+      ...(el === 'hammer' ? { beef: 400 } : {}),
     };
     const r = await runBalls(page, opts, `${SHOTS_DIR}/forge-${el}.png`);
     const sig = HSIG[el] as Signal;
@@ -808,20 +811,18 @@ for (const el of ['stone', ...HYBRIDS, 'divine'] as BallElement[]) {
       out[`r${t}`] = { damage: r.damage, perShotMean: Math.round(r.damage / Math.max(1, r.perShot.length)) };
       errors.push(...r.errors);
     }
-    // bug connu FG-01 (docs/qa/forge.md) : Marteau rang III → PV > PV max ; couvert par le test « BUG FG-01 » ci-dessous
-    const known = el === 'hammer' ? errors.filter((e) => /bloc \d+ hp \d+\/\d+/.test(e)) : [];
-    writeFileSync(`${DATA_DIR}/forge-rank-${el}.json`, JSON.stringify({ element: el, seeds: RANK_SEEDS, beef: RANK_BEEF, shots: SHOTS, ranks: out, errors, knownBugFG01: known.length, consoleErrors }, null, 2) + '\n');
+    // FG-01 (corrigé en 5d0b54c) : toute violation PV > PV max fait échouer ce test
+    writeFileSync(`${DATA_DIR}/forge-rank-${el}.json`, JSON.stringify({ element: el, seeds: RANK_SEEDS, beef: RANK_BEEF, shots: SHOTS, ranks: out, errors, consoleErrors }, null, 2) + '\n');
     test.info().annotations.push({ type: el, description: JSON.stringify(out) });
-    expect(errors.filter((e) => !known.includes(e))).toEqual([]);
+    expect(errors).toEqual([]);
     expect(consoleErrors).toEqual([]);
   });
 }
 
-// BUG FG-01 : Marteau rang III, bloc à PV pleins de 2 000 PV : la perte de PV max (45 %, plafond 400) est ajoutée aux dégâts
-// AVANT le rankMult (0,666) → l'impact retire 400 PV max mais n'inflige que 329 → PV 1 671 / 1 600. Marqué `test.fail` :
-// ce test passera au rouge (« expected to fail ») quand le bug sera corrigé, il faudra alors retirer `test.fail`.
-test('BUG FG-01 : Marteau rang III, PV ≤ PV max à chaque pas (1 tir, blocs 2 000 PV)', async ({ page }) => {
-  test.fail(true, 'FG-01 : hammer rankMult appliqué à la perte de PV max (src/sim/elements/hybrid.ts, hammerOwn + composeHybrid)');
+// FG-01 (historique) : Marteau rang III, bloc à PV pleins de 2 000 PV : la perte de PV max (45 %, plafond 400) est ajoutée aux dégâts
+// AVANT le rankMult (0,666) → l'impact retire 400 PV max mais n'inflige que 329 → PV 1 671 / 1 600. Corrigé en 5d0b54c :
+// test de non-régression (hp ≤ maxHp à chaque pas fixe).
+test('non-régression FG-01 : Marteau rang III, PV ≤ PV max à chaque pas (1 tir, blocs 2 000 PV)', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('/?seed=balls-ref-1&qa=1');
   await waitReady(page);

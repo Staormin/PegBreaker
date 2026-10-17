@@ -97,14 +97,14 @@
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1516.6666666666792
+        "1": 1516.6666666666795
       },
       "groundedBeforeMs": 0
     },
     "devSamples": 45,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 203,
+    "maxParticles": 209,
     "nan": [],
     "violations": [],
     "pageErrors": [],
