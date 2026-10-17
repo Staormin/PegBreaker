@@ -76,6 +76,28 @@ describe('fin de partie : pas de run infinie', () => {
     expect(Math.max(...waves)).toBeLessThanOrEqual(25);
   }, 120_000);
 
+  it('bot « bon », méta complète, volée de départ 2 Divines + 13 hybrides rang III, 10 seeds : aucune run au-delà de v35', () => {
+    const hybrids = config().balls.defs.filter((d) => d.family === 'hybrid').map((d) => d.id);
+    const waves: number[] = [];
+    for (let i = 0; i < 10; i++) {
+      const sim = newSim(`late-div-${i}`, config(), FULL);
+      (sim.state as { volley: { element: BallElement; tier: 1 | 2 | 3 }[] }).volley = [
+        { element: 'divine', tier: 1 },
+        { element: 'divine', tier: 1 },
+        ...hybrids.map((element) => ({ element, tier: 3 as const })),
+      ];
+      for (let k = 0; k < MAX_SHOTS && sim.state.phase !== 'gameover'; k++) {
+        settleGood(sim);
+        if (sim.state.phase !== 'aiming') break;
+        shoot(sim, lowestBlockDir(sim));
+      }
+      expect(sim.state.phase).toBe('gameover');
+      waves.push(sim.state.wave);
+    }
+    console.log(`[late divine] vagues de mort : ${waves.join(',')}`);
+    expect(Math.max(...waves)).toBeLessThanOrEqual(35);
+  }, 300_000);
+
   it('régression eco-3-65 (harnais systems : vague 158 avant les garde-fous) : meurt avant v25', () => {
     // MetaModifiers du joueur simulé 3 avant sa run 65 (src/systems/economy.test.ts, config 2026-10-17)
     const meta: MetaModifiers = {"bonusHp":3,"bonusStartBalls":2,"coinMultiplier":1.3,"fragmentMultiplier":1,"freeRerolls":1,"unlockedElements":["stone","fire","lightning","ice","ghost","lead","split","acid","magnet","pierce","bomb","homing","giant","swarm","vampire","gold","prism","void","echo","boomerang","crystal","shock","twin","rust","nova","comet","lucky"],"unlockedRelics":["bouncy","piggy","magnet","ricochet","flipper","gourmand","pactole","firstblood","bigboom","pyromane","paratonnerre","permafrost","spectre","enclume","catalyseur","safetynet","mitose","alchimie","radar","berserk"],"runMods":[]};

@@ -115,7 +115,7 @@ export function acquireBlock(ctx: Ctx, kind: BlockKind, col: number, row: number
   b.frozen = false;
   b.armorSide = kind === 'armored' ? 'down' : 'none';
   b.bossId = null;
-  if (b.acidCharges !== undefined) b.acidCharges = 0;
+  b.acidCharges = 0; // toujours présent : le snapshot ne dépend pas de l'histoire du pool
   ctx.s.blocks.push(b);
   ctx.gridDirty = true;
   return b;

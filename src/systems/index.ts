@@ -7,8 +7,9 @@
 // `data` n'est donc jamais modifiée sous les pieds de l'appelant, et l'UI peut détecter un
 // changement par comparaison de références (`meta.data !== prev`). Pas de copie par lecture.
 // Exception : `currentRun` (snapshot de la sim) n'est pas gelé.
-import type { DailyResult, GameConfig, MetaModifiers, MetaSystem, RunSnapshot, RunSummary, SaveData, Settings } from '../core/types';
+import type { BallElement, DailyResult, GameConfig, MetaModifiers, MetaSystem, RunSnapshot, RunSummary, SaveData, Settings } from '../core/types';
 import { checkAchievements } from './achievements';
+import { codexProgress, mergeCodex } from './codex';
 import { dailySeedFor, dateKey, pickDailyMods, recordDaily, streakAt, streakMultiplier } from './daily';
 import { availableRunMods, canBuy, computeModifiers, findNode, nextCost, nodeLevel, normalizeMeta } from './meta';
 import { BACKUP_KEY, SAVE_KEY, clamp01, defaultSave, freezeSave, parseMusicTrack, parseSave } from './save';
@@ -19,6 +20,7 @@ export type { StorageLike } from './storage';
 export { createMemoryStorage } from './storage';
 export { SAVE_KEY, BACKUP_KEY } from './save';
 export { effectiveFragmentMultiplier, availableRunMods, nextCost } from './meta';
+export { codexIds, codexProgress, type CodexProgress } from './codex';
 
 /**
  * Coût de la seconde chance pour l'UI (à débiter via spendFragments avant sim.revive()).
@@ -35,7 +37,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
   let d: Readonly<SaveData> = freezeSave(withNormalizedMeta(defaultSave()));
 
   function withNormalizedMeta(s: SaveData): SaveData {
-    return { ...s, meta: normalizeMeta(s.meta, config, s.achievements) };
+    return { ...s, meta: normalizeMeta(s.meta, config, s.achievements), codex: mergeCodex(s.codex, [], config) };
   }
 
   function commit(next: SaveData, persist = true): void {
@@ -111,7 +113,9 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
       earned = Math.round(earned * streakMultiplier(streak));
     }
     const stats = applyRunStats(d.stats, summary);
-    const unlocked = checkAchievements(config.meta.achievements, d.achievements, { summary, stats });
+    // `?? []` : résumés antérieurs au champ forged.
+    const codex = mergeCodex(d.codex, Array.isArray(summary.forged) ? summary.forged : [], config);
+    const unlocked = checkAchievements(config.meta.achievements, d.achievements, { summary, stats, codex: codexProgress(codex, config) });
     let bonus = 0;
     for (const id of unlocked) bonus += config.meta.achievements.find((a) => a.id === id)?.rewardFragments ?? 0;
     stats.totalFragments += earned + bonus;
@@ -124,6 +128,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
       stats,
       achievements,
       daily,
+      codex,
       currentRun: null,
     });
     return unlocked;
@@ -144,6 +149,12 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
   function setOnboarded(): void {
     if (d.onboarded) return;
     commit({ ...d, onboarded: true });
+  }
+
+  function addToCodex(element: BallElement): void {
+    const codex = mergeCodex(d.codex, [element], config);
+    if (codex.length === d.codex.length) return; // déjà inscrit ou id invalide : pas d'écriture
+    commit({ ...d, codex });
   }
 
   function todayKey(): string {
@@ -184,6 +195,7 @@ export function createMeta(storage: StorageLike, config: GameConfig, now: () => 
     setCurrentRun,
     updateSettings,
     setOnboarded,
+    addToCodex,
     dailySeed,
     dailyMods,
     dailyStreak,

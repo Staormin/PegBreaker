@@ -20,13 +20,84 @@
 // Mesuré : 1er achat run 1 ; 5 balles les moins chères runs 3-9 ; 8 premières runs 11-15 ;
 // arbre complet 57-65 runs ; revanche une run sur deux : 51-65 runs, payée 109/149 (73 %),
 // coût = 0,39 run. Une run de la série a atteint 1 200 tirs (vague 88) : voir SHOT_CAP.
+// Lot HYBRIDS.md (2026-10-17) : le bot vend (rang I au-delà de 12 balles), forge dès que
+// possible et monte les hybrides si pièces > 150. Mesure tant que la sim n'expose pas encore
+// sell/forge (bot inactif) : arbre 56-67 runs, 74,7 ◆/run, vague de mort 7,9 ; Puits complet
+// 87,6 ◆/run, vague 8,9, 113 pièces moy. en boutique mais une paire-recette de rang III dans
+// 1 boutique sur 46 seulement. sell/forge de economy.json inchangés (à remesurer avec la sim).
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
-import type { GameConfig, RunSummary } from '../core/types';
+import type { GameConfig, RunSummary, Sim } from '../core/types';
 import { createRng } from '../core/rng';
 import { createSim } from '../sim/index';
 import { FRAME, lowestBlockDir, settle } from '../sim/test-helpers';
-import { createMemoryStorage, createMeta, nextCost, reviveCost } from './index';
+import { codexIds, createMemoryStorage, createMeta, nextCost, reviveCost } from './index';
+
+/** Le bot de boutique vend/forge/upgrade (HYBRIDS.md). false : comportement d'avant (quitte la boutique). */
+let shopBot = true;
+/** Seuils de comportement du bot (pas de l'équilibrage) : volée gardée, réserve avant upgrade. */
+const BOT_KEEP_VOLLEY = 12;
+const BOT_UPGRADE_ABOVE = 150;
+/** Compteurs du bot de boutique (rapport). */
+const shopLog = { sold: 0, forged: 0, upgraded: 0, unsupported: false, visits: 0, coinsAtShop: 0, recipeReady: 0, recipeAffordable: 0, sellable: 0 };
+
+/** Sonde indépendante de la sim : la volée contient-elle une paire de rang III formant une recette ? */
+function hasRecipePair(cfg: GameConfig, sim: Sim): boolean {
+  const t3 = new Set(sim.state.volley.filter((b) => b.tier === 3).map((b) => b.element as string));
+  return cfg.balls.defs.some((d) => d.recipe !== undefined && t3.has(d.recipe[0]) && t3.has(d.recipe[1]));
+}
+
+/** La sim implémente-t-elle la vente/forge (contrat e2a1680) ? Sinon le bot quitte simplement la boutique. */
+function hasForge(sim: Sim): boolean {
+  const p = sim as Partial<Sim>;
+  return typeof p.sell === 'function' && typeof p.forge === 'function' && typeof p.upgrade === 'function' && typeof p.forgeOptions === 'function';
+}
+
+/**
+ * Boutique du bot : 1) vend les balles de rang I au-delà de 12 balles (d'abord celles sans
+ * jumelle de même élément, donc loin d'une fusion) ; 2) forge dès qu'une option est payable ;
+ * 3) monte les hybrides d'un rang tant que pièces > 150. N'achète rien (comme avant).
+ */
+function shopActions(cfg: GameConfig, sim: Sim, hybrids: ReadonlySet<string>): void {
+  if (!shopBot || sim.state.phase !== 'shop') return;
+  shopLog.visits++;
+  shopLog.coinsAtShop += sim.state.coins;
+  shopLog.sellable += Math.max(0, sim.state.volley.length - BOT_KEEP_VOLLEY);
+  if (hasRecipePair(cfg, sim)) {
+    shopLog.recipeReady++;
+    if (sim.state.coins >= cfg.economy.forge.hybridCost) shopLog.recipeAffordable++;
+  }
+  if (!hasForge(sim)) {
+    shopLog.unsupported = true;
+    return;
+  }
+  for (let guard = 0; guard < 64 && sim.state.volley.length > BOT_KEEP_VOLLEY; guard++) {
+    const v = sim.state.volley;
+    let best = -1;
+    let bestPairs = Infinity;
+    for (let i = 0; i < v.length; i++) {
+      const b = v[i];
+      if (!b || b.tier !== 1 || hybrids.has(b.element)) continue;
+      const same = v.filter((o) => o.tier === 1 && o.element === b.element).length;
+      if (same < bestPairs) {
+        bestPairs = same;
+        best = i;
+      }
+    }
+    if (best < 0 || sim.sell(best) <= 0) break;
+    shopLog.sold++;
+  }
+  for (let guard = 0; guard < 16; guard++) {
+    const opt = sim.forgeOptions().find((o) => o.cost <= sim.state.coins);
+    if (!opt || !sim.forge(opt.i, opt.j)) break;
+    shopLog.forged++;
+  }
+  for (let guard = 0; guard < 16 && sim.state.coins > BOT_UPGRADE_ABOVE; guard++) {
+    const i = sim.state.volley.findIndex((b) => b.tier < 3 && hybrids.has(b.element) && b.element !== 'divine');
+    if (i < 0 || !sim.upgrade(i)) break;
+    shopLog.upgraded++;
+  }
+}
 
 /**
  * Joue une run complète. Le bot ignore les contrats (il vise toujours le bloc le plus bas) mais
@@ -36,9 +107,19 @@ import { createMemoryStorage, createMeta, nextCost, reviveCost } from './index';
 function playRun(cfg: GameConfig, seed: string, meta: ReturnType<typeof createMeta>, onLost: () => boolean = () => false): RunSummary {
   const sim = createSim(cfg, { seed, meta: meta.getModifiers() });
   const rng = createRng(seed);
+  const hybrids = new Set<string>(codexIds(cfg));
   let lastWave = 0;
   let sinceWave = 0;
   for (let shots = 0; shots < SHOT_CAP + SURRENDER_SHOTS; shots++) {
+    // Boutique : vente/forge avant que settle n'en sorte (récompenses d'abord, puis boutique).
+    for (let g = 0; g < 10 && (sim.state.phase === 'reward' || sim.state.phase === 'shop'); g++) {
+      if (sim.state.phase === 'reward') sim.chooseReward(0);
+      else {
+        shopActions(cfg, sim, hybrids);
+        sim.leaveShop();
+      }
+      sim.step(0);
+    }
     settle(sim);
     if (sim.state.phase === 'gameover') {
       // onLost (qui paie) n'est consulté que si la sim accepte encore une revanche.
@@ -133,6 +214,9 @@ describe('économie méta', () => {
     const perRun: number[] = [];
     const log: string[] = [];
     const run1Ach: number[] = [];
+    const waves: number[] = [];
+    let forgedTotal = 0;
+    Object.assign(shopLog, { sold: 0, forged: 0, upgraded: 0 });
     for (let p = 0; p < 5; p++) {
       const meta = createMeta(createMemoryStorage(), cfg, () => new Date(2026, 9, 16));
       const boughtAt: Record<string, number> = {};
@@ -142,6 +226,8 @@ describe('économie méta', () => {
         const s = playRun(cfg, `eco-${p}-${runs}`, meta);
         runs++;
         perRun.push(s.stats.fragmentsEarned);
+        waves.push(s.wave);
+        forgedTotal += s.forged?.length ?? 0;
         const ach = meta.onRunEnd(s);
         if (runs === 1) {
           run1Ach.push(ach.length);
@@ -160,6 +246,9 @@ describe('économie méta', () => {
     console.log(log.join('\n'));
     console.log(
       `[economy] arbre ${total} ◆ | 1er achat: run ${firstBuy.join(',')} | 5 balles [${cheap5.join(',')}]: run ${at5.join(',')} | 8 balles: run ${at8.join(',')} | arbre complet: ${full.join(',')} runs | fragments/run moyen ${mean.toFixed(1)} (min ${Math.min(...perRun)}, max ${Math.max(...perRun)}) | runs au plafond de tirs: ${capped.length} [${capped.join(',')}]`,
+    );
+    console.log(
+      `[economy boutique] bot ${shopBot ? 'vente+forge' : 'passif'}${shopLog.unsupported ? ' (sim sans sell/forge : bot inactif)' : ''} | vague de mort moy. ${(waves.reduce((a, b) => a + b, 0) / waves.length).toFixed(1)} | vendues ${shopLog.sold}, forges ${shopLog.forged} (summary.forged ${forgedTotal}), upgrades ${shopLog.upgraded}`,
     );
     // Run 1 bimodale (QA J3-02) : une run courte débloque 1-2 succès, une longue jusqu'à 10.
     const med = [...run1Ach].sort((a, b) => a - b)[Math.floor(run1Ach.length / 2)] ?? 0;
@@ -225,5 +314,44 @@ describe('économie : seconde chance', () => {
     // le joueur glouton doit quand même pouvoir se payer la majorité des revanches voulues
     expect(taken / wanted).toBeGreaterThanOrEqual(0.5);
     expect(taken / wanted).toBeLessThanOrEqual(0.8); // pas automatique
+  }, 300_000);
+});
+
+// Vente/forge (HYBRIDS.md) : effet du bot de boutique sur les ◆ par run et la vague de mort,
+// mêmes graines, Puits complet (tous les éléments débloqués : les recettes sont forgeables).
+describe('économie : vente et forge', () => {
+  it('bot vente+forge vs bot passif (Puits complet, mêmes graines) : ◆/run et vague de mort', () => {
+    const cfg = structuredClone(loadConfig());
+    const RUNS = 20;
+    const measure = (withShop: boolean): { frag: number; wave: number; forged: number } => {
+      shopBot = withShop;
+      const st = createMemoryStorage();
+      st.setItem('pegbreaker.save.v1', JSON.stringify({ version: 1, meta: { fragments: 1_000_000 } }));
+      const meta = createMeta(st, cfg, () => new Date(2026, 9, 16));
+      buyGreedy(cfg, meta);
+      expect(complete(cfg, meta)).toBe(true);
+      let frag = 0;
+      let wave = 0;
+      let forged = 0;
+      for (let r = 0; r < RUNS; r++) {
+        const s = playRun(cfg, `forge-${r}`, meta);
+        frag += s.stats.fragmentsEarned;
+        wave += s.wave;
+        forged += s.forged?.length ?? 0;
+      }
+      return { frag: frag / RUNS, wave: wave / RUNS, forged };
+    };
+    try {
+      const off = measure(false);
+      Object.assign(shopLog, { sold: 0, forged: 0, upgraded: 0, visits: 0, coinsAtShop: 0, recipeReady: 0, recipeAffordable: 0, sellable: 0 });
+      const on = measure(true);
+      console.log(
+        `[economy forge] passif: ${off.frag.toFixed(1)} ◆/run, vague ${off.wave.toFixed(1)} | vente+forge${shopLog.unsupported ? ' (sim sans sell/forge : inactif)' : ''}: ${on.frag.toFixed(1)} ◆/run, vague ${on.wave.toFixed(1)}, forges ${on.forged}/${RUNS} runs, vendues ${shopLog.sold}, upgrades ${shopLog.upgraded} | sonde : ${shopLog.visits} boutiques, ${(shopLog.coinsAtShop / Math.max(1, shopLog.visits)).toFixed(0)} pièces moy., surplus vendable ${shopLog.sellable} balles, paire-recette rang III ${shopLog.recipeReady} fois (payable ${shopLog.recipeAffordable})`,
+      );
+      // Garde-fou : la forge ne doit pas faire exploser l'économie méta (cible HYBRIDS.md : aucune run > vague 35).
+      expect(on.frag).toBeLessThanOrEqual(off.frag * 1.5 + 1);
+    } finally {
+      shopBot = true;
+    }
   }, 300_000);
 });

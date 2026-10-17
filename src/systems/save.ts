@@ -37,6 +37,7 @@ export function defaultSave(): SaveData {
     currentRun: null,
     settings: { ...DEFAULT_SETTINGS },
     onboarded: false,
+    codex: [],
   };
 }
 
@@ -121,6 +122,8 @@ export function parseSave(rawText: string | null): ParseResult {
       currentRun: parseRun(raw['currentRun']),
       settings: { ...settings, sfx: clamp01(settings.sfx), music: clamp01(settings.music), musicTrack: parseMusicTrack(settings.musicTrack) },
       onboarded: raw['onboarded'] === true,
+      // Ids filtrés (hybrides/Divine existantes) par createMeta, qui connaît la config.
+      codex: Array.isArray(raw['codex']) ? uniq(raw['codex'].filter((x): x is BallElement => typeof x === 'string')) : [],
     },
   };
 }
@@ -131,7 +134,7 @@ export function clamp01(v: number): number {
 
 /**
  * Gel superficiel des sections (copy-on-write) : l'objet exposé par `MetaSystem.data` et
- * ses sections (meta, nodes, listes, stats, daily, settings) sont gelés. `currentRun` n'est
+ * ses sections (meta, nodes, listes, stats, daily, settings, codex) sont gelés. `currentRun` n'est
  * PAS gelé (snapshot de la sim, éventuellement repassé à createSim).
  */
 export function freezeSave(d: SaveData): Readonly<SaveData> {
@@ -142,6 +145,7 @@ export function freezeSave(d: SaveData): Readonly<SaveData> {
   Object.freeze(d.meta);
   Object.freeze(d.stats);
   Object.freeze(d.achievements);
+  Object.freeze(d.codex);
   for (const v of Object.values(d.daily)) {
     if (v.mods) Object.freeze(v.mods);
     Object.freeze(v);

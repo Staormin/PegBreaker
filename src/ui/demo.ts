@@ -15,12 +15,15 @@ import type {
   RewardOption,
   RunState,
   RunSummary,
+  SaveData,
   ShopItem,
   Sim,
   Vec2,
 } from '../core/types';
 import { createMeta, createMemoryStorage } from '../systems';
 import { createUI } from './index';
+import { elementTable } from './elements';
+import { isForged, sellPrice, upgradeCost } from './hybrids';
 
 /** Démo : si la config ne porte pas encore les nœuds Arsenal / succès des 27 balles (systems-dev),
  *  les ajoute en mémoire d'après docs/BALLS.md pour que le Puits soit testable. */
@@ -145,6 +148,28 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     }
     return out;
   }
+  /** forges possibles : deux rang III d'une recette → hybride ; deux hybrides III → Divine */
+  function demoForgeOptions(): { i: number; j: number; result: BallElement; cost: number }[] {
+    const out: { i: number; j: number; result: BallElement; cost: number }[] = [];
+    const t = elementTable(config);
+    const v = state.volley;
+    for (let i = 0; i < v.length; i++) {
+      for (let j = i + 1; j < v.length; j++) {
+        const a = v[i];
+        const b = v[j];
+        if (!a || !b || a.tier !== 3 || b.tier !== 3) continue;
+        const fa = t.get(a.element).family;
+        const fb = t.get(b.element).family;
+        if (fa === 'hybrid' && fb === 'hybrid') {
+          out.push({ i, j, result: 'divine', cost: config.economy.forge.divineCost });
+          continue;
+        }
+        const h = t.list.find((x) => x.recipe && ((x.recipe[0] === a.element && x.recipe[1] === b.element) || (x.recipe[0] === b.element && x.recipe[1] === a.element)));
+        if (h) out.push({ i, j, result: h.id, cost: config.economy.forge.hybridCost });
+      }
+    }
+    return out;
+  }
   function endVolley(): void {
     if (state.phase !== 'firing') return;
     state.phase = 'aiming';
@@ -235,6 +260,43 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       shop.rerollsUsed++;
       shop.rerollCost += config.economy.shop.rerollGrowth;
       bus.emit({ type: 'shop:rerolled', cost });
+    },
+    sell(i) {
+      const b = state.volley[i];
+      if (state.phase !== 'shop' || !b || state.volley.length <= 1) return 0;
+      const coins = sellPrice(config, b);
+      state.volley.splice(i, 1);
+      state.coins += coins;
+      log('sell', i, b, coins);
+      bus.emit({ type: 'shop:sold', element: b.element, tier: b.tier, coins });
+      return coins;
+    },
+    forge(i, j) {
+      const o = demoForgeOptions().find((x) => (x.i === i && x.j === j) || (x.i === j && x.j === i));
+      const a = state.volley[i];
+      const b = state.volley[j];
+      if (state.phase !== 'shop' || !o || !a || !b || state.coins < o.cost) return false;
+      state.coins -= o.cost;
+      for (const k of [i, j].sort((x, y) => y - x)) state.volley.splice(k, 1);
+      state.volley.push({ element: o.result, tier: 1 });
+      log('forge', i, j, o.result);
+      bus.emit({ type: 'shop:forged', result: o.result, parents: [a.element, b.element], cost: o.cost, pos: { ...state.launchPos } });
+      // comme main.ts : inscription au codex
+      meta.addToCodex(o.result);
+      return true;
+    },
+    upgrade(i) {
+      const b = state.volley[i];
+      const cost = b ? upgradeCost(config, b) : null;
+      if (state.phase !== 'shop' || !b || cost === null || state.coins < cost) return false;
+      state.coins -= cost;
+      b.tier = (b.tier + 1) as 2 | 3;
+      log('upgrade', i, b);
+      bus.emit({ type: 'shop:upgraded', element: b.element, tier: b.tier, cost });
+      return true;
+    },
+    forgeOptions() {
+      return demoForgeOptions();
     },
     leaveShop() {
       log('leaveShop');
@@ -457,6 +519,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       score: 1234,
       revivesUsed: state.revivesUsed,
       contractsCompleted: state.stats.contractsCompleted,
+      forged: state.volley.filter((b) => isForged(config, b.element)).map((b) => b.element),
     };
   }
   function endRun(): void {
@@ -529,6 +592,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       score: 0,
       revivesUsed: 0,
       contractsCompleted: 0,
+      forged: [],
     });
   });
   add('toast succès', () => {
@@ -537,7 +601,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
   });
   add('résultat quotidien', () => {
     const st = freshState({ x: 0, y: 0 }).stats;
-    meta.onRunEnd({ seed: 'daily', depth: 7, wave: 3, stats: st, relics: [], volley: [], isDaily: true, dailyDate: meta.todayKey(), score: 1234, revivesUsed: 0, contractsCompleted: 0 });
+    meta.onRunEnd({ seed: 'daily', depth: 7, wave: 3, stats: st, relics: [], volley: [], isDaily: true, dailyDate: meta.todayKey(), score: 1234, revivesUsed: 0, contractsCompleted: 0, forged: [] });
   });
   add('offre boss', () => {
     const options = [randomOption(3), randomOption(4), randomOption(5)];
@@ -551,7 +615,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     const today = meta.todayKey();
     for (const back of [6, 4, 3, 2, 1]) {
       const d = dayBefore(today, back);
-      meta.onRunEnd({ seed: `daily-${d}`, depth: 3 + back, wave: 2, stats: st, relics: [], volley: [], isDaily: true, dailyDate: d, score: 400 * back, revivesUsed: 0, contractsCompleted: 0 });
+      meta.onRunEnd({ seed: `daily-${d}`, depth: 3 + back, wave: 2, stats: st, relics: [], volley: [], isDaily: true, dailyDate: d, score: 400 * back, revivesUsed: 0, contractsCompleted: 0, forged: [] });
     }
     ui.show('daily');
   });
@@ -561,6 +625,44 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     const summary: RunSummary = { ...summaryOf(), isDaily: true, dailyDate: meta.todayKey() };
     bus.emit({ type: 'run:over', summary });
     for (const id of meta.onRunEnd(summary)) bus.emit({ type: 'achievement:unlocked', achievementId: id });
+  });
+  add('boutique forge', () => {
+    // de quoi forger : 2 recettes, une paire d'hybrides III (Divine), une hybride à monter
+    state.volley = [
+      { element: 'fire', tier: 3 }, { element: 'ice', tier: 3 },
+      { element: 'ghost', tier: 3 }, { element: 'pierce', tier: 3 },
+      { element: 'steam', tier: 3 }, { element: 'laser', tier: 3 },
+      { element: 'cluster', tier: 1 }, { element: 'wraith', tier: 2 },
+      { element: 'stone', tier: 1 }, { element: 'stone', tier: 1 },
+    ];
+    state.coins = 260;
+    state.phase = 'shop';
+    state.shop = { items: makeShopItems(), rerollCost: config.economy.shop.rerollBase, rerollsUsed: 0 };
+    bus.emit({ type: 'shop:opened', shop: state.shop });
+  });
+  add('boutique sans forge', () => {
+    state.volley = [{ element: 'fire', tier: 3 }, { element: 'stone', tier: 1 }];
+    state.coins = 30;
+    state.phase = 'shop';
+    state.shop = { items: makeShopItems(), rerollCost: config.economy.shop.rerollBase, rerollsUsed: 0 };
+    bus.emit({ type: 'shop:opened', shop: state.shop });
+  });
+  add('volée hybrides', () => {
+    state.volley = ELEMENTS.filter((e) => isForged(config, e)).map((element, i) => ({ element, tier: ((i % 3) + 1) as 1 | 2 | 3 }));
+    bus.emit({ type: 'drop:collected', dropId: 0, kind: 'ball', pos: { x: 0, y: 0 }, value: 1 });
+  });
+  add('fusion hybride', () => {
+    const options: RewardOption[] = [
+      { kind: 'fuse', element: 'steam', tier: 2 },
+      { kind: 'ball', element: 'missile', tier: 3 },
+      { kind: 'fuse', element: 'jackpot', tier: 3 },
+    ];
+    state.phase = 'reward';
+    state.rewardOffer = options;
+    bus.emit({ type: 'reward:offered', options, source: 'wave' });
+  });
+  add('codex factice (+3)', () => {
+    for (const id of ['steam', 'quake', 'divine'] as BallElement[]) meta.addToCodex(id);
   });
   add('Puits', () => ui.show('meta'));
   add('Réglages', () => ui.show('settings'));
@@ -603,9 +705,26 @@ function withDailyFallbacks(base: MetaSystem): MetaSystem {
     dailyStreakMultiplier(streak: number): number {
       return Math.min(2, 1 + 0.1 * (Math.max(1, streak) - 1));
     },
+    addToCodex(element: BallElement): void {
+      if (codex.includes(element)) return;
+      codex = [...codex, element];
+    },
   };
+  // codex factice tant que systems ne le porte pas : `data` dérivé, même référence tant que rien ne change
+  let codex: BallElement[] = [];
+  let dataBase: unknown = null;
+  let dataCodex: BallElement[] | null = null;
+  let dataView: SaveData | null = null;
   return new Proxy(base, {
     get(t, p) {
+      if (p === 'data' && (t.data.codex === undefined || typeof Reflect.get(t, 'addToCodex', t) !== 'function')) {
+        if (!dataView || dataBase !== t.data || dataCodex !== codex) {
+          dataBase = t.data;
+          dataCodex = codex;
+          dataView = { ...t.data, codex };
+        }
+        return dataView;
+      }
       const v: unknown = Reflect.get(t, p, t);
       if (typeof v === 'function') return v.bind(t);
       if (v === undefined && typeof p === 'string' && p in fallbacks) return fallbacks[p as keyof MetaSystem];

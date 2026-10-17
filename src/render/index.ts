@@ -12,7 +12,7 @@ import { createVfx } from './vfx';
 import { createFrameDrawer } from './draw';
 import { createFusions } from './fusion';
 import { buildBackdrops } from './backdrop';
-import { buildColors, ELEMENT_INDEX, ELEMENTS, KIND_INDEX, PALETTE, shade } from './palette';
+import { buildColors, ELEMENT_INDEX, ELEMENTS, FAMILY_INDEX, KIND_INDEX, PALETTE, shade } from './palette';
 
 export { PALETTE } from './palette';
 
@@ -72,8 +72,21 @@ export function createRenderer(
     applyBackdrop();
   }
 
-  const fusions = createFusions((x, y, element, tier) => {
+  const EL_DIVINE_I = ELEMENT_INDEX.divine;
+  const fusions = createFusions((x, y, element, tier, forge) => {
     const c = colors.element[element] ?? PALETTE.stone;
+    if (forge) {
+      // forge : flash + anneaux + particules de la couleur de l'hybride (dorés pour la Divine)
+      const divine = element === EL_DIVINE_I;
+      const fc = divine ? PALETTE.gold : c;
+      vfx.flashCircle(x, y, divine ? 0.9 : 0.7, 200, '#ffffff');
+      vfx.ring(x, y, 0.1, divine ? 1.8 : 1.3, 360, fc, 0.12);
+      vfx.ring(x, y, 0.05, divine ? 1.1 : 0.8, 280, '#ffffff', 0.05);
+      particles.burst(x, y, divine ? 34 : 24, fc, P_SPARK, 2.5, 7, 0, Math.PI, 0.25, 0.45, 0.04, 0.08, 0, PRIO_HIGH);
+      particles.burst(x, y, 10, divine ? PALETTE.goldLight : shade(c, 0.5), P_CRYSTAL, 1, 3.5, 0, Math.PI, 0.3, 0.55, 0.05, 0.09, 1, PRIO_HIGH);
+      if (divine) vfx.rays(x, y, 420, PALETTE.gold, 16, 1.6);
+      return;
+    }
     vfx.flashCircle(x, y, 0.5 + 0.1 * tier, 170, '#ffffff');
     vfx.ring(x, y, 0.1, 0.8 + 0.2 * tier, 280, c, 0.09);
     vfx.ring(x, y, 0.05, 0.5, 200, '#ffffff', 0.04);
@@ -189,6 +202,15 @@ export function createRenderer(
   const subs: Unsubscribe[] = [];
   const EL_BOMB = ELEMENT_INDEX.bomb, EL_NOVA = ELEMENT_INDEX.nova, EL_VAMPIRE = ELEMENT_INDEX.vampire;
   const EL_ECHO = ELEMENT_INDEX.echo, EL_BOOMERANG = ELEMENT_INDEX.boomerang;
+  const F_HYBRID_I = FAMILY_INDEX.hybrid;
+  const steamColor = colors.element[ELEMENT_INDEX.steam] ?? PALETTE.ice;
+  const supernovaColor = colors.element[ELEMENT_INDEX.supernova] ?? PALETTE.heart;
+  const supernovaCore = shade(supernovaColor, 0.7);
+  const missileColor = colors.element[ELEMENT_INDEX.missile] ?? PALETTE.fire;
+  const laserColor = colors.element[ELEMENT_INDEX.laser] ?? PALETTE.ice;
+  const clusterColor = colors.element[ELEMENT_INDEX.cluster] ?? PALETTE.danger;
+  /** Jugement : une seule bande dorée au sol par frame, même avec un éclair par bloc */
+  let judgementFrame = -100;
   /** dernière destruction par le vampire / l'or (position + frame) : relie healed / drop:spawned à un point */
   let vampX = 0, vampY = 0, vampFrame = -100;
   let goldX = 0, goldY = 0, goldFrame = -100;
@@ -236,11 +258,19 @@ export function createRenderer(
   }
 
   subs.push(bus.on('block:hit', (e) => {
-    numbers.add(e.pos.x, e.pos.y - 0.1, e.damage, e.crit, e.blockId, hitByGolden(e.ballId));
+    // dégâts de la Divine (et de la balle dorée) en or
+    numbers.add(e.pos.x, e.pos.y - 0.1, e.damage, e.crit, e.blockId, e.element === 'divine' || hitByGolden(e.ballId));
     const fx = vfx.blockFx(e.blockId);
     fx.squashT = 0;
     const c = elemColor(e.element);
     particles.burst(e.pos.x, e.pos.y, 2, c, P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
+    const ei = ELEMENT_INDEX[e.element];
+    if (colors.family[ei] === F_HYBRID_I) {
+      // hybride : une étincelle de chaque parent
+      const ia = colors.recipeA[ei] ?? -1, ib = colors.recipeB[ei] ?? -1;
+      if (ia >= 0) particles.burst(e.pos.x, e.pos.y, 2, colors.element[ia] ?? c, P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
+      if (ib >= 0) particles.burst(e.pos.x, e.pos.y, 2, colors.element[ib] ?? c, P_SPARK, 1.5, 4, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_LOW);
+    }
     // signatures d'impact des nouvelles balles (locales, ≤ 300 ms)
     switch (e.element) {
       case 'acid': {
@@ -264,7 +294,16 @@ export function createRenderer(
         if (e.crit) { vfx.flashCircle(e.pos.x, e.pos.y, 0.28, 140, c); particles.burst(e.pos.x, e.pos.y, 6, c, P_CRYSTAL, 1, 3, 0, Math.PI, 0.2, 0.35, 0.05, 0.08, 0, PRIO_NORMAL); }
         break;
       case 'pierce':
+      case 'wraith':
         vfx.flashCircle(e.pos.x, e.pos.y, 0.18, 90, '#ffffff');
+        break;
+      case 'hammer':
+        // coup lourd : anneau sombre court + éclats
+        vfx.ring(e.pos.x, e.pos.y, 0.05, 0.5, 180, c, 0.08);
+        particles.burst(e.pos.x, e.pos.y, 6, c, P_SHARD, 1, 3, Math.PI / 2, 1.3, 0.3, 0.5, 0.05, 0.08, 6, PRIO_LOW);
+        break;
+      case 'divine':
+        vfx.flashCircle(e.pos.x, e.pos.y, 0.24, 110, PALETTE.goldLight);
         break;
       default:
     }
@@ -286,12 +325,69 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('block:explode', (e) => {
+    const x = e.pos.x, y = e.pos.y;
+    switch (e.element) {
+      case 'divine': {
+        // nova de la Divine : onde dorée + rayons
+        const rr = Math.max(0.6, e.radius);
+        vfx.ring(x, y, 0.15, rr, 280, PALETTE.gold, 0.16);
+        vfx.ring(x, y, 0.05, rr * 0.7, 220, '#ffffff', 0.05);
+        vfx.flashCircle(x, y, rr * 0.45, 130, PALETTE.goldLight);
+        vfx.rays(x, y, 300, PALETTE.gold, 12, rr);
+        particles.burst(x, y, 14, PALETTE.gold, P_CRYSTAL, 2, 6, 0, Math.PI, 0.2, 0.4, 0.04, 0.08, 0.5, PRIO_HIGH);
+        return;
+      }
+      case 'supernova': {
+        // grande onde rose (rayon 2 u), double, + gerbe de rayons
+        const rr = Math.max(1.2, e.radius);
+        vfx.ring(x, y, 0.2, rr, 380, supernovaColor, 0.22);
+        vfx.ring(x, y, 0.1, rr * 0.7, 320, '#ffffff', 0.07);
+        vfx.ring(x, y, 0.05, rr * 1.15, 480, supernovaColor, 0.06);
+        vfx.flashCircle(x, y, rr * 0.45, 160, supernovaCore);
+        vfx.rays(x, y, 400, supernovaColor, 18, rr);
+        particles.burst(x, y, 30, supernovaColor, P_SPARK, 4, 11, 0, Math.PI, 0.2, 0.45, 0.05, 0.09, 0, PRIO_HIGH);
+        particles.burst(x, y, 10, '#ffffff', P_CRYSTAL, 2, 6, 0, Math.PI, 0.25, 0.45, 0.05, 0.08, 1, PRIO_HIGH);
+        return;
+      }
+      case 'steam': {
+        // nuage pâle qui gonfle et monte, liseré de vapeur
+        const rr = Math.max(0.6, e.radius);
+        vfx.puff(x, y, rr * 0.5, rr * 1.35, 560, 0.3, 0.55);
+        vfx.puff(x + (Math.random() < 0.5 ? -0.35 : 0.35) * rr, y + 0.1, rr * 0.3, rr * 0.9, 480, 0.4, 0.4);
+        vfx.ring(x, y, 0.1, rr, 300, steamColor, 0.06);
+        particles.burst(x, y, 12, '#eef8ff', P_SHARD, 0.4, 1.6, -Math.PI / 2, Math.PI, 0.35, 0.6, 0.06, 0.12, -1.5, PRIO_NORMAL);
+        particles.burst(x, y, 6, elemColor('ice'), P_CRYSTAL, 0.8, 2.5, 0, Math.PI, 0.3, 0.5, 0.05, 0.08, 1, PRIO_NORMAL);
+        return;
+      }
+      case 'missile': {
+        // explosion orange vif + fumée, plus sèche que la bombe
+        const rr = Math.max(0.5, e.radius);
+        vfx.ring(x, y, 0.1, rr, 230, missileColor, 0.15);
+        vfx.ring(x, y, 0.05, rr * 0.7, 180, '#ffffff', 0.05);
+        vfx.flashCircle(x, y, rr * 0.55, 110, '#ffe0b0');
+        particles.burst(x, y, 16, missileColor, P_SPARK, 4, 10, 0, Math.PI, 0.15, 0.3, 0.05, 0.08, 0, PRIO_HIGH);
+        particles.burst(x, y, 8, '#3a3f4b', P_SHARD, 1, 3, -Math.PI / 2, 1.3, 0.35, 0.55, 0.07, 0.12, 2, PRIO_NORMAL);
+        return;
+      }
+      case 'cluster': {
+        // mini-bombe de la grappe : petite explosion rose + fumée
+        const rr = Math.max(0.4, e.radius);
+        vfx.ring(x, y, 0.08, rr, 220, clusterColor, 0.1);
+        vfx.flashCircle(x, y, rr * 0.5, 100, '#ffffff');
+        particles.burst(x, y, 10, clusterColor, P_SPARK, 3, 7, 0, Math.PI, 0.12, 0.28, 0.04, 0.07, 0, PRIO_HIGH);
+        particles.burst(x, y, 5, '#3a3f4b', P_SHARD, 1, 3, -Math.PI / 2, 1.2, 0.3, 0.5, 0.06, 0.1, 2, PRIO_NORMAL);
+        return;
+      }
+      default:
+    }
     // couleur de la source : champ `element` de l'événement, sinon balle suivie la plus proche
     let src = -1;
     if (e.element === 'explosive') src = -2;
     else if (e.element !== undefined) src = ELEMENT_INDEX[e.element];
     else src = drawer.nearestElement(e.pos.x, e.pos.y, 0.8);
-    const c = src === -2 ? kindColor(KIND_INDEX.explosive) : src === EL_BOMB || src === EL_NOVA ? colors.element[src] ?? PALETTE.danger : elemColor('fire');
+    const c = src === -2 ? kindColor(KIND_INDEX.explosive)
+      : src === EL_BOMB || src === EL_NOVA || (src >= 0 && colors.family[src] === F_HYBRID_I) ? colors.element[src] ?? PALETTE.danger
+        : src === EL_DIVINE_I ? PALETTE.gold : elemColor('fire');
     const core = src === EL_NOVA ? novaCore : src === EL_BOMB ? '#ffffff' : '#ffe0b0';
     vfx.ring(e.pos.x, e.pos.y, 0.15, Math.max(0.5, e.radius), 250, c, 0.16);
     vfx.ring(e.pos.x, e.pos.y, 0.05, Math.max(0.4, e.radius * 0.75), 200, '#ffffff', 0.06);
@@ -374,6 +470,27 @@ export function createRenderer(
   }));
 
   subs.push(bus.on('lightning:chain', (e) => {
+    if (e.element === 'laser') {
+      // laser : faisceau droit (colonne) + éclats à l'arrivée
+      vfx.beam(e.from.x, e.from.y, e.to.x, e.to.y, 220, laserColor, 0.26);
+      particles.burst(e.to.x, e.to.y, 5, laserColor, P_SPARK, 2, 5, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0, PRIO_NORMAL);
+      return;
+    }
+    if (e.element === 'divine') {
+      // Jugement : éclair doré depuis le sol vers le bloc + onde au sol
+      const gy = board.rows - 0.02;
+      const gx = e.from.y >= board.rows - 1 ? e.from.x : e.to.x;
+      vfx.bolt(gx, gy, e.to.x, e.to.y, 260, PALETTE.gold);
+      vfx.ring(gx, gy, 0.05, 0.7, 320, PALETTE.gold, 0.08);
+      vfx.flashCircle(e.to.x, e.to.y, 0.35, 160, PALETTE.goldLight);
+      particles.burst(e.to.x, e.to.y, 8, PALETTE.gold, P_CRYSTAL, 1.5, 4, 0, Math.PI, 0.2, 0.4, 0.04, 0.07, 0.5, PRIO_HIGH);
+      if (frame !== judgementFrame) {
+        judgementFrame = frame;
+        vfx.flashRect(0, board.rows - 0.14, board.cols, 0.14, 320, PALETTE.gold);
+        vfx.ring(board.cols / 2, gy, 0.2, board.cols * 0.6, 420, PALETTE.goldLight, 0.1);
+      }
+      return;
+    }
     const prism = e.element === 'prism';
     const c = prism ? elemColor('prism') : elemColor('lightning');
     vfx.bolt(e.from.x, e.from.y, e.to.x, e.to.y, prism ? 160 : 120, c);
@@ -411,8 +528,18 @@ export function createRenderer(
     flashPlayerRow(220);
   }));
 
+  // Forge : les deux parents convergent (300 ms) puis flash + anneaux + particules au pos
+  subs.push(bus.on('shop:forged', (e) => {
+    fusions.startForge(e.pos.x, e.pos.y, ELEMENT_INDEX[e.result], ELEMENT_INDEX[e.parents[0]], ELEMENT_INDEX[e.parents[1]]);
+  }));
+
   // F3 — balle dorée : mémorisée par id, petit éclat or au point de lancement
   subs.push(bus.on('ball:launched', (e) => {
+    if (e.element === 'divine') {
+      vfx.flashCircle(e.pos.x, e.pos.y, 0.4, 160, PALETTE.goldLight);
+      vfx.rays(e.pos.x, e.pos.y, 280, PALETTE.gold, 8, 0.8);
+      particles.burst(e.pos.x, e.pos.y, 10, PALETTE.gold, P_CRYSTAL, 1.5, 4, -Math.PI / 2, 1.2, 0.2, 0.35, 0.03, 0.06, 0, PRIO_HIGH);
+    }
     if (!e.golden) return;
     drawer.markGolden(e.ballId);
     vfx.flashCircle(e.pos.x, e.pos.y, 0.32, 140, PALETTE.gold);
@@ -442,6 +569,14 @@ export function createRenderer(
 
   subs.push(bus.on('ball:split', (e) => {
     const src: BallElement = e.element ?? (ELEMENTS[drawer.nearestElement(e.pos.x, e.pos.y, 0.6)] ?? 'split');
+    if (src === 'cluster') {
+      // grappe : les mini-bombes jaillissent (mèches + fumée), anneau rose
+      vfx.ring(e.pos.x, e.pos.y, 0.05, 0.7, 240, clusterColor, 0.07);
+      vfx.flashCircle(e.pos.x, e.pos.y, 0.3, 110, clusterColor);
+      particles.burst(e.pos.x, e.pos.y, 10, PALETTE.accent, P_SPARK, 2.5, 6, -Math.PI / 2, 1.3, 0.15, 0.3, 0.03, 0.05, 0, PRIO_HIGH);
+      particles.burst(e.pos.x, e.pos.y, 6, '#3a3f4b', P_SHARD, 1, 2.5, -Math.PI / 2, 1.2, 0.3, 0.5, 0.06, 0.1, 2, PRIO_NORMAL);
+      return;
+    }
     if (src === 'crystal') {
       // le cristal éclate : éclats pâles en étoile + anneau blanc
       const c = elemColor('crystal');

@@ -9,16 +9,20 @@ import { PALETTE } from './palette';
 
 const SQUASH_DUR = 0.12; // s
 const MAX_RINGS = 24;
-const MAX_BOLTS = 16;
+const MAX_BOLTS = 24;
+const MAX_BEAMS = 12;
+const MAX_PUFFS = 24;
 const MAX_FLASHES = 48;
 const BOLT_POINTS = 9;
-const MAX_RAYS = 3;
+const MAX_RAYS = 8;
 const RAY_COUNT = 24;
 const MAX_HEARTS = 8;
 
 interface Ring { active: boolean; x: number; y: number; r0: number; r1: number; t: number; dur: number; color: string; width: number; }
 interface Bolt { active: boolean; pts: Float32Array; t: number; dur: number; color: string; }
 interface Rays { active: boolean; x: number; y: number; t: number; dur: number; color: string; n: number; len: number; ang: Float32Array; }
+interface Beam { active: boolean; x0: number; y0: number; x1: number; y1: number; t: number; dur: number; color: string; width: number; }
+interface Puff { active: boolean; x: number; y: number; r0: number; r1: number; t: number; dur: number; rise: number; alpha: number; }
 interface Heart { active: boolean; x: number; y: number; t: number; dur: number; color: string; s: number; }
 interface LocalFlash { active: boolean; x: number; y: number; w: number; h: number; t: number; dur: number; color: string; circle: boolean; }
 
@@ -68,6 +72,10 @@ export interface Vfx {
   rays(x: number, y: number, ms: number, color: string, count: number, length: number): void;
   /** petit cœur qui « pop » puis monte et s'efface (soin du vampire) ; s = demi-largeur (unités) */
   heart(x: number, y: number, ms: number, color: string, s: number): void;
+  /** faisceau droit (laser) : halo de couleur + cœur blanc, s'amincit puis s'efface */
+  beam(x0: number, y0: number, x1: number, y1: number, ms: number, color: string, width: number): void;
+  /** nuage doux (vapeur) : disque flou pâle qui gonfle de r0 à r1 et monte de `rise` unités */
+  puff(x: number, y: number, r0: number, r1: number, ms: number, rise: number, alpha: number): void;
 
   /** état visuel par bloc */
   blockFx(id: number): BlockFx;
@@ -84,8 +92,9 @@ export interface Vfx {
   squashScale(fx: BlockFx): number;
 
   update(dt: number): void;
-  /** k = px physiques par unité, (ox, oy) = origine du plateau ; laisse le contexte en unités plateau */
-  drawWorld(ctx: CanvasRenderingContext2D, k: number, ox: number, oy: number): void;
+  /** k = px physiques par unité, (ox, oy) = origine du plateau ; laisse le contexte en unités plateau.
+   *  `soft` = sprite de halo blanc pré-rendu (nuages) ; sans lui, pas de nuages. */
+  drawWorld(ctx: CanvasRenderingContext2D, k: number, ox: number, oy: number, soft?: CanvasImageSource): void;
   clear(): void;
 }
 
@@ -102,6 +111,10 @@ export function createVfx(): Vfx {
 
   const hearts: Heart[] = [];
   for (let i = 0; i < MAX_HEARTS; i++) hearts.push({ active: false, x: 0, y: 0, t: 0, dur: 1, color: '#fff', s: 0.1 });
+  const beams: Beam[] = [];
+  for (let i = 0; i < MAX_BEAMS; i++) beams.push({ active: false, x0: 0, y0: 0, x1: 0, y1: 0, t: 0, dur: 1, color: '#fff', width: 0.1 });
+  const puffs: Puff[] = [];
+  for (let i = 0; i < MAX_PUFFS; i++) puffs.push({ active: false, x: 0, y: 0, r0: 0, r1: 1, t: 0, dur: 1, rise: 0, alpha: 0.4 });
 
   const fxPool: BlockFx[] = [];
   const fxMap = new Map<number, BlockFx>();
@@ -163,6 +176,15 @@ export function createVfx(): Vfx {
       h.active = true; h.x = x; h.y = y; h.t = 0; h.dur = ms / 1000; h.color = color; h.s = sz;
     },
 
+    beam(x0, y0, x1, y1, ms, color, width) {
+      const b = freeSlot(beams);
+      b.active = true; b.x0 = x0; b.y0 = y0; b.x1 = x1; b.y1 = y1; b.t = 0; b.dur = ms / 1000; b.color = color; b.width = width;
+    },
+    puff(x, y, r0, r1, ms, rise, alpha) {
+      const p = freeSlot(puffs);
+      p.active = true; p.x = x; p.y = y; p.r0 = r0; p.r1 = r1; p.t = 0; p.dur = ms / 1000; p.rise = rise; p.alpha = alpha;
+    },
+
     blockFx(id) {
       let fx = fxMap.get(id);
       if (fx) return fx;
@@ -209,9 +231,11 @@ export function createVfx(): Vfx {
       for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (f.inUse) { if (f.squashT < SQUASH_DUR) f.squashT += dt; if (f.popT < 1) f.popT += dt; if (f.spawnT < 1) f.spawnT += dt; if (f.slideT < 1) f.slideT += dt; } }
       for (let i = 0; i < MAX_RAYS; i++) { const r = rays[i]!; if (r.active && (r.t += dt) >= r.dur) r.active = false; }
       for (let i = 0; i < MAX_HEARTS; i++) { const h = hearts[i]!; if (h.active && (h.t += dt) >= h.dur) h.active = false; }
+      for (let i = 0; i < MAX_BEAMS; i++) { const b = beams[i]!; if (b.active && (b.t += dt) >= b.dur) b.active = false; }
+      for (let i = 0; i < MAX_PUFFS; i++) { const p = puffs[i]!; if (p.active && (p.t += dt) >= p.dur) p.active = false; }
     },
 
-    drawWorld(ctx, k, ox, oy) {
+    drawWorld(ctx, k, ox, oy, soft) {
       // flashs rectangulaires en pixels entiers (chemin rapide), le reste en unités plateau
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       for (let i = 0; i < MAX_FLASHES; i++) {
@@ -223,6 +247,32 @@ export function createVfx(): Vfx {
         ctx.fillRect(x0, y0, Math.round(ox + (f.x + f.w) * k) - x0, Math.round(oy + (f.y + f.h) * k) - y0);
       }
       ctx.setTransform(k, 0, 0, k, ox, oy);
+      if (soft) {
+        // nuages : halo blanc pré-rendu, mis à l'échelle (aucun dégradé créé ici)
+        for (let i = 0; i < MAX_PUFFS; i++) {
+          const p = puffs[i]!;
+          if (!p.active) continue;
+          const t = p.t / p.dur;
+          const e = 1 - (1 - t) * (1 - t) * (1 - t);
+          const r = p.r0 + (p.r1 - p.r0) * e;
+          ctx.globalAlpha = p.alpha * (t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85);
+          ctx.drawImage(soft, p.x - r, p.y - p.rise * e - r, r * 2, r * 2);
+        }
+      }
+      for (let i = 0; i < MAX_BEAMS; i++) {
+        const b = beams[i]!;
+        if (!b.active) continue;
+        const t = b.t / b.dur, a = 1 - t;
+        ctx.lineCap = 'butt';
+        ctx.globalAlpha = a * 0.5;
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = b.width * (1 - 0.5 * t);
+        ctx.beginPath(); ctx.moveTo(b.x0, b.y0); ctx.lineTo(b.x1, b.y1); ctx.stroke();
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = b.width * 0.3 * (1 - 0.6 * t);
+        ctx.beginPath(); ctx.moveTo(b.x0, b.y0); ctx.lineTo(b.x1, b.y1); ctx.stroke();
+      }
       for (let i = 0; i < MAX_FLASHES; i++) {
         const f = flashes[i]!;
         if (!f.active || !f.circle) continue;
@@ -301,6 +351,8 @@ export function createVfx(): Vfx {
       for (const f of flashes) f.active = false;
       for (const r of rays) r.active = false;
       for (const h of hearts) h.active = false;
+      for (const b of beams) b.active = false;
+      for (const p of puffs) p.active = false;
     },
   };
   return api;

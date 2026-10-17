@@ -37,57 +37,92 @@
   "shots": 3,
   "fpsSamples": [
     43,
-    45,
-    60,
-    60,
+    42,
     57,
-    59,
-    57,
+    58,
+    43,
+    51,
     52,
-    59
+    44,
+    45
   ],
-  "fpsMin": 43,
-  "fpsMean": 54.666666666666664,
+  "fpsMin": 42,
+  "fpsMean": 48.333333333333336,
   "frameP50": 16.699999999999818,
-  "frameP95": 33.299999999999955,
-  "frameP99": 49.899999999999864,
-  "frameMax": 166.69999999999982,
-  "frames": 551,
+  "frameP95": 33.399999999999636,
+  "frameP99": 66.59999999999991,
+  "frameMax": 183.4000000000001,
+  "frames": 488,
   "slowFrames": [
     {
-      "sinceFireMs": 30,
-      "dt": 50,
-      "live": 2
-    },
-    {
-      "sinceFireMs": 513,
+      "sinceFireMs": 516,
       "dt": 67,
       "live": 10
     },
     {
-      "sinceFireMs": 563,
-      "dt": 50,
-      "live": 10
+      "sinceFireMs": 599,
+      "dt": 83,
+      "live": 11
     },
     {
-      "sinceFireMs": 713,
+      "sinceFireMs": 716,
+      "dt": 67,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 1032,
+      "dt": 183,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1082,
+      "dt": 50,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1182,
+      "dt": 67,
+      "live": 17
+    },
+    {
+      "sinceFireMs": 1232,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 590,
+      "dt": 50,
+      "live": 11
+    },
+    {
+      "sinceFireMs": 673,
+      "dt": 50,
+      "live": 12
+    },
+    {
+      "sinceFireMs": 496,
+      "dt": 67,
+      "live": 9
+    },
+    {
+      "sinceFireMs": 746,
       "dt": 50,
       "live": 13
     },
     {
-      "sinceFireMs": 1063,
-      "dt": 167,
-      "live": 16
-    },
-    {
-      "sinceFireMs": 1230,
+      "sinceFireMs": 946,
       "dt": 67,
-      "live": 18
+      "live": 17
     },
     {
-      "sinceFireMs": 1280,
+      "sinceFireMs": 1046,
       "dt": 50,
       "live": 18
+    },
+    {
+      "sinceFireMs": 1129,
+      "dt": 50,
+      "live": 20
     }
   ],
   "rendererDpr": [
@@ -101,7 +136,7 @@
     1,
     1
   ],
-  "maxParticles": 58,
+  "maxParticles": 55,
   "maxLive": 27,
   "explodeByEl": {
     "fire": 3

@@ -11,7 +11,13 @@ import { createRenderer, type PegRenderer } from './index';
 import { ELEMENTS } from './palette';
 export { mountBallGallery } from './gallery';
 
-const ELEMS: readonly BallElement[] = ELEMENTS;
+/** jeu « forge » (?set=forge) : les 13 hybrides ×2, 2 Divines, + vapeur et missile (30 balles) */
+const HYBRIDS: readonly BallElement[] = ['steam', 'laser', 'cluster', 'wraith', 'abyss', 'jackpot', 'quake', 'missile', 'supernova', 'plague', 'choir', 'orbit', 'hammer'];
+const FORGE_SET: readonly BallElement[] = [...HYBRIDS, 'divine', ...HYBRIDS, 'divine', 'steam', 'missile'];
+/** recettes jouées par la démo de forge (shop:forged) */
+const FORGE_DEMO: readonly [BallElement, BallElement, BallElement][] = [
+  ['steam', 'fire', 'ice'], ['laser', 'lightning', 'prism'], ['supernova', 'crystal', 'nova'], ['divine', 'steam', 'missile'],
+];
 /** au-delà d'une balle par élément : mini-balles (essaim, éclats de cristal, jumelles), rayon × 0,6 */
 const MINIS: readonly BallElement[] = ['swarm', 'crystal', 'twin'];
 const MINI_RADIUS = 0.6;
@@ -19,11 +25,16 @@ const MINI_RADIUS = 0.6;
 export interface RenderDemoOptions {
   /** nombre de balles de la volée (défaut : une par élément, 27) ; au-delà, des mini-balles */
   balls?: number;
+  /** 'forge' : volée d'hybrides + 2 Divines, événements hybrides synthétiques, forge à chaque visée */
+  set?: 'base' | 'forge';
   /** accès de debug (captures QA) : bus et état factice */
   debug?: (api: { bus: EventBus; state: RunState; renderer: PegRenderer }) => void;
 }
 
 export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptions = {}): () => void {
+  const forgeSet = opts.set === 'forge';
+  const noDiv = typeof location !== 'undefined' && new URLSearchParams(location.search).get('nodiv') === '1';
+  const ELEMS: readonly BallElement[] = forgeSet ? (noDiv ? FORGE_SET.map((e) => (e === 'divine' ? 'stone' : e)) : FORGE_SET) : ELEMENTS.filter((e) => e !== 'divine' && !HYBRIDS.includes(e));
   const nBalls = opts.balls ?? ELEMS.length;
   const config = loadConfig();
   const { cols, rows, ballRadius: R } = config.blocks.board;
@@ -52,7 +63,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
   const giantMult = config.balls.defs.find((d) => d.id === 'giant')?.params?.radiusMult ?? [1.8, 2.1, 2.4];
   const crystalBounces = config.balls.defs.find((d) => d.id === 'crystal')?.params?.bounces?.[0] ?? 8;
   const radiusOf = (b: Ball, i: number): number =>
-    i >= ELEMS.length ? R * MINI_RADIUS : b.element === 'giant' ? R * (giantMult[b.tier - 1] ?? 1.8) : R;
+    i >= ELEMS.length ? R * MINI_RADIUS : b.element === 'giant' ? R * (giantMult[b.tier - 1] ?? 1.8) : b.element === 'divine' ? R * 1.3 : R;
   for (let i = 0; i < nBalls; i++) {
     const mini = i >= ELEMS.length;
     const element = mini ? MINIS[(i - ELEMS.length) % MINIS.length] ?? 'swarm' : ELEMS[i] ?? 'stone';
@@ -117,7 +128,8 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       if (other && other !== b) emit({ type: 'lightning:chain', from: { x: ball.pos.x, y: ball.pos.y }, to: { x: other.col + other.width / 2, y: other.row + 0.5 }, damage: 1 });
     }
     if (ball.element === 'ice' && !b.frozen && b.kind !== 'boss') { b.frozen = true; emit({ type: 'block:frozen', blockId: b.id, pos: { x: b.col + 0.5, y: b.row + 0.5 } }); }
-    if (ball.element === 'acid') b.acidCharges = Math.min(3, (b.acidCharges ?? 0) + 1);
+    if (ball.element === 'acid' || ball.element === 'plague' || ball.element === 'abyss') b.acidCharges = Math.min(3, (b.acidCharges ?? 0) + 1);
+    hybridHit(ball, b);
     if (ball.element === 'shock' && b.kind !== 'boss' && b.row > 1 && !blocks.some((o) => o !== b && o.row === b.row - 1 && o.col <= b.col && b.col < o.col + o.width)) {
       b.row--; // la sim le fait sans événement dédié : le rendu détecte la baisse de row
     }
@@ -137,6 +149,49 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       if (ball.element === 'gold') emit({ type: 'drop:spawned', dropId: 999, kind: 'coin', pos: { x: pos.x, y: pos.y } });
       if (b.kind === 'boss') b.hp = b.maxHp = 1520;
       else respawnBlock(b);
+    }
+  }
+
+  /** effets propres des hybrides et de la Divine (événements tels que la sim les émet) */
+  const flightHits = new Map<number, number>();
+  const qp = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+  const noFx = qp?.get('nofx') === '1';
+  function hybridHit(ball: Ball, b: Block): void {
+    if (noFx) return;
+    const n = (flightHits.get(ball.id) ?? 0) + 1;
+    flightHits.set(ball.id, n);
+    const p = { x: ball.pos.x, y: ball.pos.y };
+    switch (ball.element) {
+      case 'steam': if (n === 1) emit({ type: 'block:explode', pos: p, radius: 1.2, damage: 5, element: 'steam' }); break;
+      case 'laser': emit({ type: 'lightning:chain', from: { x: b.col + 0.5, y: 0.05 }, to: { x: b.col + 0.5, y: rows - 1.05 }, damage: 3, element: 'laser' }); break;
+      case 'missile': if (n % 3 === 0) emit({ type: 'block:explode', pos: p, radius: 1, damage: 9, element: 'missile' }); break;
+      case 'divine': emit({ type: 'block:explode', pos: p, radius: 1.5, damage: 250, element: 'divine' }); break;
+      case 'quake': {
+        if (n !== 1 || b.kind === 'boss' || b.row <= 1) break;
+        const row = b.row;
+        for (const o of blocks) {
+          if (o.row !== row || o.kind === 'boss') continue;
+          if (!blocks.some((q) => q.row === row - 1 && q.col < o.col + o.width && o.col < q.col + q.width)) o.row--;
+        }
+        break;
+      }
+      default:
+    }
+  }
+  function hybridGrounded(ball: Ball): void {
+    if (noFx) return;
+    flightHits.delete(ball.id);
+    if (ball.element === 'cluster') {
+      emit({ type: 'ball:split', pos: { x: ball.pos.x, y: rows - 0.3 }, element: 'cluster' });
+      for (let i = 0; i < 3; i++) emit({ type: 'block:explode', pos: { x: Math.max(0.5, Math.min(cols - 0.5, ball.pos.x + (i - 1) * 0.9)), y: rows - 1.2 - Math.random() }, radius: 0.8, damage: 5, element: 'cluster' });
+    } else if (ball.element === 'divine') {
+      // Jugement : rangée cassable la plus basse
+      let low = -1;
+      for (const o of blocks) if (o.kind !== 'boss' && o.kind !== 'peg' && o.row > low) low = o.row;
+      for (const o of blocks) {
+        if (o.row !== low || o.kind === 'peg' || o.kind === 'boss') continue;
+        emit({ type: 'lightning:chain', from: { x: ball.pos.x, y: rows }, to: { x: o.col + o.width / 2, y: o.row + 0.5 }, damage: 1500, element: 'divine' });
+      }
     }
   }
 
@@ -162,6 +217,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
         if (ball.pos.y > rows - R) {
           ball.pos.y = rows - R;
           emit({ type: 'ball:grounded', ballId: ball.id, pos: { x: ball.pos.x, y: rows } });
+          hybridGrounded(ball);
           if (ball.element === 'bomb') emit({ type: 'block:explode', pos: { x: ball.pos.x, y: rows - 0.3 }, radius: 1.4, damage: 30, element: 'bomb' });
           if (ball.element === 'echo' && !ball.triggered) {
             // copie fantôme : repart vers le haut (Ball.kind = 'echo')
@@ -213,7 +269,10 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
         state.pendingLaunches = balls.length;
         state.currentShotDamage = 0;
         state.recallSpeed = 1;
-        if (state.stats.shots % 2 === 1) emit({ type: 'volley:fusion', element: 'fire', tier: 2, index: 0, pos: { x: state.launchPos.x, y: state.launchPos.y - 0.6 } });
+        if (forgeSet) {
+          const f = FORGE_DEMO[state.stats.shots % FORGE_DEMO.length]!;
+          emit({ type: 'shop:forged', result: f[0], parents: [f[1], f[2]], cost: 40, pos: { x: cols / 2, y: rows / 2 } });
+        } else if (state.stats.shots % 2 === 1) emit({ type: 'volley:fusion', element: 'fire', tier: 2, index: 0, pos: { x: state.launchPos.x, y: state.launchPos.y - 0.6 } });
         else emit({ type: 'reward:chosen', option: { kind: 'fuse', element: 'ice', tier: 3 } });
         shotBase = Math.atan2(state.aimDir.y, state.aimDir.x);
         shotHalf = state.aimSpread * maxSpreadRad;
@@ -245,6 +304,8 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
         emit({ type: 'combo:milestone', combo: [5, 10, 20][milestoneLvl - 1] ?? 5, pos: { x: lead.pos.x, y: lead.pos.y }, level: milestoneLvl });
         const nova = balls.find((b) => b.alive && b.element === 'nova');
         if (nova) emit({ type: 'block:explode', pos: { x: nova.pos.x, y: nova.pos.y }, radius: 1.2, damage: 10, element: 'nova' });
+        const sn = balls.find((b) => b.alive && b.element === 'supernova');
+        if (sn) emit({ type: 'block:explode', pos: { x: sn.pos.x, y: sn.pos.y }, radius: 2, damage: 100, element: 'supernova' });
         milestoneLvl = milestoneLvl === 3 ? 1 : ((milestoneLvl + 1) as 2 | 3);
       }
       if (phaseT > 5000 || (launched === balls.length && balls.every((b) => !b.alive))) {

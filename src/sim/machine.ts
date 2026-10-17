@@ -330,6 +330,7 @@ export function buildSummary(ctx: Ctx): RunSummary {
     score,
     revivesUsed: s.revivesUsed ?? 0,
     contractsCompleted: s.stats.contractsCompleted ?? 0,
+    forged: Array.isArray(s.internal.forged) ? s.internal.forged.slice() : [],
   };
 }
 

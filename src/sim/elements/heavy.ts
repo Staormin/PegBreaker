@@ -1,4 +1,5 @@
 // sim/elements/heavy.ts — famille « heavy » : plomb (d'origine), géante, bombe, choc.
+import type { Block } from '../../core/types';
 import type { Ctx } from '../ctx';
 import { isBreakable } from '../ctx';
 import { ballDamage, explode } from '../combat';
@@ -56,24 +57,32 @@ function shockSlot(ctx: Ctx, id: number): number {
   return -1;
 }
 
+/**
+ * Le bloc remonte d'une rangée si la place est libre et row > 0, au plus `max` fois par bloc et par tir
+ * (compteur partagé internal.shocked : choc, marteau). Vrai si le bloc a bougé.
+ */
+export function pushBlockUp(ctx: Ctx, blk: Block, max: number): boolean {
+  if (!isBreakable(blk) || blk.row <= 0 || max <= 0) return false;
+  const a = ctx.s.internal.shocked;
+  let k = shockSlot(ctx, blk.id);
+  if (k >= 0 && (a[k + 1] as number) >= max) return false;
+  for (let c = blk.col; c < blk.col + blk.width; c++) if (!cellFree(ctx, c, blk.row - 1)) return false;
+  if (k < 0) {
+    a.push(blk.id, 0);
+    k = a.length - 2;
+  }
+  a[k + 1] = (a[k + 1] as number) + 1;
+  blk.row--;
+  ctx.gridDirty = true;
+  return true;
+}
+
 /** Choc : le bloc touché remonte d'une rangée si la place est libre et row > 0, au plus perBlock fois par bloc et par tir. */
 export const shock: ElementHooks = {
   params: ['perBlock'],
   onBlockHit(ctx, b, _fx, _bi, blk, _px, _py, _dmg, isPeg) {
-    if (isPeg || !isBreakable(blk) || blk.row <= 0) return;
-    const max = Math.round(prm(ctx, 'shock', 'perBlock', b.tier));
-    const a = ctx.s.internal.shocked;
-    let k = shockSlot(ctx, blk.id);
-    if (k >= 0 && (a[k + 1] as number) >= max) return;
-    if (max <= 0) return;
-    for (let c = blk.col; c < blk.col + blk.width; c++) if (!cellFree(ctx, c, blk.row - 1)) return;
-    if (k < 0) {
-      a.push(blk.id, 0);
-      k = a.length - 2;
-    }
-    a[k + 1] = (a[k + 1] as number) + 1;
-    blk.row--;
-    ctx.gridDirty = true;
+    if (isPeg) return;
+    pushBlockUp(ctx, blk, Math.round(prm(ctx, 'shock', 'perBlock', b.tier)));
   },
   onShotStart(ctx) {
     ctx.s.internal.shocked.length = 0;

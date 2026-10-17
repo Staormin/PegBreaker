@@ -9,7 +9,7 @@ import { maybeDrop } from './drops';
 import { fxOf } from './pools';
 import { contractMax, contractOnKill } from './contracts';
 import type { BallFx } from './state';
-import { elementHooks, hooksOf } from './elements/index';
+import { elementHooks, elementsBlockDestroyed, hooksOf } from './elements/index';
 import { heal } from './rewards';
 
 /**
@@ -101,6 +101,7 @@ function destroyBlock(ctx: Ctx, bi: number, element: BallElement): void {
     if (H.onBlockDestroyed) handled = H.onBlockDestroyed(ctx, cb, cf, blk, x, y);
   }
   if (!handled) maybeDrop(ctx, x, y, 0);
+  elementsBlockDestroyed(ctx, blk, x, y); // peste : contamination à la mort d'un bloc rongé
   if (blk.kind === 'heart') heal(ctx, ctx.relic.heartHeal, 'heart', x, y);
   else if (blk.kind === 'explosive') {
     const def = ctx.blockDefs.explosive;

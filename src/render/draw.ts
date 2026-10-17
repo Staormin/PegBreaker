@@ -6,7 +6,7 @@ import { easeOutBack, easeOutCubic } from '../core/math';
 import type { Layout } from './layout';
 import type { SpriteBudget, Sprites } from './sprites';
 import {
-  BALL_EXTENT, ballVisualRadius, damageLevel, DROP_EXTENT, ELEMENT_ORIENT, GOLDEN_EXTENT, HALO_EXTENT, ORIENT_SPIN,
+  BALL_EXTENT, ballVisualRadius, damageLevel, DROP_EXTENT, EL_DIVINE, ELEMENT_ORIENT, GOLDEN_EXTENT, HALO_EXTENT, ORIENT_SPIN,
   ORIENT_VELOCITY, PEG_RADIUS, quantizeRadius, ROT_STEPS, RQ_ONE, SPRITE_BUILD_BUDGET,
 } from './sprites';
 import type { Particles } from './particles';
@@ -34,7 +34,8 @@ const EL_GHOST = ELEMENT_INDEX.ghost, EL_STONE = ELEMENT_INDEX.stone, EL_ECHO = 
 const EL_ACID = ELEMENT_INDEX.acid, EL_COMET = ELEMENT_INDEX.comet, EL_GIANT = ELEMENT_INDEX.giant;
 const EL_CRYSTAL = ELEMENT_INDEX.crystal, EL_NOVA = ELEMENT_INDEX.nova, EL_VOID = ELEMENT_INDEX.void;
 const F_ELEMENTAL = FAMILY_INDEX.elemental, F_HEAVY = FAMILY_INDEX.heavy, F_TRICKY = FAMILY_INDEX.tricky;
-const F_GREED = FAMILY_INDEX.greed, F_ARCANE = FAMILY_INDEX.arcane;
+const F_GREED = FAMILY_INDEX.greed, F_ARCANE = FAMILY_INDEX.arcane, F_HYBRID = FAMILY_INDEX.hybrid;
+const EL_STEAM = ELEMENT_INDEX.steam, EL_QUAKE = ELEMENT_INDEX.quake;
 /**
  * Style de traînée par famille (indexé par FAMILY_INDEX, dérivé de BALL_FAMILIES) :
  * elemental = additive ; heavy = courte et dense ; tricky = longue et translucide ; swarm = fine ;
@@ -54,8 +55,15 @@ famStyle(FAMILY_INDEX.tricky, 12, 1.7, 0.13, 0.26, 6);
 famStyle(FAMILY_INDEX.swarm, 6, 0.75, 0.3, 0.55, 4);
 famStyle(FAMILY_INDEX.greed, 7, 1.3, 0.2, 0.5, 4);
 famStyle(FAMILY_INDEX.arcane, 7, 1.2, 0.22, 0.5, 4);
+// hybride : traînée bicolore (tirets alternés des deux parents) + cœur de la couleur de l'hybride
+famStyle(FAMILY_INDEX.hybrid, 8, 1.45, 0.3, 0.5, 5);
+// Divine : tracée à part (longue, dorée, additive) ; valeurs de repli seulement
+famStyle(FAMILY_INDEX.divine, 14, 2, 0.25, 0.55, 10);
 /** tirets des traînées arcane (unités plateau) */
 const DASH_TRAIL: number[] = [0.07, 0.07];
+/** traînée de la Divine */
+const DIVINE_TRAIL = 14;
+const DIVINE_TRAIL_MANY = 10;
 /** cadence de rotation du boomerang (crans de ROT_STEPS par seconde) */
 const SPIN_RATE = 28;
 /** glissement d'un bloc repoussé vers le haut (choc), s */
@@ -172,6 +180,17 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   elLen[EL_STONE] = 6;
   /** éléments présents cette frame (mode « beaucoup de balles ») */
   const present = new Uint8Array(ELEMENT_COUNT);
+  /** couleurs des parents d'une hybride ('' sinon), par élément */
+  const parentA: string[] = [], parentB: string[] = [];
+  for (let e = 0; e < ELEMENT_COUNT; e++) {
+    const ia = d.colors.recipeA[e] ?? -1, ib = d.colors.recipeB[e] ?? -1;
+    parentA.push(ia >= 0 ? elColors[ia] ?? '' : '');
+    parentB.push(ib >= 0 ? elColors[ib] ?? '' : '');
+  }
+  /** séisme : blocs repoussés par rangée cette frame (≥ 2 = poussière de rangée), et y du bord bas d'origine */
+  const rowSlides = new Uint8Array(l.rows + 2);
+  const rowDustY = new Float32Array(l.rows + 2);
+  const quakeColor = elColors[EL_QUAKE] ?? PALETTE.textDim;
 
   const trails: Trail[] = [];
   for (let i = 0; i < MAX_TRAILS; i++) {
@@ -410,6 +429,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     // la sim incrémente row à la FIN de 'advancing' : on interpole row → row + 1
     const shift = advancing ? easeOutBack(state.advanceProgress < 0 ? 0 : state.advanceProgress > 1 ? 1 : state.advanceProgress) : 0;
     pixelTransform();
+    rowSlides.fill(0);
 
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i]!;
@@ -433,6 +453,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (!advancing && b.row < fx.lastRow) {
         fx.slideFrom = fx.lastRow - b.row;
         fx.slideT = 0;
+        if (b.row >= 0 && b.row < rowSlides.length) { rowSlides[b.row]!++; rowDustY[b.row] = b.row + 1 + fx.slideFrom - 0.05; }
         particles.burst(b.col + b.width * 0.5, b.row + 1 + fx.slideFrom - 0.05, 10 * b.width, PALETTE.textDim, P_SHARD, 0.6, 2.2, Math.PI / 2, 1.2, 0.25, 0.45, 0.04, 0.08, 4, PRIO_NORMAL);
       }
       fx.lastRow = b.row;
@@ -489,6 +510,15 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (b.kind === 'boss') { boardTransform(); drawBossEyes(state, b.col + b.width * 0.5, y + 0.3, b.width); pixelTransform(); }
     }
     boardTransform();
+    // séisme : plusieurs blocs d'une même rangée reculent ensemble → poussière sur toute la rangée
+    for (let r = 0; r < rowSlides.length; r++) {
+      if ((rowSlides[r] ?? 0) < 2) continue;
+      const yd = rowDustY[r] ?? r + 1;
+      vfx.flashRect(0, yd - 0.04, l.cols, 0.1, 220, quakeColor);
+      for (let c = 0; c < l.cols; c++) {
+        particles.burst(c + 0.5, yd, 6, (c & 1) === 0 ? quakeColor : PALETTE.textDim, P_SHARD, 0.4, 1.8, Math.PI / 2, 1.4, 0.3, 0.55, 0.04, 0.09, 3, PRIO_NORMAL);
+      }
+    }
   }
 
   function drawBossEyes(state: Readonly<RunState>, cx: number, cy: number, width: number): void {
@@ -623,6 +653,19 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   }
 
   /**
+   * Segments alternés d'une traînée (parité 0 = segments pairs depuis la tête, 1 = impairs), ajoutés
+   * au chemin courant : deux strokes pleins donnent l'alternance des couleurs parentes d'une hybride
+   * (bien moins cher que setLineDash en raster logiciel).
+   */
+  function trailSegments(tr: Trail, n: number, parity: number): void {
+    for (let k = parity; k < n - 1; k += 2) {
+      const i0 = (tr.head - k + TRAIL_CAP) % TRAIL_CAP, i1 = (tr.head - k - 1 + TRAIL_CAP) % TRAIL_CAP;
+      ctx.moveTo(tr.xs[i0]!, tr.ys[i0]!);
+      ctx.lineTo(tr.xs[i1]!, tr.ys[i1]!);
+    }
+  }
+
+  /**
    * Pré-chauffe pendant la visée (charge nulle) les sprites des balles de la volée : tous les
    * crans d'orientation à taille normale, plus la taille « mini » des balles qui en libèrent.
    */
@@ -649,6 +692,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     const ambient = particles.count < 600;
     // scintillement greed : une valeur par frame (pas par balle : un seul calcul)
     const twinkle = 0.65 + 0.35 * Math.sin(time * 31);
+    /** rayon visuel minimal de la Divine */
+    const divR = (R * sp.divineRq) / RQ_ONE;
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -668,6 +713,31 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       tr.elem = e;
       const vr = ballVisualRadius(b.radius, e, b.tier);
       if (tr.comboPop < 1) tr.comboPop += dt;
+      if (e === EL_DIVINE) {
+        // Divine : traînée longue, dorée, additive (2 passes) + paillettes le long de la traînée
+        const vd = vr > divR ? vr : divR;
+        let dl = (many ? DIVINE_TRAIL_MANY : DIVINE_TRAIL) + boost;
+        if (dl > TRAIL_CAP) dl = TRAIL_CAP;
+        const dn = tr.count < dl ? tr.count : dl;
+        tr.el = -1; tr.n = dn;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = PALETTE.gold;
+        strokeTrail(tr, dn, vd * 1.55, 0.3);
+        ctx.strokeStyle = PALETTE.goldLight;
+        strokeTrail(tr, (dn + 1) >> 1, vd * 0.6, 0.75);
+        ctx.globalCompositeOperation = 'source-over';
+        tr.emitT -= dt;
+        if (tr.emitT <= 0) {
+          // paillette en tête + une plus loin dans la traînée
+          particles.burst(b.pos.x, b.pos.y, 2, (frame & 1) === 0 ? PALETTE.gold : '#ffffff', P_CRYSTAL, 0.2, 0.9, 0, Math.PI, 0.25, 0.45, vd * 0.25, vd * 0.45, 0.4, PRIO_NORMAL);
+          if (dn > 4) {
+            const k = (tr.head - ((dn >> 1) + ((frame >> 1) % (dn >> 1))) + TRAIL_CAP) % TRAIL_CAP;
+            particles.burst(tr.xs[k]!, tr.ys[k]!, 2, PALETTE.goldLight, P_CRYSTAL, 0.1, 0.5, 0, Math.PI, 0.3, 0.5, vd * 0.2, vd * 0.35, 0.6, PRIO_LOW);
+          }
+          tr.emitT = many ? 0.06 : 0.03;
+        }
+        continue;
+      }
       if (isGolden(b)) {
         // F3 — traînée dorée plus longue, tracée à part (aussi en mode « beaucoup de balles »)
         let gl = (many ? GOLD_TRAIL_MANY : GOLD_TRAIL) + boost;
@@ -695,6 +765,17 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       tr.el = e; tr.n = n;
       if (many) {
         present[e] = 1; // tracé groupé par élément plus bas (≤ 1 stroke par élément présent)
+      } else if (f === F_HYBRID && parentA[e] !== '' && parentB[e] !== '') {
+        // hybride : tirets alternés aux couleurs des deux parents, cœur à la couleur de l'hybride
+        const w = FAM_WIDTH[f] ?? 1.45, al = FAM_ALPHA[f] ?? 0.3;
+        ctx.globalAlpha = al;
+        ctx.lineWidth = vr * w;
+        for (let par = 0; par < 2; par++) {
+          ctx.strokeStyle = par === 0 ? parentA[e]! : parentB[e]!;
+          ctx.beginPath(); trailSegments(tr, n, par); ctx.stroke();
+        }
+        ctx.strokeStyle = color;
+        strokeTrail(tr, (n + 1) >> 1, vr * (w * 0.42), FAM_ALPHA_CORE[f] ?? 0.5);
       } else {
         const additive = f === F_ELEMENTAL;
         const dashed = f === F_ARCANE && e !== EL_STONE;
@@ -733,6 +814,14 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         } else if (f === F_GREED) {
           particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? '#ffffff' : color, P_CRYSTAL, 0.1, 0.5, 0, Math.PI, 0.18, 0.3, vr * 0.25, vr * 0.4, 0, PRIO_LOW);
           tr.emitT = 0.1 * slow;
+        } else if (e === EL_STEAM) {
+          // vapeur : bouffées pâles qui montent
+          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? '#eef8ff' : color, P_SHARD, 0.1, 0.4, -Math.PI / 2, 0.6, 0.3, 0.5, vr * 0.35, vr * 0.6, -1.2, PRIO_LOW);
+          tr.emitT = 0.07 * slow;
+        } else if (f === F_HYBRID) {
+          // hybride : étincelles alternées aux couleurs des parents
+          particles.burst(b.pos.x, b.pos.y, 1, (frame & 1) === 0 ? (parentA[e] || color) : (parentB[e] || color), P_SPARK, 0.2, 0.8, 0, Math.PI, 0.15, 0.3, vr * 0.3, vr * 0.45, 0, PRIO_LOW);
+          tr.emitT = 0.16 * slow;
         } else if (e === EL_VOID) {
           particles.burst(b.pos.x, b.pos.y, 1, PALETTE.bg0, P_SHARD, 0.1, 0.3, 0, Math.PI, 0.2, 0.35, vr * 0.3, vr * 0.45, 0, PRIO_LOW);
           tr.emitT = 0.12 * slow;
@@ -746,6 +835,23 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       ctx.lineJoin = 'bevel';
       for (let e = 0; e < ELEMENT_COUNT; e++) {
         if (present[e] === 0) continue;
+        const fh = famOf[e] ?? F_ARCANE;
+        if (fh === F_HYBRID && parentA[e] !== '' && parentB[e] !== '') {
+          // hybrides : segments alternés aux couleurs des parents (2 strokes pleins par hybride présente)
+          ctx.lineWidth = R * 1.2 * (FAM_WIDTH[fh] ?? 1.45) * 0.66;
+          ctx.globalAlpha = 0.34;
+          for (let par = 0; par < 2; par++) {
+            ctx.beginPath();
+            for (let i = 0; i < MAX_TRAILS; i++) {
+              const tr = trails[i]!;
+              if (!tr.active || tr.seen !== frame || tr.el !== e || tr.n < 2) continue;
+              trailSegments(tr, tr.n, par);
+            }
+            ctx.strokeStyle = par === 0 ? parentA[e]! : parentB[e]!;
+            ctx.stroke();
+          }
+          continue;
+        }
         let any = false;
         for (let i = 0; i < MAX_TRAILS; i++) {
           const tr = trails[i]!;
@@ -778,7 +884,17 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       if (!b.alive) continue;
       const e = ELEMENT_INDEX[b.element];
       const idx = e * 3 + (b.tier - 1);
-      const rq = quantizeRadius(b.radius, R);
+      let rq = quantizeRadius(b.radius, R);
+      if (e === EL_DIVINE) {
+        // Divine : son propre sprite (jamais le sprite doré), rayon visuel ≥ ×1,3
+        if (rq < sp.divineRq) rq = sp.divineRq;
+        const dimg = sp.ball(idx, rq, 0);
+        if (dimg) {
+          const dext = ((sp.ballExt[idx] ?? R * BALL_EXTENT) * rq) / sp.divineRq;
+          blit(dimg, b.pos.x - dext, b.pos.y - dext, sp.scale);
+        }
+        continue;
+      }
       if (isGolden(b)) {
         const gimg = sp.goldenAt(idx);
         if (gimg) {
@@ -1101,7 +1217,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     pixelTransform();
     particles.draw(ctx, K, OX, OY);
     boardTransform();
-    vfx.drawWorld(ctx, K, OX, OY);
+    vfx.drawWorld(ctx, K, OX, OY, sp.halo);
     ctx.restore();
     // point de lancement hors clip : il est posé sur le sol
     drawLaunch(state);

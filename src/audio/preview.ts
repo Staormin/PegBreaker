@@ -3,7 +3,7 @@
 // (dispatch + limiteur + recettes). `npm run dev` puis /src/audio/preview.html
 import { createEventBus } from '../core/events';
 import type { BallElement, ContractDef, ContractState, GameEvent, RewardOption } from '../core/types';
-import { HIT_ELEMENTS, HIT_VOICES } from './hits';
+import { HIT_ELEMENTS, HIT_VOICES, HYBRID_ELEMENTS } from './hits';
 import { createAudio, type AudioSystemDev } from './index';
 import { exportWav } from './render';
 import { TRACK_IDS, TRACKS } from './tracks';
@@ -11,7 +11,7 @@ import { TRACK_IDS, TRACKS } from './tracks';
 const P = { x: 4, y: 6 };
 const N = { x: 0, y: -1 };
 const ELEMENTS: readonly BallElement[] = HIT_ELEMENTS;
-const FAMILY_ORDER = ['elemental', 'heavy', 'tricky', 'swarm', 'greed', 'arcane'] as const;
+const FAMILY_ORDER = ['elemental', 'heavy', 'tricky', 'swarm', 'greed', 'arcane', 'hybrid', 'divine'] as const;
 const FUSE: RewardOption = { kind: 'fuse', element: 'fire', tier: 2 };
 const BALL: RewardOption = { kind: 'ball', element: 'ice', tier: 1 };
 const COINS: RewardOption = { kind: 'coins', amount: 15 };
@@ -45,7 +45,7 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
       })),
     ],
   },
-  // grille des 27 sons de hit : une ligne par famille (le survol du bouton affiche l'identité)
+  // grille des 41 sons de hit : une ligne par famille, dont les 13 hybrides et la Divine (le survol affiche l'identité)
   ...FAMILY_ORDER.map((fam) => ({
     title: `block:hit — ${fam}`,
     entries: ELEMENTS.filter((el) => HIT_VOICES[el].family === fam).map((el) => ({
@@ -59,6 +59,8 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
     entries: [
       { label: 'stone crit', events: () => [hit('stone', true)] },
       { label: 'lucky crit', events: () => [hit('lucky', true)] },
+      { label: 'jackpot crit', events: () => [hit('jackpot', true)] },
+      { label: 'divine crit', events: () => [hit('divine', true)] },
     ],
   },
   {
@@ -93,6 +95,36 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
       { label: 'chain element:prism', events: () => [{ type: 'lightning:chain', from: P, to: P, damage: 3, element: 'prism' }] },
       { label: 'split element:crystal', events: () => [{ type: 'ball:split', pos: P, element: 'crystal' }] },
       { label: 'ball:split cristal', events: () => [hit('crystal'), { type: 'ball:split', pos: P }] },
+    ],
+  },
+  {
+    title: 'Hybrides et Divine : explosions et chaînes',
+    entries: [
+      { label: 'explode divine (nova dorée)', events: () => [{ type: 'block:explode', pos: P, radius: 1.5, damage: 250, element: 'divine' }] },
+      { label: 'explode steam (vapeur)', events: () => [{ type: 'block:explode', pos: P, radius: 1.2, damage: 20, element: 'steam' }] },
+      { label: 'explode supernova', events: () => [{ type: 'block:explode', pos: P, radius: 2, damage: 400, element: 'supernova' }] },
+      { label: 'explode missile (sèche)', events: () => [{ type: 'block:explode', pos: P, radius: 1, damage: 60, element: 'missile' }] },
+      { label: 'explode cluster (mini-bombe)', events: () => [{ type: 'block:explode', pos: P, radius: 0.8, damage: 10, element: 'cluster' }] },
+      { label: 'chain divine (Jugement)', events: () => [{ type: 'lightning:chain', from: P, to: P, damage: 1500, element: 'divine' }] },
+      {
+        label: 'Jugement : rangée ×8 (1 son)',
+        events: () => Array.from({ length: 8 }, (_, i): GameEvent => ({ type: 'lightning:chain', from: P, to: { x: i, y: P.y }, damage: 1500, element: 'divine' })),
+      },
+      { label: 'chain laser (zap 120 ms)', events: () => [{ type: 'lightning:chain', from: P, to: P, damage: 8, element: 'laser' }] },
+    ],
+  },
+  {
+    title: 'Boutique : vente, forge, upgrade',
+    entries: [
+      { label: 'shop:sold', events: () => [{ type: 'shop:sold', element: 'fire', tier: 3, coins: 32 }] },
+      { label: 'shop:upgraded I→II', events: () => [{ type: 'shop:upgraded', element: 'steam', tier: 2, cost: 60 }] },
+      { label: 'shop:upgraded II→III', events: () => [{ type: 'shop:upgraded', element: 'steam', tier: 3, cost: 120 }] },
+      ...HYBRID_ELEMENTS.map((el) => ({
+        label: `forge ${el}`,
+        title: `carillon ${Math.round(HIT_VOICES[el].chimeHz ?? 0)} Hz`,
+        events: (): GameEvent[] => [{ type: 'shop:forged', result: el, parents: HIT_VOICES[el].parents ? [...HIT_VOICES[el].parents] as [BallElement, BallElement] : ['stone', 'stone'], cost: 40, pos: P }],
+      })),
+      { label: 'forge DIVINE', events: () => [{ type: 'shop:forged', result: 'divine', parents: ['steam', 'hammer'], cost: 150, pos: P }] },
     ],
   },
   {
@@ -200,6 +232,7 @@ function summary(): Extract<GameEvent, { type: 'run:over' }>['summary'] {
     score: 1000,
     revivesUsed: 1,
     contractsCompleted: 2,
+    forged: ['steam'],
   };
 }
 

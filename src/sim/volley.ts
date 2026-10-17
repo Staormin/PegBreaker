@@ -1,7 +1,7 @@
 // sim/volley.ts — volée (inventaire), fusion, lancement de la rafale.
 import type { BallElement, BallTier, VolleyBall } from '../core/types';
 import type { Ctx } from './ctx';
-import { emit } from './ctx';
+import { ballDef, emit } from './ctx';
 import { acquireBall } from './pools';
 import { contractMax } from './contracts';
 import { modElement } from './mods';
@@ -9,6 +9,11 @@ import type { BallFx } from './state';
 import { elementHooks } from './elements/index';
 
 const MAX_TIER = 3;
+
+/** La Divine ne fusionne jamais (deux Divines restent deux balles). */
+export function canFuse(ctx: Ctx, el: BallElement): boolean {
+  return ballDef(ctx, el).family !== 'divine';
+}
 
 /**
  * Trie la volée par élément puis rang. La fusion n'est plus automatique (c'est une carte de récompense),
@@ -22,7 +27,7 @@ export function fuseVolley(ctx: Ctx): void {
     for (let i = 0; i + 1 < v.length; i++) {
       const a = v[i] as VolleyBall;
       const b = v[i + 1] as VolleyBall;
-      if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER && (best < 0 || a.tier < (v[best] as VolleyBall).tier)) best = i;
+      if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER && canFuse(ctx, a.element) && (best < 0 || a.tier < (v[best] as VolleyBall).tier)) best = i;
     }
     if (best < 0) return;
     const a = v[best] as VolleyBall;
@@ -38,7 +43,7 @@ export function bestFusablePair(ctx: Ctx): number {
   for (let i = 0; i + 1 < v.length; i++) {
     const a = v[i] as VolleyBall;
     const b = v[i + 1] as VolleyBall;
-    if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER && (best < 0 || a.tier > (v[best] as VolleyBall).tier)) best = i;
+    if (a.element === b.element && a.tier === b.tier && a.tier < MAX_TIER && canFuse(ctx, a.element) && (best < 0 || a.tier > (v[best] as VolleyBall).tier)) best = i;
   }
   return best;
 }
@@ -49,7 +54,7 @@ export function bestFusablePair(ctx: Ctx): number {
  */
 export function fusePair(ctx: Ctx, element: BallElement, tier: BallTier): boolean {
   const v = ctx.s.volley;
-  if (tier <= 1 || tier > MAX_TIER) return false;
+  if (tier <= 1 || tier > MAX_TIER || !canFuse(ctx, element)) return false;
   const from = tier - 1;
   let first = -1;
   let second = -1;
@@ -115,7 +120,7 @@ export function launchNext(ctx: Ctx): void {
     b.vel.x = dx * ctx.ballSpeed * fx.speedMult;
     b.vel.y = dy * ctx.ballSpeed * fx.speedMult;
   }
-  b.golden = s.pendingLaunches === 0;
+  b.golden = s.pendingLaunches === 0 || H.alwaysGolden === true; // Divine : dorée en permanence
   if (!H.noCombo) {
     b.combo = ctx.relic.bouncy;
     if (it.inheritCombo > 0) {

@@ -52,8 +52,11 @@ export interface Sprites {
   warm(index: number, rq: number): boolean;
   /** balle de taille standard, orientée vers le haut (lancement, galerie, drops, fusion) */
   ballAt(index: number): HTMLCanvasElement | undefined;
-  /** demi-étendue de chaque sprite de balle à rq = RQ_ONE (unités plateau), même index que ballAt ; × rq / RQ_ONE sinon */
+  /** demi-étendue de chaque sprite de balle à rq = RQ_ONE (unités plateau), même index que ballAt ; × rq / RQ_ONE sinon.
+   *  Exception : la Divine, mesurée à rq = divineRq (× rq / divineRq). */
   ballExt: number[];
+  /** rayon quantifié minimal de la Divine (rayon de config × radiusMult) : ball() ne descend jamais en dessous */
+  readonly divineRq: number;
   /** balle dorée (dernière de la volée) : même index que ballAt ; l'élément reste lisible par un anneau */
   goldenAt(index: number): HTMLCanvasElement | undefined;
   /** demi-étendue des sprites dorés (unités plateau) */
@@ -280,9 +283,11 @@ function makeFrozen(width: number, cell: number): HTMLCanvasElement {
 /** Rayon visuel d'une balle (unités plateau) selon l'élément et le rang. Visuel seulement. */
 export const TIER_SCALE: readonly number[] = [1, 1.25, 1.5];
 const EL_GIANT = ELEMENT_INDEX.giant, EL_LEAD = ELEMENT_INDEX.lead;
+export const EL_DIVINE = ELEMENT_INDEX.divine;
 export function ballVisualRadius(radius: number, element: number, tier: number): number {
-  // géante : son rayon de sim grandit déjà avec le rang (radiusMult) ; le rang se lit aux anneaux
-  if (element === EL_GIANT) return radius;
+  // géante : son rayon de sim grandit déjà avec le rang (radiusMult) ; le rang se lit aux anneaux.
+  // Divine : rayon ×1,3 (radiusMult) ; le rendu impose ce minimum via Sprites.divineRq (cf. ball()).
+  if (element === EL_GIANT || element === EL_DIVINE) return radius;
   return radius * (TIER_SCALE[tier - 1] ?? 1) * (element === EL_LEAD ? 1.12 : 1);
 }
 
@@ -298,6 +303,8 @@ export const ROT_STEPS = 16;
 export const ROT_UP = (ROT_STEPS * 3) / 4;
 const ORIENT_BY_ID: Partial<Record<BallElement, number>> = {
   comet: ORIENT_VELOCITY, pierce: ORIENT_VELOCITY, homing: ORIENT_VELOCITY, boomerang: ORIENT_SPIN,
+  // hybrides héritières : le missile suit sa vitesse (flèche), l'orbite tourne (satellite)
+  missile: ORIENT_VELOCITY, orbit: ORIENT_SPIN,
 };
 export const ELEMENT_ORIENT: Uint8Array = new Uint8Array(ELEMENTS.length);
 for (let i = 0; i < ELEMENTS.length; i++) ELEMENT_ORIENT[i] = ORIENT_BY_ID[ELEMENTS[i]!] ?? ORIENT_NONE;
@@ -314,6 +321,7 @@ export function quantizeRadius(radius: number, base: number): number {
 const SHAPE_EXT: Partial<Record<BallElement, number>> = {
   fire: BALL_EXTENT, lightning: 1.7, comet: 2.75, acid: 1.75, bomb: 1.7, shock: 1.8, nova: 1.5,
   prism: 1.4, boomerang: 1.5, pierce: 1.5, echo: 1.5, lucky: 1.4, magnet: 1.35,
+  divine: 2.35,
 };
 /**
  * Demi-étendue serrée par sprite (en multiples du rayon visuel) : un sprite plus petit = moins
@@ -359,11 +367,177 @@ function gloss(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, a
 }
 
 /**
+ * Rune centrale d'une hybride (13 glyphes distincts), tracée dans un carré de demi-côté s.
+ * Les glyphes orientés (missile) pointent vers +x, comme les autres formes orientées.
+ */
+function hybridGlyph(g: CanvasRenderingContext2D, id: BallElement, cx: number, cy: number, s: number): void {
+  g.beginPath();
+  switch (id) {
+    case 'steam': // volute qui monte et s'enroule
+      g.moveTo(cx - s * 0.75, cy + s * 0.85);
+      g.quadraticCurveTo(cx + s * 0.95, cy + s * 0.55, cx + s * 0.4, cy - s * 0.3);
+      g.arc(cx, cy - s * 0.3, s * 0.4, 0, -Math.PI * 1.35, true);
+      g.stroke();
+      return;
+    case 'laser': // croix + point central
+      g.moveTo(cx, cy - s); g.lineTo(cx, cy + s);
+      g.moveTo(cx - s, cy); g.lineTo(cx + s, cy);
+      g.stroke();
+      disc(g, cx, cy, s * 0.26);
+      return;
+    case 'cluster': // trois points
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + (i / 3) * TAU;
+        disc(g, cx + Math.cos(a) * s * 0.58, cy + Math.sin(a) * s * 0.58, s * 0.33);
+      }
+      return;
+    case 'wraith': // œil fendu
+      g.moveTo(cx - s, cy);
+      g.quadraticCurveTo(cx, cy - s * 0.95, cx + s, cy);
+      g.quadraticCurveTo(cx, cy + s * 0.95, cx - s, cy);
+      g.closePath(); g.stroke();
+      g.beginPath(); g.ellipse(cx, cy, s * 0.15, s * 0.42, 0, 0, TAU); g.fill();
+      return;
+    case 'abyss': // spirale (2,25 tours)
+      for (let i = 0; i <= 44; i++) {
+        const t = i / 44, a = t * TAU * 2.25 - Math.PI / 2, rr = s * (0.06 + t * 0.94);
+        if (i === 0) g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); else g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      }
+      g.stroke();
+      return;
+    case 'jackpot': // « 7 »
+      g.moveTo(cx - s * 0.62, cy - s * 0.78); g.lineTo(cx + s * 0.62, cy - s * 0.78); g.lineTo(cx - s * 0.12, cy + s * 0.9);
+      g.moveTo(cx - s * 0.2, cy + s * 0.02); g.lineTo(cx + s * 0.42, cy + s * 0.02);
+      g.stroke();
+      return;
+    case 'quake': // zigzag sismographe
+      g.moveTo(cx - s, cy);
+      g.lineTo(cx - s * 0.6, cy - s * 0.55); g.lineTo(cx - s * 0.2, cy + s * 0.6);
+      g.lineTo(cx + s * 0.2, cy - s * 0.6); g.lineTo(cx + s * 0.6, cy + s * 0.55); g.lineTo(cx + s, cy);
+      g.stroke();
+      return;
+    case 'missile': // flèche (+x) avec empennage
+      g.moveTo(cx - s * 0.95, cy); g.lineTo(cx + s * 0.85, cy);
+      g.moveTo(cx + s * 0.2, cy - s * 0.62); g.lineTo(cx + s, cy); g.lineTo(cx + s * 0.2, cy + s * 0.62);
+      g.moveTo(cx - s * 0.95, cy - s * 0.42); g.lineTo(cx - s * 0.55, cy);
+      g.moveTo(cx - s * 0.95, cy + s * 0.42); g.lineTo(cx - s * 0.55, cy);
+      g.stroke();
+      return;
+    case 'supernova': // étoile à 8 branches
+      starPath(g, cx, cy, 8, s * 1.08, s * 0.42, -Math.PI / 2); g.fill();
+      return;
+    case 'plague': // goutte barrée
+      g.moveTo(cx, cy - s);
+      g.quadraticCurveTo(cx + s * 0.72, cy - s * 0.15, cx + s * 0.66, cy + s * 0.3);
+      g.arc(cx, cy + s * 0.3, s * 0.66, 0, Math.PI);
+      g.quadraticCurveTo(cx - s * 0.72, cy - s * 0.15, cx, cy - s);
+      g.closePath(); g.stroke();
+      g.beginPath(); g.moveTo(cx - s * 0.95, cy + s * 0.85); g.lineTo(cx + s * 0.95, cy - s * 0.6); g.stroke();
+      return;
+    case 'choir': // trois traits (celui du milieu plus haut)
+      g.moveTo(cx - s * 0.58, cy - s * 0.5); g.lineTo(cx - s * 0.58, cy + s * 0.75);
+      g.moveTo(cx, cy - s * 0.9); g.lineTo(cx, cy + s * 0.75);
+      g.moveTo(cx + s * 0.58, cy - s * 0.5); g.lineTo(cx + s * 0.58, cy + s * 0.75);
+      g.stroke();
+      return;
+    case 'orbit': // anneau + satellite
+      g.arc(cx, cy, s * 0.72, 0, TAU); g.stroke();
+      disc(g, cx + Math.cos(-Math.PI / 4) * s * 0.72, cy + Math.sin(-Math.PI / 4) * s * 0.72, s * 0.3);
+      disc(g, cx, cy, s * 0.18);
+      return;
+    case 'hammer': // T
+      g.moveTo(cx - s * 0.9, cy - s * 0.6); g.lineTo(cx + s * 0.9, cy - s * 0.6);
+      g.moveTo(cx, cy - s * 0.6); g.lineTo(cx, cy + s * 0.95);
+      g.stroke();
+      return;
+    default: // hybride inconnue : losange
+      diamondPath(g, cx, cy, s * 0.6, s * 0.9); g.stroke();
+  }
+}
+
+/**
+ * Hybride : disque coupé en diagonale en deux moitiés aux couleurs des parents (recette), cerclé
+ * de la couleur de l'hybride, avec une pastille sombre portant la rune propre à l'hybride.
+ */
+function drawHybrid(g: CanvasRenderingContext2D, id: BallElement, color: string, pa: string, pb: string, cx: number, cy: number, r: number): void {
+  // liseré extérieur (et glow de rang III, réglé par l'appelant) à la couleur de l'hybride
+  g.fillStyle = color;
+  disc(g, cx, cy, r);
+  g.shadowBlur = 0;
+  g.strokeStyle = shade(color, -0.5); g.lineWidth = Math.max(1, r * 0.07);
+  ring(g, cx, cy, r * 0.97);
+  const a = -Math.PI / 4, ri = r * 0.84;
+  g.fillStyle = pa;
+  g.beginPath(); g.arc(cx, cy, ri, a + Math.PI, a + TAU); g.closePath(); g.fill();
+  g.fillStyle = pb;
+  g.beginPath(); g.arc(cx, cy, ri, a, a + Math.PI); g.closePath(); g.fill();
+  // couture sombre le long de la coupe
+  g.strokeStyle = 'rgba(11,15,26,0.7)'; g.lineWidth = Math.max(1, r * 0.08); g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx + Math.cos(a) * ri, cy + Math.sin(a) * ri);
+  g.lineTo(cx - Math.cos(a) * ri, cy - Math.sin(a) * ri);
+  g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.6)';
+  disc(g, cx - r * 0.5, cy - r * 0.18, r * 0.14);
+  // pastille de la rune
+  g.fillStyle = 'rgba(11,15,26,0.82)';
+  disc(g, cx, cy, r * 0.52);
+  g.strokeStyle = color; g.lineWidth = Math.max(1, r * 0.07);
+  ring(g, cx, cy, r * 0.52);
+  const glyph = shade(color, 0.7);
+  g.strokeStyle = glyph; g.fillStyle = glyph;
+  g.lineWidth = Math.max(1, r * (id === 'jackpot' || id === 'hammer' ? 0.12 : 0.09));
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  hybridGlyph(g, id, cx, cy, r * 0.33);
+}
+
+/** Divine : disque blanc-or radiant, halo pré-rendu et 8 rayons (alternés long / court). */
+function drawDivine(g: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  g.shadowBlur = 0;
+  const hr = r * 2.3;
+  const halo = g.createRadialGradient(cx, cy, r * 0.5, cx, cy, hr);
+  halo.addColorStop(0, 'rgba(255,230,140,0.6)');
+  halo.addColorStop(0.4, 'rgba(255,194,61,0.22)');
+  halo.addColorStop(1, 'rgba(255,194,61,0)');
+  g.fillStyle = halo;
+  disc(g, cx, cy, hr);
+  // rayons
+  g.fillStyle = 'rgba(255,242,184,0.9)';
+  g.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU - Math.PI / 2;
+    const len = r * (i % 2 === 0 ? 2.2 : 1.6), w = r * (i % 2 === 0 ? 0.2 : 0.14);
+    const ca = Math.cos(a), sa = Math.sin(a);
+    g.moveTo(cx + ca * r * 0.7 - sa * w, cy + sa * r * 0.7 + ca * w);
+    g.lineTo(cx + ca * len, cy + sa * len);
+    g.lineTo(cx + ca * r * 0.7 + sa * w, cy + sa * r * 0.7 - ca * w);
+    g.closePath();
+  }
+  g.fill();
+  // corps blanc-or lumineux
+  g.shadowColor = PALETTE.gold;
+  g.shadowBlur = r * 0.9;
+  const body = g.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.05, cx, cy, r);
+  body.addColorStop(0, '#ffffff');
+  body.addColorStop(0.5, PALETTE.goldLight);
+  body.addColorStop(1, PALETTE.gold);
+  g.fillStyle = body;
+  disc(g, cx, cy, r);
+  g.shadowBlur = 0;
+  g.strokeStyle = PALETTE.goldDark; g.lineWidth = Math.max(1, r * 0.08);
+  ring(g, cx, cy, r * 0.95);
+  g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = Math.max(1, r * 0.06);
+  ring(g, cx, cy, r * 0.62);
+  g.fillStyle = '#ffffff';
+  starPath(g, cx, cy, 4, r * 0.42, r * 0.11, -Math.PI / 2); g.fill();
+}
+
+/**
  * Silhouette par élément : on doit reconnaître la balle sans la couleur (une forme par balle,
  * une parenté par famille). `rot` (radians) n'est utilisé que pour les éléments orientés ; les
  * formes orientées sont dessinées « vers +x » puis tournées.
  */
-function makeBall(element: number, color: string, tier: number, radius: number, cell: number, rot: number): HTMLCanvasElement {
+function makeBall(element: number, color: string, tier: number, radius: number, cell: number, rot: number, pa: string | null, pb: string | null): HTMLCanvasElement {
   const id: BallElement = ELEMENTS[element] ?? 'stone';
   const vr = ballVisualRadius(radius, element, tier);
   const ext = vr * ballExtent(element, tier) * cell;
@@ -381,7 +555,9 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
     g.translate(cx, cy); g.rotate(rot); g.translate(-cx, -cy);
   }
 
-  switch (id) {
+  if (id === 'divine') drawDivine(g, cx, cy, r);
+  else if (pa !== null && pb !== null) drawHybrid(g, id, color, pa, pb, cx, cy, r);
+  else switch (id) {
     case 'fire': {
       // couronne de flammèches irrégulières + cœur chaud
       g.fillStyle = color;
@@ -1150,18 +1326,25 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig, prev
 
   const radius = config.blocks.board.ballRadius;
   const nIdx = ELEMENTS.length * 3;
+  // Divine : rayon visuel minimal = rayon de config × radiusMult (la sim peut déjà l'appliquer)
+  const divMult = config.balls.defs.find((d) => d.id === 'divine')?.params?.radiusMult?.[0] ?? 1.3;
+  const divineRq = quantizeRadius(radius * divMult, radius);
   const ballExt: number[] = [];
   for (let e = 0; e < ELEMENTS.length; e++) {
-    for (let t = 1; t <= 3; t++) ballExt.push(ballVisualRadius(radius, e, t) * ballExtent(e, t));
+    const rBase = e === EL_DIVINE ? (radius * divineRq) / RQ_ONE : radius;
+    for (let t = 1; t <= 3; t++) ballExt.push(ballVisualRadius(rBase, e, t) * ballExtent(e, t));
   }
   const ballKey = (i: number, rq: number, rr: number): number => K_BALL * K_SPAN + (i * (RQ_MAX + 1) + rq) * ROT_STEPS + rr;
   function buildBall(i: number, rq: number, rr: number, key: number): HTMLCanvasElement {
     const e = (i / 3) | 0, t = (i % 3) + 1;
-    return store(key, makeBall(e, colors.element[e] ?? PALETTE.stone, t, (radius * rq) / RQ_ONE, cell, (rr / ROT_STEPS) * TAU));
+    const ia = colors.recipeA[e] ?? -1, ib = colors.recipeB[e] ?? -1;
+    const pa = ia >= 0 ? colors.element[ia] ?? null : null, pb = ib >= 0 ? colors.element[ib] ?? null : null;
+    return store(key, makeBall(e, colors.element[e] ?? PALETTE.stone, t, (radius * rq) / RQ_ONE, cell, (rr / ROT_STEPS) * TAU, pa, pb));
   }
   function ball(i: number, rq: number, rot: number): HTMLCanvasElement | undefined {
     if (i < 0 || i >= nIdx) return undefined;
     const e = (i / 3) | 0;
+    if (e === EL_DIVINE && rq < divineRq) rq = divineRq;
     const oriented = (ELEMENT_ORIENT[e] ?? 0) !== ORIENT_NONE;
     const rr = oriented ? ((rot % ROT_STEPS) + ROT_STEPS) % ROT_STEPS : 0;
     const key = ballKey(i, rq, rr);
@@ -1184,6 +1367,7 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig, prev
   function warm(i: number, rq: number): boolean {
     if (i < 0 || i >= nIdx || budget.n <= 0) return false;
     const e = (i / 3) | 0;
+    if (e === EL_DIVINE && rq < divineRq) rq = divineRq;
     const steps = (ELEMENT_ORIENT[e] ?? 0) === ORIENT_NONE ? 1 : ROT_STEPS;
     for (let r = 0; r < steps; r++) {
       const key = ballKey(i, rq, r);
@@ -1210,7 +1394,7 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig, prev
   }
 
   const api: Sprites = {
-    cell, scale: 1,
+    cell, scale: 1, divineRq,
     blockAt, whiteAt, frozenAt, ball, ballAt, ballExt, warm, goldenAt, goldenExt,
     peek(key) { return cache.get(key); },
     endFrame() {

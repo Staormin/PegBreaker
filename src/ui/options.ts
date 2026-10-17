@@ -78,9 +78,9 @@ export function optionIcon(config: GameConfig, o: RewardOption): SVGSVGElement {
   switch (o.kind) {
     case 'ball': {
       // silhouette de la famille, teintée de la couleur de l'élément
-      const fam = elementTable(config).get(o.element).family;
-      svg.dataset.family = fam;
-      appendBallShape(svg, fam, v.color, o.tier);
+      const info = elementTable(config).get(o.element);
+      svg.dataset.family = info.family;
+      appendBallShape(svg, info.family, v.color, o.tier, info.colors);
       break;
     }
     case 'relic': {
@@ -108,12 +108,13 @@ export function optionIcon(config: GameConfig, o: RewardOption): SVGSVGElement {
       svg.append(svgEl('circle', { cx: 39, cy: 30, r: 6.5, fill: v.color, opacity: 0.85 }));
       svg.append(svgEl('path', { d: 'M15 27 L19 25 M33 27 L29 25', stroke: v.color, 'stroke-width': 2.5, 'stroke-linecap': 'round' }));
       // silhouette de famille au centre (réduite), anneau(x) du rang obtenu
-      const fam = elementTable(config).get(o.element).family;
+      const info = elementTable(config).get(o.element);
+      const fam = info.family;
       svg.dataset.family = fam;
       svg.append(svgEl('circle', { cx: 24, cy: 20, r: 13, fill: 'none', stroke: v.color, 'stroke-width': 3 }));
       if (o.tier >= 3) svg.append(svgEl('circle', { cx: 24, cy: 20, r: 17, fill: 'none', stroke: v.color, 'stroke-width': 2 }));
       const g = svgEl('g', { transform: 'translate(24 20) scale(0.62) translate(-24 -24)' });
-      appendBallShape(g, fam, v.color, 1);
+      appendBallShape(g, fam, v.color, 1, info.colors);
       svg.append(g);
       break;
     }

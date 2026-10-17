@@ -7,7 +7,7 @@
 import type { EventBus, EventType, Handler } from '../core/events';
 import type { AudioSystem, BallElement, MusicTrackId, Settings } from '../core/types';
 import { createEngine, type EngineStats } from './engine';
-import { explodeKindFrom } from './hits';
+import { chainKindFrom, explodeKindFrom, hitPriority } from './hits';
 import { createMixer, type MixerStats, type Priority } from './mixer';
 import { createMusic, type MusicMode, type MusicStats } from './music';
 import { createSfx, type Sfx } from './sfx';
@@ -25,6 +25,8 @@ const REVIVE_MUSIC_FADE_S = 1;
 const LOST_THEN_OVER_MS = 1500;
 /** lightning:chain (prisme en rafale) : au plus 1 son par fenêtre (ms) */
 const CHAIN_MIN_MS = 50;
+/** Jugement de la Divine (lightning:chain element 'divine') : une rangée entière = un seul tonnerre */
+const JUDGEMENT_MIN_MS = 400;
 /**
  * Un événement de contexte (block:destroyed…) est considéré « lié » à l'événement courant s'il a été
  * émis au plus N événements avant (destroyBlock émet contract/boss/drop entre les deux).
@@ -91,6 +93,7 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   let explosiveSeq = -Infinity;
   let vampireKillSeq = -Infinity;
   let lastChainAt = -Infinity;
+  let lastJudgementAt = -Infinity;
   const linked = (at: number): boolean => seq - at <= LINKED_WITHIN_EVENTS;
 
   /** déclenche une recette si le contexte tourne, le volume n'est pas nul et le limiteur l'admet */
@@ -133,7 +136,8 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   on('block:hit', (e) => {
     lastBallElement = e.element;
     ballElements.set(e.ballId, e.element);
-    fire(1, () => sfx.blockHit(e.element, e.crit));
+    // la Divine passe en priorité haute (2) : jamais étouffée par une volée de balles ordinaires
+    fire(hitPriority(e.element), () => sfx.blockHit(e.element, e.crit));
     const id = hitBallId(e);
     if (id !== null) {
       hitCarriesBallId = true;
@@ -151,13 +155,20 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
     ballElements.delete(e.ballId);
   });
   on('lightning:chain', (e) => {
-    // le prisme frappe toute une rangée d'un coup : une rafale = un seul son
+    // champ core en priorité, sinon déduction par la dernière balle active (jamais pour la Divine)
+    const kind = chainKindFrom(e.element, lastBallElement);
     const t = nowMs();
+    if (kind === 'divine') {
+      // Jugement : throttle propre, priorité haute, n'est pas avalé par une rafale de prisme/laser
+      if (t - lastJudgementAt < JUDGEMENT_MIN_MS) return;
+      lastJudgementAt = t;
+      fire(2, () => sfx.lightningChain('divine'));
+      return;
+    }
+    // le prisme frappe toute une rangée d'un coup : une rafale = un seul son
     if (t - lastChainAt < CHAIN_MIN_MS) return;
     lastChainAt = t;
-    // champ core en priorité, sinon déduction par la dernière balle active
-    const prism = (e.element ?? lastBallElement) === 'prism';
-    fire(1, () => sfx.lightningChain(prism));
+    fire(1, () => sfx.lightningChain(kind));
   });
   on('drop:collected', (e) => fire(1, () => sfx.dropCollected(e.kind)));
   on('block:destroyed', (e) => {
@@ -200,6 +211,9 @@ export function createAudio(bus: EventBus, settings: Readonly<Settings>): AudioS
   on('shop:opened', () => fire(2, () => sfx.shopOpened()));
   on('shop:bought', () => fire(2, () => sfx.shopBought()));
   on('shop:rerolled', () => fire(2, () => sfx.shopRerolled()));
+  on('shop:sold', () => fire(2, () => sfx.shopSold()));
+  on('shop:forged', (e) => fire(2, () => sfx.shopForged(e.result)));
+  on('shop:upgraded', (e) => fire(2, () => sfx.shopUpgraded(e.tier)));
   on('achievement:unlocked', () => fire(2, () => sfx.achievement()));
   on('meta:unlocked', () => fire(2, () => sfx.achievement()));
   on('ui:click', () => fire(2, () => sfx.uiClick()));

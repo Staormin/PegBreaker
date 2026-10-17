@@ -53,6 +53,8 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
   // volée finale : une puce par (élément, rang), nom au survol (title) et en aria-label
   const volleyTitle = el('p', 'end-volley-title', 'Volée finale');
   const volleyRow = el('div', 'end-volley');
+  /** hybrides / Divine forgées pendant la run (RunSummary.forged) */
+  const forgedLine = el('p', 'end-forged');
   volleyRow.setAttribute('role', 'list');
   volleyRow.setAttribute('aria-label', 'Volée finale');
 
@@ -100,13 +102,16 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     row1.append(share, restart);
     actions.append(replay, row1, shareMsg, row2);
   } else actions.append(restart, share, shareMsg, row2);
-  s.panel.append(challenge, dailyLine, record, recordGap, grid, fragRow, volleyTitle, volleyRow, actions);
+  s.panel.append(challenge, dailyLine, record, recordGap, grid, fragRow, volleyTitle, volleyRow, forgedLine, actions);
 
   function renderVolley(sum: RunSummary): void {
     volleyRow.textContent = '';
     const groups = groupVolley(d.config, sum.volley);
     volleyTitle.hidden = volleyRow.hidden = groups.length === 0;
     volleyTitle.textContent = `Volée finale · ${sum.volley.length} balle${sum.volley.length > 1 ? 's' : ''}`;
+    const forged = sum.forged ?? [];
+    forgedLine.hidden = forged.length === 0;
+    forgedLine.textContent = forged.length ? `⚒ Forgées : ${forged.map((e) => elementTable(d.config).get(e).name).join(', ')}` : '';
     const t = elementTable(d.config);
     for (const g of groups) {
       const info = t.get(g.element);

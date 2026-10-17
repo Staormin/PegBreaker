@@ -72,6 +72,15 @@ export interface SimInternal {
   rusted: number[];
   /** choc : paires à plat [blockId, reculs ce tir, ...], remis à zéro à chaque tir */
   shocked: number[];
+  /** hybrides et Divine forgées pendant la run (RunSummary.forged) */
+  forged: BallElement[];
+  /** abysse : blocs dont l'acide se propage, paires à plat [blockId, rang, ...] */
+  abyss: number[];
+  /** peste : blocs contaminés, paires à plat [blockId, rang, ...] */
+  plague: number[];
+  /** peste : soins rendus pendant le tir de profondeur plagueDepth */
+  plagueHeals: number;
+  plagueDepth: number;
 }
 
 /**
@@ -102,6 +111,15 @@ export interface BallFx {
   spawned: number;
   /** vampire : soins déjà rendus par cette balle */
   heals: number;
+  /** hybrides : effets « au premier impact » déjà déclenchés, un bit par parent (feu, glace, scission) */
+  trig: number;
+  /** hybrides : rangée du bloc touché avant les effets des parents (séisme) */
+  hitRow: number;
+  /** mini-balle à effet (0 = aucun, voir elements/hybrid.ts MINI_*) */
+  miniFx: number;
+  /** compteurs libres de l'effet propre d'une hybride (documentés dans elements/hybrid.ts) */
+  n0: number;
+  n1: number;
 }
 
 export function createFx(): BallFx {
@@ -120,6 +138,11 @@ export function createFx(): BallFx {
     dirY: -1,
     spawned: 0,
     heals: 0,
+    trig: 0,
+    hitRow: -1,
+    miniFx: 0,
+    n0: 0,
+    n1: 0,
   };
 }
 
@@ -138,6 +161,11 @@ export function resetFx(f: BallFx): void {
   f.dirY = -1;
   f.spawned = 0;
   f.heals = 0;
+  f.trig = 0;
+  f.hitRow = -1;
+  f.miniFx = 0;
+  f.n0 = 0;
+  f.n1 = 0;
 }
 
 export interface SimState extends RunState {
@@ -181,6 +209,11 @@ export function createInternal(nextId: number): SimInternal {
     acidQ: [],
     rusted: [],
     shocked: [],
+    forged: [],
+    abyss: [],
+    plague: [],
+    plagueHeals: 0,
+    plagueDepth: -1,
   };
 }
 
@@ -198,5 +231,6 @@ export function createStats(): RunStats {
     perfectWaves: 0,
     contractsCompleted: 0,
     durationMs: 0,
+    forged: 0,
   };
 }

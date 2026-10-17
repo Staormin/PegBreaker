@@ -1,4 +1,4 @@
-// ui/balls.test.ts — tables par élément dérivées de config.balls.defs (27 balles).
+// ui/balls.test.ts — tables par élément dérivées de config.balls.defs (27 balles + 13 hybrides + Divine).
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import { BALL_FAMILIES, type GameConfig, type RewardOption } from '../core/types';
@@ -12,7 +12,7 @@ describe('table des éléments', () => {
   it('suit l’ordre du JSON, sans doublon, avec nom, couleur et famille', () => {
     const t = elementTable(config);
     expect(t.list.map((e) => e.id)).toEqual(config.balls.defs.map((d) => d.id));
-    expect(t.list.length).toBe(27);
+    expect(t.list.length).toBe(config.balls.defs.length);
     t.list.forEach((e, i) => {
       expect(t.index(e.id)).toBe(i);
       expect(e.name.length).toBeGreaterThan(0);
@@ -31,7 +31,7 @@ describe('table des éléments', () => {
       expect(FAMILY_PATHS[f].length).toBeGreaterThan(10);
       expect(FAMILY_LABELS[f].length).toBeGreaterThan(0);
     }
-    expect(new Set(BALL_FAMILIES.map((f) => FAMILY_PATHS[f])).size).toBe(6);
+    expect(new Set(BALL_FAMILIES.map((f) => FAMILY_PATHS[f])).size).toBe(BALL_FAMILIES.length);
   });
 });
 

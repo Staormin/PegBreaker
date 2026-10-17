@@ -14,7 +14,7 @@ export const PALETTE = {
 
 /**
  * Repli de couleur par élément (la config fait foi). L'objet est typé `Record<BallElement, …>` :
- * le compilateur exige les 27 clés, et c'est la SEULE liste écrite à la main ; ELEMENTS et
+ * le compilateur exige les 41 clés, et c'est la SEULE liste écrite à la main ; ELEMENTS et
  * ELEMENT_INDEX en sont dérivés (ordre = ordre de déclaration, identique à balls.json).
  */
 const ELEMENT_FALLBACK: Readonly<Record<BallElement, string>> = {
@@ -25,6 +25,18 @@ const ELEMENT_FALLBACK: Readonly<Record<BallElement, string>> = {
   gold: PALETTE.gold, prism: PALETTE.ice, void: PALETTE.boss, echo: PALETTE.split,
   boomerang: PALETTE.fire, crystal: PALETTE.ice, shock: PALETTE.lightning, twin: PALETTE.split,
   rust: PALETTE.fire, nova: PALETTE.heart, comet: PALETTE.fire, lucky: PALETTE.good,
+  // hybrides (forge) et Divine : la config fait foi, ces replis ne servent que sans config
+  steam: '#b9e8ff', laser: '#e0ffff', cluster: '#ff6f91', wraith: '#d8ccff', abyss: '#4b1d6b',
+  jackpot: '#ffe680', quake: '#c9a86a', missile: '#ff5c33', supernova: '#ff9de2', plague: '#8bc34a',
+  choir: '#c8ffe6', orbit: '#ff9ad5', hammer: '#8d6e63',
+  divine: '#fff6c2',
+};
+/** recettes de repli (la config fait foi : BallDef.recipe) */
+const RECIPE_FALLBACK: Partial<Record<BallElement, [BallElement, BallElement]>> = {
+  steam: ['fire', 'ice'], laser: ['lightning', 'prism'], cluster: ['bomb', 'split'], wraith: ['ghost', 'pierce'],
+  abyss: ['acid', 'void'], jackpot: ['gold', 'lucky'], quake: ['giant', 'shock'], missile: ['comet', 'homing'],
+  supernova: ['crystal', 'nova'], plague: ['vampire', 'acid'], choir: ['twin', 'echo'], orbit: ['boomerang', 'magnet'],
+  hammer: ['lead', 'rust'],
 };
 /** famille de repli si la config n'en donne pas (BallDef.family est requis : simple garde-fou) */
 const FAMILY_FALLBACK: BallFamily = 'arcane';
@@ -58,6 +70,9 @@ export interface Colors {
   name: string[];
   /** couleur par type de bloc (indexé par KIND_INDEX) */
   kind: string[];
+  /** parents d'une hybride (ELEMENT_INDEX), −1 sinon : recipeA[e], recipeB[e] */
+  recipeA: Int16Array;
+  recipeB: Int16Array;
 }
 
 export function buildColors(config: GameConfig): Colors {
@@ -70,12 +85,19 @@ export function buildColors(config: GameConfig): Colors {
     family.push(FAMILY_INDEX[def?.family ?? FAMILY_FALLBACK] ?? FAMILY_INDEX[FAMILY_FALLBACK]);
     name.push(def ? def.name : el);
   }
+  const recipeA = new Int16Array(ELEMENTS.length).fill(-1);
+  const recipeB = new Int16Array(ELEMENTS.length).fill(-1);
+  ELEMENTS.forEach((el, i) => {
+    const def = config.balls.defs.find((d) => d.id === el);
+    const r = def?.recipe ?? RECIPE_FALLBACK[el];
+    if (r) { recipeA[i] = ELEMENT_INDEX[r[0]] ?? -1; recipeB[i] = ELEMENT_INDEX[r[1]] ?? -1; }
+  });
   const kind: string[] = [];
   for (const k of KINDS) {
     const def = config.blocks.defs.find((d) => d.kind === k);
     kind.push(def ? def.color : KIND_FALLBACK[k]);
   }
-  return { element, family, name, kind };
+  return { element, family, name, kind, recipeA, recipeB };
 }
 
 /** Éclaircit (+) ou assombrit (−) une couleur #rrggbb. Usage hors boucle uniquement. */

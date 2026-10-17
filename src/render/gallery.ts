@@ -1,4 +1,4 @@
-// render/gallery.ts — planche de contrôle visuel : les 27 balles × 3 rangs, avec nom et famille,
+// render/gallery.ts — planche de contrôle visuel : les 41 balles (27 de base, 13 hybrides, Divine) × 3 rangs, avec nom et famille,
 // dessinées avec les VRAIS sprites du renderer (buildSprites). Page : demo.html?gallery=1.
 // Hors boucle de jeu : allocations libres ici (dessin unique, refait au resize).
 import { loadConfig } from '../core/config';
@@ -10,6 +10,7 @@ import { buildSprites, ELEMENT_ORIENT, ORIENT_VELOCITY, quantizeRadius, ROT_STEP
 const COLS = 3;
 const FAMILY_LABEL: Record<string, string> = {
   elemental: 'élémentaire', heavy: 'lourde', tricky: 'retorse', swarm: 'essaim', greed: 'avidité', arcane: 'arcane',
+  hybrid: 'hybride', divine: 'divine',
 };
 
 /** Dessine la galerie dans `canvas` (largeur = parent) ; renvoie une fonction d'arrêt. */
@@ -65,11 +66,12 @@ export function mountBallGallery(canvas: HTMLCanvasElement, config: GameConfig =
       const oriented = (ELEMENT_ORIENT[e] ?? 0) === ORIENT_VELOCITY;
       for (let t = 1; t <= 3; t++) {
         const idx = e * 3 + (t - 1);
-        const rq = id === 'giant' ? quantizeRadius(R * (giant[t - 1] ?? 1.8), R) : RQ_ONE;
+        const rq = id === 'giant' ? quantizeRadius(R * (giant[t - 1] ?? 1.8), R) : id === 'divine' ? sp.divineRq : RQ_ONE;
+        const rqBase = id === 'divine' ? sp.divineRq : RQ_ONE;
         // orientées : en diagonale montante (sens de vol lisible)
         const rot = oriented ? Math.round(ROT_STEPS * 0.875) : ROT_UP;
         imgs.push(sp.ball(idx, rq, rot));
-        exts.push((((sp.ballExt[idx] ?? R * 2) * rq) / RQ_ONE) * k / dpr);
+        exts.push((((sp.ballExt[idx] ?? R * 2) * rq) / rqBase) * k / dpr);
       }
       const gap = rPx * 0.6;
       let total = exts.reduce((a, b) => a + b * 2, 0) + gap * 2;
@@ -91,7 +93,8 @@ export function mountBallGallery(canvas: HTMLCanvasElement, config: GameConfig =
       g.fillStyle = PALETTE.textDim;
       g.font = `600 ${Math.round(cellW * 0.042)}px ${fam}`;
       const famId = BALL_FAMILIES[colors.family[e] ?? 0] ?? 'arcane';
-      g.fillText(`${id} · ${FAMILY_LABEL[famId] ?? famId}${def ? '' : ' (sans config)'}`, x0 + cellW / 2, y0 + rowH - 16);
+      const recipe = def?.recipe ? ` · ${colors.name[ELEMENTS.indexOf(def.recipe[0])] ?? def.recipe[0]} + ${colors.name[ELEMENTS.indexOf(def.recipe[1])] ?? def.recipe[1]}` : '';
+      g.fillText(`${id} · ${FAMILY_LABEL[famId] ?? famId}${recipe}${def ? '' : ' (sans config)'}`, x0 + cellW / 2, y0 + rowH - 16);
     }
   }
 

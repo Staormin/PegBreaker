@@ -23,24 +23,32 @@ export const lightning: ElementHooks = {
   },
 };
 
+/**
+ * Gel d'un bloc, règles de la glace : cassable, pas déjà gelé, pas dégelé au dernier tour, au plus
+ * ice.maxFrozenPerShot blocs par tir. Émet block:frozen. Vrai si gelé.
+ */
+export function tryFreeze(ctx: Ctx, blk: Block): boolean {
+  const it = ctx.s.internal;
+  const thawed = it.thawedIds;
+  if (
+    !isBreakable(blk) ||
+    blk.frozen ||
+    (thawed && thawed.includes(blk.id)) ||
+    (it.frozenThisShot ?? 0) >= ctx.cfg.balls.ice.maxFrozenPerShot
+  )
+    return false;
+  it.frozenThisShot = (it.frozenThisShot ?? 0) + 1;
+  blk.frozen = true;
+  emit(ctx, { type: 'block:frozen', blockId: blk.id, pos: { x: centerX(blk), y: centerY(blk) } });
+  return true;
+}
+
 /** Glace : gèle au premier impact de la balle (cheville comprise), au plus maxFrozenPerShot blocs par tir. */
 export const ice: ElementHooks = {
   onBlockHit(ctx, b, _fx, _bi, blk, _px, _py, _dmg, isPeg) {
-    const s = ctx.s;
     if (!isPeg && !b.triggered) {
       b.triggered = true;
-      const it = s.internal;
-      const thawed = it.thawedIds;
-      if (
-        isBreakable(blk) &&
-        !blk.frozen &&
-        !(thawed && thawed.includes(blk.id)) &&
-        (it.frozenThisShot ?? 0) < ctx.cfg.balls.ice.maxFrozenPerShot
-      ) {
-        it.frozenThisShot = (it.frozenThisShot ?? 0) + 1;
-        blk.frozen = true;
-        emit(ctx, { type: 'block:frozen', blockId: blk.id, pos: { x: centerX(blk), y: centerY(blk) } });
-      }
+      tryFreeze(ctx, blk);
     }
     b.triggered = true; // une cheville consomme aussi le premier impact
   },
@@ -57,28 +65,15 @@ const AQ = 4;
 export const acid: ElementHooks = {
   params: ['pctPerTurn', 'turns', 'maxCharges', 'capPerTurn'],
   onBlockHit(ctx, b, _fx, _bi, blk, _px, _py, _dmg, isPeg) {
-    if (isPeg || !isBreakable(blk)) return;
-    const pct = prm(ctx, 'acid', 'pctPerTurn', b.tier);
-    const turns = Math.round(prm(ctx, 'acid', 'turns', b.tier));
-    const max = Math.round(prm(ctx, 'acid', 'maxCharges', b.tier));
-    const cap = prm(ctx, 'acid', 'capPerTurn', b.tier);
-    if (pct <= 0 || turns <= 0 || max <= 0) return;
-    const a = ctx.s.internal.acidQ;
-    let count = 0;
-    let weakest = -1;
-    for (let k = 0; k + AQ - 1 < a.length; k += AQ) {
-      if (a[k] !== blk.id) continue;
-      count++;
-      if (weakest < 0 || (a[k + 2] as number) < (a[weakest + 2] as number)) weakest = k;
-    }
-    if (count < max) {
-      a.push(blk.id, pct, turns, cap);
-      blk.acidCharges = count + 1;
-    } else if (weakest >= 0) {
-      a[weakest + 1] = Math.max(a[weakest + 1] as number, pct);
-      a[weakest + 2] = turns;
-      a[weakest + 3] = Math.max(a[weakest + 3] as number, cap);
-    }
+    if (isPeg) return;
+    addAcidCharge(
+      ctx,
+      blk,
+      prm(ctx, 'acid', 'pctPerTurn', b.tier),
+      Math.round(prm(ctx, 'acid', 'turns', b.tier)),
+      Math.round(prm(ctx, 'acid', 'maxCharges', b.tier)),
+      prm(ctx, 'acid', 'capPerTurn', b.tier),
+    );
   },
   onShotStart(ctx) {
     const a = ctx.s.internal.acidQ;
@@ -100,6 +95,45 @@ export const acid: ElementHooks = {
     syncAcidCharges(ctx);
   },
 };
+
+/**
+ * Pose une charge d'acide sur `blk` (pct % des PV max par tour, `turns` tours, plafond `cap` par tour), au plus
+ * `max` charges par bloc : au plafond, la charge la plus usée est rafraîchie. Vrai si une charge a été posée/rafraîchie.
+ */
+export function addAcidCharge(ctx: Ctx, blk: Block, pct: number, turns: number, max: number, cap: number): boolean {
+  if (!isBreakable(blk) || pct <= 0 || turns <= 0 || max <= 0) return false;
+  const a = ctx.s.internal.acidQ;
+  let count = 0;
+  let weakest = -1;
+  for (let k = 0; k + AQ - 1 < a.length; k += AQ) {
+    if (a[k] !== blk.id) continue;
+    count++;
+    if (weakest < 0 || (a[k + 2] as number) < (a[weakest + 2] as number)) weakest = k;
+  }
+  if (count < max) {
+    a.push(blk.id, pct, turns, cap);
+    blk.acidCharges = count + 1;
+  } else if (weakest >= 0) {
+    a[weakest + 1] = Math.max(a[weakest + 1] as number, pct);
+    a[weakest + 2] = turns;
+    a[weakest + 3] = Math.max(a[weakest + 3] as number, cap);
+  } else return false;
+  return true;
+}
+
+/** Relève à `cap` le plafond par tour de toutes les charges d'acide du bloc `id` (abysse). */
+export function raiseAcidCap(ctx: Ctx, id: number, cap: number): void {
+  const a = ctx.s.internal.acidQ;
+  for (let k = 0; k + AQ - 1 < a.length; k += AQ) if (a[k] === id && (a[k + 3] as number) < cap) a[k + 3] = cap;
+}
+
+/** Nombre de charges d'acide du bloc `id`. */
+export function acidChargesOf(ctx: Ctx, id: number): number {
+  const a = ctx.s.internal.acidQ;
+  let n = 0;
+  for (let k = 0; k + AQ - 1 < a.length; k += AQ) if (a[k] === id) n++;
+  return n;
+}
 
 /** Reprise : anciennes charges (triplets sans plafond) → quadruplets, plafond du rang I. */
 export function migrateAcid(ctx: Ctx): void {

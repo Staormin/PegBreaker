@@ -11,6 +11,8 @@ export interface ElementHooks {
   readonly noCombo?: boolean;
   /** les rebonds de mur ne donnent pas de combo de relique (géante) */
   readonly noWallCombo?: boolean;
+  /** toujours dorée au lancement, en plus de la dorée normale (Divine) */
+  readonly alwaysGolden?: boolean;
   /** clés de params obligatoires dans balls.json (validées à createSim) */
   readonly params?: readonly string[];
   /** au lancement, avant le calcul de la vitesse : rayon (b.radius) et fx.speedMult */
@@ -41,4 +43,6 @@ export interface ElementHooks {
   onDropCollected?(ctx: Ctx, b: Ball, fx: BallFx, d: Drop): number;
   /** début de chaque tir (après la brûlure pyromane), que l'élément soit dans la volée ou non */
   onShotStart?(ctx: Ctx): void;
+  /** n'importe quel bloc vient d'être détruit (quelle que soit la cause), que l'élément soit dans la volée ou non */
+  onAnyBlockDestroyed?(ctx: Ctx, blk: Block, x: number, y: number): void;
 }

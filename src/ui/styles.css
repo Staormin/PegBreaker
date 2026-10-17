@@ -2055,3 +2055,384 @@ body {
   pointer-events: auto;
   cursor: default;
 }
+
+/* ---------------------------------------------------------------- hybrides, forge, codex */
+/* HUD : pastille hybride (losange bicolore) et Divine (étoile 8 branches + halo) */
+.pill[data-family='hybrid'] .ball,
+.pill[data-family='divine'] .ball {
+  background: var(--bg0);
+}
+.pill[data-family='hybrid'] .ball::before,
+.pill[data-family='divine'] .ball::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+}
+.pill[data-family='hybrid'] .ball::before {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background: linear-gradient(90deg, var(--ca, var(--c)) 50%, var(--cb, var(--c)) 50%);
+}
+.pill[data-family='divine'] .ball {
+  box-shadow: 0 0 10px 3px rgba(255, 211, 77, 0.55);
+}
+.pill[data-family='divine'] .ball::before {
+  inset: -1px;
+  clip-path: polygon(50% 0, 59.6% 26.9%, 85.4% 14.6%, 73.1% 40.4%, 100% 50%, 73.1% 59.6%, 85.4% 85.4%, 59.6% 73.1%, 50% 100%, 40.4% 73.1%, 14.6% 85.4%, 26.9% 59.6%, 0 50%, 26.9% 40.4%, 14.6% 14.6%, 40.4% 26.9%);
+  background: radial-gradient(circle, #fffdf2 0 38%, #ffd34d 60%);
+}
+.pill[data-family='hybrid'] .ball,
+.pill[data-family='divine'] .ball {
+  /* contexte d'empilement : la forme (::before, z -1) reste sous le rang écrit */
+  isolation: isolate;
+}
+.pill[data-family='hybrid'][data-tier='2'] .ball,
+.pill[data-family='hybrid'][data-tier='3'] .ball {
+  color: #0b0f1a;
+}
+.pill[data-family='divine'][data-tier='2'] .ball,
+.pill[data-family='divine'][data-tier='3'] .ball {
+  box-shadow:
+    0 0 0 2px var(--bg0),
+    0 0 0 4px #ffd34d,
+    0 0 12px 6px rgba(255, 211, 77, 0.55);
+}
+.pill[data-family='hybrid'] .ball,
+.pill[data-family='divine'] .ball {
+  text-shadow:
+    0 0 2px #fff,
+    0 0 2px #fff;
+}
+
+/* boutique : sections */
+.shop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--wall);
+}
+.shop-section-title {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.volley-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.volley-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--bg1);
+  border: 1px solid color-mix(in srgb, var(--c, var(--wall)) 45%, var(--wall));
+}
+.volley-chip[data-family='hybrid'],
+.volley-chip[data-family='divine'] {
+  border-width: 2px;
+}
+.volley-chip.flash {
+  /* flash : fondu linéaire 120 ms, sans mouvement */
+  animation: forge-flash 120ms linear;
+}
+@keyframes forge-flash {
+  from {
+    background: color-mix(in srgb, var(--c, #fff) 70%, #fff);
+  }
+  to {
+    background: var(--bg1);
+  }
+}
+.vc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.vc-head svg {
+  flex: none;
+}
+.vc-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+.vc-name {
+  font-weight: 900;
+  font-size: 15px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.vc-rank {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.vc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.btn-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--wall);
+  background: var(--bg0);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-mini:hover:not(:disabled) {
+  border-color: var(--coin);
+}
+.btn-mini:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.btn-sell .num {
+  color: var(--coin);
+}
+.btn-upgrade {
+  border-color: color-mix(in srgb, var(--c, var(--accent)) 60%, var(--wall));
+}
+.btn-upgrade.poor .num {
+  color: var(--danger);
+}
+
+/* forge */
+.forge-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.forge-list[hidden],
+.forge-empty[hidden] {
+  display: none;
+}
+.card.forge-option {
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'recipe price' 'body body';
+  gap: 8px 12px;
+}
+.forge-option .forge-recipe {
+  grid-area: recipe;
+}
+.forge-option .card-body {
+  grid-area: body;
+}
+.forge-option .price {
+  grid-area: price;
+}
+.forge-recipe,
+.codex-formula {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.fr-op {
+  font-weight: 900;
+  font-size: 18px;
+  color: var(--text-dim);
+  padding: 0 2px;
+}
+.fr-arrow {
+  color: var(--accent);
+}
+.forge-effect {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.forge-option.poor {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+.forge-option.poor .price {
+  color: var(--danger);
+}
+.forge-divine {
+  border-color: #ffd34d;
+  background: linear-gradient(135deg, rgba(255, 211, 77, 0.16), var(--bg1) 60%);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(255, 211, 77, 0.25);
+}
+.forge-divine .card-kind {
+  color: #ffd34d;
+}
+.forge-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.forge-empty {
+  font-size: 14px;
+}
+.btn-link {
+  min-height: 48px;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  color: var(--accent) !important;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.btn-link[hidden] {
+  display: none;
+}
+
+/* toasts forge / codex */
+.toast-forge {
+  border-color: var(--coin);
+}
+.toast-forge .toast-kicker,
+.toast-forge .toast-detail {
+  color: var(--coin);
+}
+.toast-codex {
+  border-color: #ffd34d;
+}
+.toast-codex .toast-kicker,
+.toast-codex .toast-detail {
+  color: #ffd34d;
+}
+
+/* Puits : codex */
+.tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+.codex-count {
+  color: var(--accent);
+}
+.codex-help {
+  font-size: 13px;
+  text-align: left;
+}
+.codex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.codex-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  min-width: 0;
+  border-radius: 12px;
+  background: var(--bg1);
+  border: 1px solid color-mix(in srgb, var(--c, var(--wall)) 50%, var(--wall));
+}
+.codex-entry[data-known='false'] {
+  border-style: dashed;
+  border-color: var(--wall);
+}
+.codex-divine[data-known='true'] {
+  border-color: #ffd34d;
+  box-shadow: 0 0 14px rgba(255, 211, 77, 0.2);
+}
+.codex-q {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--bg0);
+  color: var(--text-dim);
+  font-weight: 900;
+  font-size: 14px;
+}
+.codex-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.codex-name {
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--c, var(--text));
+}
+.codex-entry[data-known='false'] .codex-name {
+  color: var(--text-dim);
+}
+.codex-recipe {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-dim);
+}
+.codex-desc {
+  font-size: 14px;
+}
+.codex-hint {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+@media (max-width: 520px) {
+  .tabs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 720px) {
+  .pane-codex {
+    grid-column: 1 / -1;
+  }
+  .forge-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.end-forged {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--coin);
+}
+.end-forged[hidden] {
+  display: none;
+}
+.up-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.catalyst-tag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--coin);
+  color: var(--coin);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.catalyst-line {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.shop-item[data-catalyst='true'] {
+  border-color: color-mix(in srgb, var(--coin) 60%, var(--wall));
+}

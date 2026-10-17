@@ -32,8 +32,19 @@ export function maybeDrop(ctx: Ctx, x: number, y: number, coinMult = 0): void {
   spawnDrop(ctx, kind, x, y, coinMult);
 }
 
+/**
+ * Drop garanti (Divine) : la balle garantie (guaranteedBallEvery) s'applique comme pour maybeDrop, sinon un
+ * type tiré selon drops.weights.
+ */
+export function forceDrop(ctx: Ctx, x: number, y: number): void {
+  const t = ctx.cfg.blocks.drops;
+  const n = ctx.s.stats.blocksDestroyed;
+  const kind = t.guaranteedBallEvery > 0 && n % t.guaranteedBallEvery === 0 ? 'ball' : pickDropKind(ctx);
+  spawnDrop(ctx, kind, x, y, 0);
+}
+
 /** Crée un drop (valeur tirée selon le type ; pièce × coinMult si > 0) et émet drop:spawned. */
-function spawnDrop(ctx: Ctx, kind: Drop['kind'], x: number, y: number, coinMult: number): void {
+export function spawnDrop(ctx: Ctx, kind: Drop['kind'], x: number, y: number, coinMult: number): void {
   const t = ctx.cfg.blocks.drops;
   let value = 1;
   let element: Drop['element'] = null;

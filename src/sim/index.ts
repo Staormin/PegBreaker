@@ -8,7 +8,7 @@ import { createInternal, type SimState } from './state';
 import { SUBSTEP_MS, STEP_EPS } from './constants';
 import { chooseReward, fire, giveUp, leaveShop, recall, revive, skipReward, startRun, tick } from './machine';
 import { contractSeed } from './contracts';
-import { buy, reroll } from './shop';
+import { buy, forge, forgeOptions, reroll, sell, upgrade } from './shop';
 import { clampAim, preview } from './aim';
 import { refreshRelics } from './relics';
 import { syncFx } from './pools';
@@ -135,6 +135,24 @@ export function createSim(config: GameConfig, options: SimOptions): Sim {
     leaveShop(): void {
       leaveShop(ctx);
       sync();
+    },
+    sell(index: number): number {
+      const coins = sell(ctx, index);
+      sync();
+      return coins;
+    },
+    forge(i: number, j: number): boolean {
+      const ok = forge(ctx, i, j);
+      sync();
+      return ok;
+    },
+    upgrade(index: number): boolean {
+      const ok = upgrade(ctx, index);
+      sync();
+      return ok;
+    },
+    forgeOptions() {
+      return forgeOptions(ctx);
     },
     revive(): boolean {
       const ok = revive(ctx);

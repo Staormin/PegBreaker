@@ -5,20 +5,25 @@
 // second appui retire le filtre). Un élément débloqué par un succès (`AchievementDef.unlocksElement`)
 // est un nœud `.node[data-unlock="achievement"]` qui affiche « Succès : <nom> » au lieu d'un coût.
 // Les nœuds hors élément (reliques) suivent ; ils sont masqués quand un filtre est actif.
+// Codex (docs/HYBRIDS.md) : onglet `.pane-codex`, une `.codex-entry[data-element][data-known]`
+// par hybride + la Divine ; connue (`meta.data.codex`) → parents, nom, description, effet ;
+// sinon « ? + ? → ??? » et la famille des parents en indice. Compteur `.codex-count`.
 import type { EventBus } from '../../core/events';
-import type { AchievementDef, BallFamily, GameConfig, MetaNode, MetaSystem, SaveData } from '../../core/types';
-import { BALL_FAMILIES } from '../../core/types';
+import type { AchievementDef, BallElement, BallFamily, GameConfig, MetaNode, MetaSystem, SaveData } from '../../core/types';
 import { availableRunMods, effectiveFragmentMultiplier, nextCost } from '../../systems';
 import { button, clip, el, fmt } from '../dom';
-import { ballIcon, elementTable, FAMILY_LABELS, familyIcon, type ElementInfo } from '../elements';
+import { ballIcon, BASE_FAMILIES, elementTable, FAMILY_LABELS, familyIcon, type ElementInfo } from '../elements';
+import { codexEntries, ownEffect, recipeHint, recipeLabel } from '../hybrids';
 import { createScreen, type ScreenEl } from './screen';
 
-type Pane = 'arsenal' | 'foundations' | 'depth' | 'achievements';
+export type WellPane = 'arsenal' | 'foundations' | 'depth' | 'achievements' | 'codex';
+type Pane = WellPane;
 const PANES: { id: Pane; label: string }[] = [
   { id: 'arsenal', label: 'Arsenal' },
   { id: 'foundations', label: 'Fondations' },
   { id: 'depth', label: 'Profondeur' },
   { id: 'achievements', label: 'Succès' },
+  { id: 'codex', label: 'Codex' },
 ];
 
 export interface WellScreen extends ScreenEl {
@@ -26,6 +31,8 @@ export interface WellScreen extends ScreenEl {
   refresh(force?: boolean): void;
   /** une modification méta a eu lieu depuis la création de la sim (run en cours non concernée) */
   readonly dirty: boolean;
+  /** onglet actif (mobile) ; sur grand écran, amène la section en vue */
+  select(pane: WellPane): void;
 }
 
 export interface WellDeps {
@@ -87,7 +94,7 @@ export function createWellScreen(d: WellDeps): WellScreen {
   filters.setAttribute('role', 'group');
   filters.setAttribute('aria-label', 'Filtrer par famille');
   const filterBtns = new Map<BallFamily, HTMLButtonElement>();
-  for (const f of BALL_FAMILIES) {
+  for (const f of BASE_FAMILIES) {
     const b = button(bus, 'well-filter', '', () => {
       filter = filter === f ? null : f;
       applyFilter();
@@ -253,6 +260,7 @@ export function createWellScreen(d: WellDeps): WellScreen {
       list.append(row);
     }
     ach.append(el('div', 'pane-info', `${n}/${config.meta.achievements.length} débloqués`), list);
+    renderCodex(data);
 
     dirty = JSON.stringify(meta.getModifiers()) !== createdWith;
     restartBox.hidden = !dirty;
@@ -276,6 +284,63 @@ export function createWellScreen(d: WellDeps): WellScreen {
     applyFilter();
   }
 
+  /** codex : recettes découvertes en clair, les autres en « ? + ? → ??? » */
+  function renderCodex(data: Readonly<SaveData>): void {
+    const b = body('codex');
+    b.textContent = '';
+    const known = new Set<BallElement>(data.codex ?? []);
+    const ids = codexEntries(config);
+    const found = ids.filter((id) => known.has(id)).length;
+    const count = el('div', 'pane-info codex-count', `${found} / ${ids.length} découvertes`);
+    const grid = el('div', 'codex-grid');
+    grid.setAttribute('role', 'list');
+    for (const id of ids) grid.append(codexEntry(id, known.has(id)));
+    b.append(count, el('p', 'muted codex-help', 'Forge deux balles de rang III en boutique pour révéler une recette.'), grid);
+  }
+
+  function codexEntry(id: BallElement, known: boolean): HTMLElement {
+    const info = elements.get(id);
+    const divine = info.family === 'divine';
+    const card = el('div', `codex-entry${divine ? ' codex-divine' : ''}`);
+    card.setAttribute('role', 'listitem');
+    card.dataset.element = id;
+    card.dataset.known = String(known);
+    card.style.setProperty('--c', info.color);
+    const formula = el('div', 'codex-formula');
+    formula.setAttribute('aria-hidden', 'true');
+    if (known) {
+      if (info.recipe) formula.append(ballIcon(config, info.recipe[0], 3, 28), el('span', 'fr-op', '+'), ballIcon(config, info.recipe[1], 3, 28));
+      else formula.append(el('span', 'codex-q', 'Hybride III'), el('span', 'fr-op', '+'), el('span', 'codex-q', 'Hybride III'));
+      formula.append(el('span', 'fr-op fr-arrow', '→'), ballIcon(config, id, 1, 36));
+      const text = el('div', 'codex-text');
+      text.append(
+        el('div', 'codex-name', divine ? `✦ ${info.name}` : info.name),
+        el('div', 'codex-recipe', recipeLabel(config, id)),
+        el('div', 'codex-desc', info.desc),
+        el('div', 'forge-effect', ownEffect(config, id, 1)),
+      );
+      card.append(formula, text);
+      card.setAttribute('aria-label', `${info.name} : ${recipeLabel(config, id)}. ${info.desc}`);
+    } else {
+      formula.append(el('span', 'codex-q', '?'), el('span', 'fr-op', '+'), el('span', 'codex-q', '?'), el('span', 'fr-op fr-arrow', '→'), el('span', 'codex-q', '???'));
+      const text = el('div', 'codex-text');
+      const hint = recipeHint(config, id);
+      text.append(el('div', 'codex-name', divine ? '✦ ???' : '???'), el('div', 'codex-hint', `Indice : ${hint}`));
+      card.append(formula, text);
+      card.setAttribute('aria-label', `Recette inconnue, indice : ${hint}`);
+    }
+    return card;
+  }
+
+  function select(p: WellPane): void {
+    setActive(p);
+    const pane = paneEls.get(p);
+    // grand écran : onglets masqués, toutes les sections visibles → on amène la section en vue
+    if (pane && typeof pane.scrollIntoView === 'function' && getComputedStyle(tabs).display === 'none') {
+      requestAnimationFrame(() => pane.scrollIntoView({ block: 'start' }));
+    }
+  }
+
   function refresh(force = false): void {
     const data = meta.data;
     if (!force && data === lastRef) return;
@@ -286,6 +351,7 @@ export function createWellScreen(d: WellDeps): WellScreen {
   return {
     ...s,
     refresh,
+    select,
     get dirty() {
       return dirty;
     },

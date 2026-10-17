@@ -18,10 +18,15 @@
 //   fragments » en fin de quotidien. F9 : `reward:offered.source === 'boss'` → coffre
 //   (screens/reward.ts). Une reprise en phase 'reward' rouvre le coffre si
 //   `state.rewardSource === 'boss'`, sinon l'écran normal.
+// - Hybrides (docs/HYBRIDS.md) : boutique « Ta volée » (vente, upgrade) + « Forge » ; la
+//   boutique est reconstruite sur `shop:sold/forged/upgraded/bought/rerolled` et `volley:fusion`.
+//   `shop:forged` → flash de la balle forgée + toast « Forgé : <nom> » ; toute nouvelle entrée
+//   de `meta.data.codex` → toast « Nouvelle recette au codex ! ». « Voir les recettes » ouvre
+//   le Puits sur l'onglet Codex.
 // =====================================================================
 import './styles.css';
 import type { EventBus } from '../core/events';
-import type { AudioSystem, GameConfig, MetaSystem, RewardOption, RunPhase, RunState, RunSummary, Renderer, Sim, UI, UiScreen } from '../core/types';
+import type { AudioSystem, BallElement, GameConfig, MetaSystem, RewardOption, RunPhase, RunState, RunSummary, Renderer, Sim, UI, UiScreen } from '../core/types';
 import { createHud } from './hud';
 import { createHints } from './hints';
 import { createSpreadControl } from './spread';
@@ -39,6 +44,8 @@ import { createSettingsScreen } from './screens/settings';
 import { createShopScreen } from './screens/shop';
 import { createToasts } from './screens/toasts';
 import { createWellScreen } from './screens/well';
+import { elementTable } from './elements';
+import { isForged } from './hybrids';
 
 export interface UiDeps {
   root: HTMLElement;
@@ -136,7 +143,17 @@ export function createUI(deps: UiDeps): UI {
 
   // --- écrans ----------------------------------------------------------------
   const reward = createRewardScreen(sim, bus, config);
-  const shop = createShopScreen(sim, bus, config);
+  const shop = createShopScreen(
+    sim,
+    bus,
+    config,
+    meta
+      ? () => {
+          well?.select('codex');
+          openSub('meta');
+        }
+      : null,
+  );
   const gameover = createGameoverScreen({
     bus,
     onRestart: () => {
@@ -314,6 +331,7 @@ export function createUI(deps: UiDeps): UI {
       score: 0,
       revivesUsed: s.revivesUsed ?? 0,
       contractsCompleted: s.stats.contractsCompleted ?? 0,
+      forged: s.volley.filter((b) => isForged(config, b.element)).map((b) => b.element),
     };
   }
 
@@ -338,6 +356,32 @@ export function createUI(deps: UiDeps): UI {
   };
   bus.on('shop:bought', refreshShop);
   bus.on('shop:rerolled', refreshShop);
+  bus.on('shop:sold', refreshShop);
+  bus.on('shop:upgraded', refreshShop);
+  bus.on('volley:fusion', () => {
+    if (screen === 'shop') refreshShop();
+  });
+  bus.on('shop:forged', (e) => {
+    refreshShop();
+    shop.flashForged(e.result);
+    toasts.notice('Forge', `Forgé : ${elementTable(config).get(e.result).name}`, '⚒', 'forge');
+    checkCodex();
+  });
+
+  // --- codex : annonce des premières découvertes ----------------------------
+  let codexKnown = new Set<BallElement>(meta?.data.codex ?? []);
+  let codexRef: readonly BallElement[] | undefined = meta?.data.codex;
+  function checkCodex(): void {
+    if (!meta) return;
+    const list = meta.data.codex;
+    if (list === codexRef && (list?.length ?? 0) === codexKnown.size) return;
+    codexRef = list;
+    let fresh = 0;
+    for (const id of list ?? []) if (!codexKnown.has(id)) fresh++;
+    codexKnown = new Set(list ?? []);
+    if (fresh === 1) toasts.notice('Codex', 'Nouvelle recette au codex !', '✦', 'codex');
+    else if (fresh > 1) toasts.notice('Codex', `${fresh} nouvelles recettes au codex !`, '✦', 'codex');
+  }
   bus.on('shop:left', () => {
     if (screen === 'shop') show('game');
   });
@@ -437,6 +481,7 @@ export function createUI(deps: UiDeps): UI {
       }
       else if ((state.phase === 'aiming' || state.phase === 'firing') && MODAL_RUN_SCREENS.has(screen)) show('game');
     }
+    checkCodex();
     // écrans méta : reconstruits seulement si meta.data a changé de référence
     if (screen === 'meta') well?.refresh();
     else if (screen === 'daily') dailyScreen?.refresh();

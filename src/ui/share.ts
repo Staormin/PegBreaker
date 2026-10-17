@@ -160,7 +160,7 @@ export function renderShareCard(config: GameConfig, s: RunSummary, link: string,
       const x = x0 + i * step;
       if (b) {
         const info = elements.get(b.element);
-        drawBallShape(ctx, x, y + row * 70, r, info.family, info.color, b.tier);
+        drawBallShape(ctx, x, y + row * 70, r, info.family, info.color, b.tier, info.colors);
       }
       else {
         ctx.fillStyle = C.dim;

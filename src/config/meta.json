@@ -637,6 +637,30 @@
       "name": "Phénix",
       "description": "Atteindre la vague 6 après une seconde chance.",
       "rewardFragments": 15
+    },
+    {
+      "id": "hybrid1",
+      "name": "Alchimiste de forge",
+      "description": "Forger une balle hybride.",
+      "rewardFragments": 20
+    },
+    {
+      "id": "hybrid5",
+      "name": "Collection",
+      "description": "Inscrire 5 hybrides distinctes au codex.",
+      "rewardFragments": 50
+    },
+    {
+      "id": "divine1",
+      "name": "Divin",
+      "description": "Forger la Divine.",
+      "rewardFragments": 100
+    },
+    {
+      "id": "codex_full",
+      "name": "Grimoire",
+      "description": "Compléter le codex (14/14).",
+      "rewardFragments": 200
     }
   ]
 }

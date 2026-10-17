@@ -274,6 +274,11 @@ export function createHud(deps: HudDeps): Hud {
       pill.dataset.element = it.element;
       pill.dataset.family = info.family;
       pill.style.setProperty('--c', info.color);
+      // hybride : losange à deux moitiés (couleurs des parents) ; Divine : étoile blanc/or (CSS)
+      if (info.colors) {
+        pill.style.setProperty('--ca', info.colors[0]);
+        pill.style.setProperty('--cb', info.colors[1]);
+      }
       pill.setAttribute('role', 'img');
       pill.setAttribute('aria-label', `${info.name} rang ${it.tier} ×${n}`);
       pill.title = `${info.name} · rang ${it.tier} ×${n}`;

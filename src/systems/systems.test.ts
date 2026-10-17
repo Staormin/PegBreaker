@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../core/config';
 import type { GameConfig, MetaNode, RunSummary } from '../core/types';
-import { BACKUP_KEY, SAVE_KEY, createMemoryStorage, createMeta, effectiveFragmentMultiplier, reviveCost, type StorageLike } from './index';
+import { BACKUP_KEY, SAVE_KEY, codexIds, createMemoryStorage, createMeta, effectiveFragmentMultiplier, reviveCost, type StorageLike } from './index';
 
 const cfg = (): GameConfig => structuredClone(loadConfig());
 const fixedNow = (): Date => new Date(2026, 9, 16, 14, 30); // 16 oct. 2026, heure locale
@@ -19,6 +19,7 @@ function summary(over: Partial<RunSummary> = {}, stats: Partial<RunSummary['stat
     revivesUsed: 0,
     contractsCompleted: 0,
     ...over,
+    forged: over.forged ?? [],
     stats: {
       shots: 40,
       blocksDestroyed: 60,
@@ -746,9 +747,10 @@ describe('balles du Puits et des succès (BALLS.md)', () => {
     const byAch = Object.fromEntries(c.meta.achievements.filter((a) => a.unlocksElement).map((a) => [a.id, a.unlocksElement]));
     expect(byAch).toEqual({ combo15: 'nova', wave5: 'comet', shot5000: 'lucky' });
     for (const el of ['nova', 'comet', 'lucky']) expect(c.meta.nodes.some((n) => elementOf(n.effect) === el)).toBe(false);
-    // Chaque balle hors pierre a exactement une source de déblocage.
+    // Chaque balle de base hors pierre a exactement une source de déblocage (hybrides et Divine : forge seulement).
     const sources = [...c.meta.nodes.map((n) => elementOf(n.effect)).filter((e) => e !== null), ...Object.values(byAch)];
-    expect([...sources].sort()).toEqual(ballIds(c).filter((id) => id !== 'stone').sort());
+    const forgeOnly = codexIds(c) as string[];
+    expect([...sources].sort()).toEqual(ballIds(c).filter((id) => id !== 'stone' && !forgeOnly.includes(id)).sort());
   });
 
   it('prérequis par famille : acid ← el_fire, prism ← el_lightning', () => {
@@ -824,5 +826,105 @@ describe('balles du Puits et des succès (BALLS.md)', () => {
     const els = createMeta(st, c, fixedNow).getModifiers().unlockedElements;
     expect(els).toContain('magnet');
     expect(els).not.toContain('void');
+  });
+});
+
+describe('codex (HYBRIDS.md)', () => {
+  const HYBRIDS = ['steam', 'laser', 'cluster', 'wraith', 'abyss', 'jackpot', 'quake', 'missile', 'supernova', 'plague', 'choir', 'orbit', 'hammer'] as const;
+
+  it('codexIds : 13 hybrides + la Divine, dans l ordre de balls.json', () => {
+    expect(codexIds(cfg())).toEqual([...HYBRIDS, 'divine']);
+  });
+
+  it('défaut [] (sauvegarde vide ou sans clé codex), gelé', () => {
+    const st = createMemoryStorage();
+    expect(createMeta(st, cfg(), fixedNow).data.codex).toEqual([]);
+    st.setItem(SAVE_KEY, JSON.stringify({ version: 1 }));
+    const m = createMeta(st, cfg(), fixedNow);
+    expect(m.data.codex).toEqual([]);
+    m.addToCodex('steam');
+    expect(Object.isFrozen(m.data.codex)).toBe(true);
+    expect(() => (m.data.codex as string[]).push('laser')).toThrow();
+  });
+
+  it('lecture tolérante : non-tableau → [] ; non-chaînes, ids inconnus, balles de base et doublons ignorés', () => {
+    const st = createMemoryStorage();
+    st.setItem(SAVE_KEY, JSON.stringify({ version: 1, codex: 'steam' }));
+    expect(createMeta(st, cfg(), fixedNow).data.codex).toEqual([]);
+    st.setItem(SAVE_KEY, JSON.stringify({ version: 1, codex: ['laser', 42, null, 'bogus', 'fire', 'stone', 'laser', 'divine', { id: 'steam' }] }));
+    const m = createMeta(st, cfg(), fixedNow);
+    expect(m.data.codex).toEqual(['laser', 'divine']);
+    expect(st.getItem(BACKUP_KEY)).toBeNull();
+  });
+
+  it('addToCodex : idempotent, sauvegardé, id invalide ignoré sans écriture', () => {
+    const st = createMemoryStorage();
+    const m = createMeta(st, cfg(), fixedNow);
+    m.addToCodex('steam');
+    const ref = m.data;
+    const raw = st.getItem(SAVE_KEY);
+    expect(JSON.parse(raw ?? '{}').codex).toEqual(['steam']);
+    m.addToCodex('steam');
+    m.addToCodex('fire'); // balle de base : pas au codex
+    m.addToCodex('bogus' as 'steam');
+    expect(m.data).toBe(ref); // aucune mutation
+    expect(st.getItem(SAVE_KEY)).toBe(raw);
+    m.addToCodex('divine');
+    expect(m.data.codex).toEqual(['steam', 'divine']);
+    expect(createMeta(st, cfg(), fixedNow).data.codex).toEqual(['steam', 'divine']);
+  });
+
+  it('save/load idempotent avec un codex', () => {
+    const st = createMemoryStorage();
+    const m = createMeta(st, cfg(), fixedNow);
+    m.addToCodex('orbit');
+    m.onRunEnd(summary({ forged: ['hammer', 'orbit'] }));
+    const first = st.getItem(SAVE_KEY);
+    const m2 = createMeta(st, cfg(), fixedNow);
+    expect(JSON.stringify(m2.data)).toBe(first);
+    m2.save();
+    m2.load();
+    expect(JSON.stringify(m2.data)).toBe(first);
+    expect(m2.data.codex).toEqual(['orbit', 'hammer']);
+  });
+
+  it('onRunEnd : summary.forged → codex (dédoublonné, ids invalides ignorés) ; résumé ancien sans forged : pas de crash', () => {
+    const m = createMeta(createMemoryStorage(), cfg(), fixedNow);
+    m.onRunEnd(summary({ forged: ['steam', 'steam', 'fire', 'laser'] }));
+    expect(m.data.codex).toEqual(['steam', 'laser']);
+    const old = summary();
+    delete (old as Partial<RunSummary>).forged;
+    expect(() => m.onRunEnd(old)).not.toThrow();
+    expect(m.data.codex).toEqual(['steam', 'laser']);
+  });
+
+  it('succès hybrid1 / hybrid5 / divine1 / codex_full : seuils, récompenses 20/50/100/200, une seule fois', () => {
+    const c = cfg();
+    const reward = (id: string): number => c.meta.achievements.find((a) => a.id === id)?.rewardFragments ?? NaN;
+    expect([reward('hybrid1'), reward('hybrid5'), reward('divine1'), reward('codex_full')]).toEqual([20, 50, 100, 200]);
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    expect(m.onRunEnd(summary({ forged: [] }, { fragmentsEarned: 0 }))).toEqual([]);
+    expect(m.onRunEnd(summary({ forged: ['steam'] }, { fragmentsEarned: 0 }))).toEqual(['hybrid1']);
+    expect(m.data.meta.fragments).toBe(20);
+    // 4 distinctes (doublon compris) → rien ; la 5e → hybrid5
+    expect(m.onRunEnd(summary({ forged: ['laser', 'laser', 'cluster', 'wraith'] }, { fragmentsEarned: 0 }))).toEqual([]);
+    expect(m.onRunEnd(summary({ forged: ['abyss'] }, { fragmentsEarned: 0 }))).toEqual(['hybrid5']);
+    expect(m.onRunEnd(summary({ forged: ['divine'] }, { fragmentsEarned: 0 }))).toEqual(['divine1']);
+    // 13/14 → pas de Grimoire
+    expect(m.onRunEnd(summary({ forged: ['jackpot', 'quake', 'missile', 'supernova', 'plague', 'choir', 'orbit'] }, { fragmentsEarned: 0 }))).toEqual([]);
+    expect(m.data.codex).toHaveLength(13);
+    expect(m.onRunEnd(summary({ forged: ['hammer'] }, { fragmentsEarned: 0 }))).toEqual(['codex_full']);
+    expect(m.data.meta.fragments).toBe(20 + 50 + 100 + 200);
+    expect(m.onRunEnd(summary({ forged: ['steam', 'divine'] }, { fragmentsEarned: 0 }))).toEqual([]);
+  });
+
+  it('les 4 succès d un coup (codex complet en une run) ; codex rempli par addToCodex compté en fin de run', () => {
+    const c = cfg();
+    const m = createMeta(createMemoryStorage(), c, fixedNow);
+    expect(m.onRunEnd(summary({ forged: codexIds(c) }, { fragmentsEarned: 0 }))).toEqual(['hybrid1', 'hybrid5', 'divine1', 'codex_full']);
+    const m2 = createMeta(createMemoryStorage(), c, fixedNow);
+    m2.addToCodex('divine'); // inscrit en boutique (shop:forged) avant la fin de run
+    expect(m2.data.achievements).toEqual([]);
+    expect(m2.onRunEnd(summary({ forged: ['divine'] }))).toEqual(['divine1']);
   });
 });

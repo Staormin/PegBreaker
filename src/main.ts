@@ -103,6 +103,10 @@ function boot(): void {
     meta.setCurrentRun(null);
     for (const id of unlocked) bus.emit({ type: 'achievement:unlocked', achievementId: id });
   });
+  // codex : une hybride forgée est inscrite tout de suite (le résumé de fin de run couvre aussi le cas)
+  bus.on('shop:forged', (e) => {
+    if (!isQa) meta.addToCodex(e.result);
+  });
   bus.on('run:started', () => {
     runOver = false;
     sinceSave = 0;

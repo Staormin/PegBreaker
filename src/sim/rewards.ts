@@ -6,7 +6,7 @@ import { addRelic, relicDef, relicRequiredElement } from './relics';
 import { addVolleyBall, bestFusablePair, fusePair } from './volley';
 import { modElement } from './mods';
 
-function elementAllowed(ctx: Ctx, el: BallElement): boolean {
+export function elementAllowed(ctx: Ctx, el: BallElement): boolean {
   return el === 'stone' || ctx.meta.unlockedElements.includes(el);
 }
 

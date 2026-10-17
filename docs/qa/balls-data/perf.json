@@ -36,62 +36,87 @@
   ],
   "shots": 3,
   "fpsSamples": [
-    47,
+    41,
     30,
-    58,
-    60,
-    60,
-    59,
-    57,
-    57,
-    60,
-    59,
     55,
-    56,
-    60
+    60,
+    60,
+    57,
+    46,
+    41,
+    58,
+    53,
+    46,
+    42,
+    59
   ],
   "fpsMin": 30,
-  "fpsMean": 55.23076923076923,
+  "fpsMean": 49.84615384615385,
   "frameP50": 16.699999999999818,
-  "frameP95": 33.29999999999927,
-  "frameP99": 33.40000000000009,
-  "frameMax": 133.29999999999973,
-  "frames": 783,
+  "frameP95": 33.399999999999864,
+  "frameP99": 50,
+  "frameMax": 183.39999999999964,
+  "frames": 715,
   "slowFrames": [
     {
-      "sinceFireMs": 37,
-      "dt": 50,
+      "sinceFireMs": 52,
+      "dt": 67,
       "live": 2
     },
     {
-      "sinceFireMs": 504,
-      "dt": 50,
-      "live": 9
+      "sinceFireMs": 518,
+      "dt": 83,
+      "live": 10
     },
     {
-      "sinceFireMs": 1087,
-      "dt": 133,
-      "live": 17
+      "sinceFireMs": 568,
+      "dt": 50,
+      "live": 11
     },
     {
-      "sinceFireMs": 1387,
+      "sinceFireMs": 1085,
+      "dt": 183,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1185,
       "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1235,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1468,
+      "dt": 67,
       "live": 21
     },
     {
-      "sinceFireMs": 1454,
-      "dt": 67,
-      "live": 22
-    },
-    {
-      "sinceFireMs": 1554,
-      "dt": 100,
-      "live": 24
-    },
-    {
-      "sinceFireMs": 1654,
-      "dt": 100,
+      "sinceFireMs": 1618,
+      "dt": 50,
       "live": 25
+    },
+    {
+      "sinceFireMs": 1835,
+      "dt": 50,
+      "live": 26
+    },
+    {
+      "sinceFireMs": 2236,
+      "dt": 50,
+      "live": 17
+    },
+    {
+      "sinceFireMs": 622,
+      "dt": 50,
+      "live": 12
+    },
+    {
+      "sinceFireMs": 2039,
+      "dt": 50,
+      "live": 19
     }
   ],
   "rendererDpr": [
@@ -109,7 +134,7 @@
     1,
     1
   ],
-  "maxParticles": 46,
+  "maxParticles": 50,
   "maxLive": 27,
   "explodeByEl": {
     "bomb": 6

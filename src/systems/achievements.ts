@@ -2,11 +2,14 @@
 // Priorité à `AchievementDef.condition` (déclaratif, seuils dans le JSON) ; à défaut, table
 // par id ci-dessous (pour les mesures absentes de l'union `condition.stat`). Sinon : jamais.
 import type { AchievementDef, GlobalStats, RunSummary } from '../core/types';
+import type { CodexProgress } from './codex';
 
 export interface AchievementContext {
   summary: RunSummary;
   /** stats globales APRÈS intégration de la run */
   stats: GlobalStats;
+  /** codex APRÈS intégration de summary.forged (absent : codex vide) */
+  codex?: CodexProgress;
 }
 
 type Stat = NonNullable<AchievementDef['condition']>['stat'];
@@ -48,6 +51,11 @@ export const ACHIEVEMENT_RULES: Readonly<Record<string, Predicate>> = {
   // `?? 0` : résumés antérieurs aux champs revivesUsed / contractsCompleted.
   contracts3: (c) => (c.summary.contractsCompleted ?? 0) >= 3,
   phoenix: (c) => (c.summary.revivesUsed ?? 0) >= 1 && c.summary.wave >= 6,
+  // HYBRIDS.md : mesurés sur le codex (persistant), donc aussi rétroactifs.
+  hybrid1: (c) => (c.codex?.hybrids ?? 0) >= 1,
+  hybrid5: (c) => (c.codex?.hybrids ?? 0) >= 5,
+  divine1: (c) => c.codex?.divine === true,
+  codex_full: (c) => !!c.codex && c.codex.size > 0 && c.codex.total >= c.codex.size,
 };
 
 export function isMet(def: AchievementDef, ctx: AchievementContext): boolean {
