@@ -160,6 +160,36 @@ Les propositions du premier passage ont été appliquées (catalyseur 60 → 35,
 | LS-01 | mineur | `?seed=land-play&qa=1`, 1176×560, vague 1 avec contrat | Le bandeau de contrat `.hud-band` recouvre le haut de la rangée 0 (≈ 2 600 px², blocs « 13 / 26 / 20 » rognés). Le sélecteur `.hud-spread` « rafale » recouvre la zone de lancement, en bas à droite du plateau (≈ 2 590 px²). Test `test.fail` « BUG LS-01 » | `src/ui/hud.ts`, `src/ui/styles.css` (placement paysage) |
 | LS-02 | majeur | `?seed=land-end&qa=1`, PV mis à 1, bot naïf jusqu'à la mort, abandon | Le panneau de fin de run fait 651 px dans un écran de 560 px centré (`display:flex; align-items/justify-content:center; overflow:auto`). Le titre « Fin de la descente » est à **y = −45 px** et reste inatteignable (débordement négatif non défilable). « Le Puits » et « Défi du jour » finissent à 605 px. « Rejouer » reste visible. Test `test.fail` « BUG LS-02 » | `src/ui/styles.css` (`.screen` : `justify-content: safe center` ou `margin: auto` sur `.panel`) |
 
+## Boutique refaite (docs/SHOP-UI.md, b6b2d9c / 1bcbddb ; paysage c9f1231)
+
+**Exécution unique** de `npm run test:e2e` (dist tel quel, `fuser -k 4173/tcp` avant) : **108 passés, 1 échec, 1 ignoré en 9 min 39 s** (la charge machine est montée de 2 à 13 pendant l'exécution).
+
+**L'échec : `forge.spec.ts` (f) codex**, timeout de 120 s sur `.screen-shop [data-action="open-codex"]` (« element is not visible »).
+- **Cause : le scénario du test, pas une régression.** Dans la nouvelle boutique, « Voir les recettes » n'existe que sur la ligne « forge vide » (`forgeFoot.hidden = forgeOpts.length > 0`, conforme à SHOP-UI.md). La volée du test (Cristal II + Nova I) ouvrait déjà une forge, donc le lien était masqué.
+- **Scénario corrigé** :
+  1. Cristal II + 3 pierres : le lien est visible et le codex s'ouvre, 14 entrées « ? + ? », compteur « 0 / 14 ».
+  2. Achat du catalyseur « → Supernova » : la forge apparaît et le lien se masque (cela est maintenant vérifié).
+  3. Forge : la Supernova devient connue, compteur « 1 / 14 ».
+- **Vérification** : le test (f) seul a été relancé et passe en 6,9 s. Je n'ai pas relancé la suite complète, conformément à la consigne.
+
+**Specs adaptées** :
+- `forge.spec.ts` : on sélectionne la tuile `.volley-tile` (`data-selected="true"`), puis on agit dans `.volley-detail` (vente, upgrade, absence d'upgrade sur une balle de base / au rang III / sur la Divine). Le catalyseur affiche `.si-catalyst` « → Vapeur » et l'`aria-label` « Avec Feu, forge Vapeur ».
+- `landscape.spec.ts` : tuiles et panneau détail. On vérifie aussi l'absence de tout attribut `title`, et les colonnes `.shop-main` / `.shop-col-left` / `.shop-col-right` / `.volley-grid` ne défilent pas avec 14 balles.
+- `smoke.spec.ts` : rien à changer (sélecteurs génériques `data-shop-index`, `leave-shop`, `.wallet .num`).
+
+**Nouveau contrôle « boutique 29 balles à 1176×560 » (21 groupes : base, 3 hybrides, Divine) : passe**
+- La page ne défile pas.
+- Les bas de `.shop-main`, des deux colonnes, de `.volley-grid` et de `.volley-detail` sont tous au-dessus du haut du pied.
+- Les tuiles font au moins 44 × 44 px, toutes visibles sans défilement de la grille (3 rangées de 8).
+- Le panneau détail, Reroll et Continuer sont dans le viewport ; sélectionner la Divine met le panneau à jour (« Vendre +400 », pas de « Rang + »).
+- Capture : `landscape-shots/10-boutique-29-balles.png`.
+
+**LS-01 et LS-02 sont corrigés en c9f1231** : leurs tests (ex-`test.fail`, retirés par le commit) passent maintenant comme non-régressions. Les titres des tests disent encore « BUG LS-0x » et « titre coupé : LS-02 », à renommer.
+
+**Observations** :
+- SH-01 (mineur) : avec 4 forges possibles, la 4e rangée est coupée net par le pied. La colonne gauche défile en interne mais rien ne l'indique (aucun dégradé ni « +1 »).
+- SH-02 (mineur, UX) : quand une forge est possible, on ne peut plus ouvrir le codex depuis la boutique, alors que c'est le moment où le joueur compare les recettes. Proposition : garder « Voir les recettes » dans l'en-tête de la section Forge.
+
 ## 5. Captures (`docs/qa/forge-shots/`)
 - `01-boutique-forge.png` : boutique avec la carte forge Feu II + Glace I → Vapeur.
 - `02-forge-toast.png` : après la forge (toasts, flash de la volée).

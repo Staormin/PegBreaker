@@ -36,228 +36,233 @@
   ],
   "shots": 3,
   "fpsSamples": [
-    36,
-    31,
+    28,
+    25,
+    19,
+    29,
+    56,
     37,
-    46,
-    60,
-    57,
-    40,
-    39,
-    44,
-    58,
-    35,
-    42,
-    30,
+    25,
+    31,
+    33,
     54,
+    35,
+    37,
+    25,
+    50,
     60
   ],
-  "fpsMin": 30,
-  "fpsMean": 44.6,
-  "frameP50": 16.699999999999818,
-  "frameP95": 49.899999999999636,
-  "frameP99": 66.69999999999982,
-  "frameMax": 200,
-  "frames": 721,
+  "fpsMin": 19,
+  "fpsMean": 36.266666666666666,
+  "frameP50": 16.700000000000728,
+  "frameP95": 66.60000000000036,
+  "frameP99": 100.09999999999945,
+  "frameMax": 466.7000000000003,
+  "frames": 593,
   "slowFrames": [
     {
-      "sinceFireMs": 39,
+      "sinceFireMs": -32,
       "dt": 67,
       "live": 2
     },
     {
-      "sinceFireMs": 606,
-      "dt": 150,
-      "live": 10
+      "sinceFireMs": 85,
+      "dt": 117,
+      "live": 3
     },
     {
-      "sinceFireMs": 656,
+      "sinceFireMs": 135,
       "dt": 50,
-      "live": 11
+      "live": 4
     },
     {
-      "sinceFireMs": 722,
-      "dt": 67,
-      "live": 12
-    },
-    {
-      "sinceFireMs": 789,
-      "dt": 67,
-      "live": 14
-    },
-    {
-      "sinceFireMs": 839,
+      "sinceFireMs": 185,
       "dt": 50,
-      "live": 14
+      "live": 5
     },
     {
-      "sinceFireMs": 1106,
-      "dt": 200,
-      "live": 16
-    },
-    {
-      "sinceFireMs": 1172,
-      "dt": 67,
-      "live": 17
-    },
-    {
-      "sinceFireMs": 1222,
-      "dt": 50,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 1306,
-      "dt": 83,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 1356,
-      "dt": 50,
-      "live": 19
-    },
-    {
-      "sinceFireMs": 1406,
-      "dt": 50,
-      "live": 20
-    },
-    {
-      "sinceFireMs": 2472,
-      "dt": 83,
-      "live": 19
-    },
-    {
-      "sinceFireMs": 2522,
-      "dt": 50,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 3122,
-      "dt": 67,
-      "live": 10
-    },
-    {
-      "sinceFireMs": 3572,
+      "sinceFireMs": 268,
       "dt": 50,
       "live": 6
     },
     {
-      "sinceFireMs": 635,
+      "sinceFireMs": 418,
       "dt": 50,
-      "live": 12
+      "live": 9
     },
     {
-      "sinceFireMs": 701,
-      "dt": 67,
-      "live": 13
-    },
-    {
-      "sinceFireMs": 1418,
-      "dt": 50,
-      "live": 25
-    },
-    {
-      "sinceFireMs": 1485,
-      "dt": 50,
-      "live": 25
-    },
-    {
-      "sinceFireMs": 2085,
-      "dt": 50,
-      "live": 24
-    },
-    {
-      "sinceFireMs": 2885,
-      "dt": 50,
-      "live": 13
-    },
-    {
-      "sinceFireMs": -23,
-      "dt": 67,
-      "live": 2
-    },
-    {
-      "sinceFireMs": 28,
-      "dt": 50,
-      "live": 2
-    },
-    {
-      "sinceFireMs": 461,
-      "dt": 50,
+      "sinceFireMs": 585,
+      "dt": 167,
       "live": 10
     },
     {
-      "sinceFireMs": 527,
+      "sinceFireMs": 651,
       "dt": 67,
       "live": 12
     },
     {
-      "sinceFireMs": 577,
-      "dt": 50,
+      "sinceFireMs": 734,
+      "dt": 83,
       "live": 13
     },
     {
-      "sinceFireMs": 727,
-      "dt": 50,
-      "live": 15
+      "sinceFireMs": 818,
+      "dt": 83,
+      "live": 14
     },
     {
-      "sinceFireMs": 794,
-      "dt": 50,
+      "sinceFireMs": 1285,
+      "dt": 467,
       "live": 16
     },
     {
-      "sinceFireMs": 844,
-      "dt": 50,
+      "sinceFireMs": 1434,
+      "dt": 150,
       "live": 17
     },
     {
-      "sinceFireMs": 927,
-      "dt": 50,
-      "live": 17
+      "sinceFireMs": 1518,
+      "dt": 83,
+      "live": 18
     },
     {
-      "sinceFireMs": 1127,
-      "dt": 50,
-      "live": 21
-    },
-    {
-      "sinceFireMs": 1544,
-      "dt": 50,
-      "live": 26
-    },
-    {
-      "sinceFireMs": 2094,
-      "dt": 50,
-      "live": 21
-    },
-    {
-      "sinceFireMs": 2177,
+      "sinceFireMs": 1601,
       "dt": 50,
       "live": 18
     },
     {
-      "sinceFireMs": 2227,
+      "sinceFireMs": 1718,
       "dt": 50,
       "live": 20
     },
     {
-      "sinceFireMs": 2294,
+      "sinceFireMs": 2084,
+      "dt": 50,
+      "live": 27
+    },
+    {
+      "sinceFireMs": 2484,
       "dt": 67,
+      "live": 24
+    },
+    {
+      "sinceFireMs": 2601,
+      "dt": 50,
+      "live": 20
+    },
+    {
+      "sinceFireMs": 2685,
+      "dt": 83,
       "live": 18
     },
     {
-      "sinceFireMs": 2344,
-      "dt": 50,
+      "sinceFireMs": 2801,
+      "dt": 117,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 2884,
+      "dt": 83,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 2951,
+      "dt": 67,
       "live": 17
     },
     {
-      "sinceFireMs": 2527,
-      "dt": 50,
+      "sinceFireMs": 3068,
+      "dt": 117,
+      "live": 17
+    },
+    {
+      "sinceFireMs": 3134,
+      "dt": 67,
       "live": 16
+    },
+    {
+      "sinceFireMs": 3201,
+      "dt": 67,
+      "live": 14
+    },
+    {
+      "sinceFireMs": 3268,
+      "dt": 67,
+      "live": 14
+    },
+    {
+      "sinceFireMs": 3351,
+      "dt": 50,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 3401,
+      "dt": 50,
+      "live": 11
+    },
+    {
+      "sinceFireMs": 3501,
+      "dt": 100,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 3584,
+      "dt": 83,
+      "live": 7
+    },
+    {
+      "sinceFireMs": 48,
+      "dt": 67,
+      "live": 2
+    },
+    {
+      "sinceFireMs": 98,
+      "dt": 50,
+      "live": 3
+    },
+    {
+      "sinceFireMs": 164,
+      "dt": 50,
+      "live": 4
+    },
+    {
+      "sinceFireMs": 481,
+      "dt": 50,
+      "live": 9
+    },
+    {
+      "sinceFireMs": 648,
+      "dt": 67,
+      "live": 12
+    },
+    {
+      "sinceFireMs": 714,
+      "dt": 67,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 781,
+      "dt": 67,
+      "live": 14
+    },
+    {
+      "sinceFireMs": 831,
+      "dt": 50,
+      "live": 15
+    },
+    {
+      "sinceFireMs": 898,
+      "dt": 67,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 948,
+      "dt": 50,
+      "live": 17
     }
   ],
   "rendererDpr": [
-    1.25,
+    1,
     1,
     1,
     1,
@@ -273,7 +278,7 @@
     1,
     1
   ],
-  "maxParticles": 111,
+  "maxParticles": 113,
   "maxLive": 29,
   "explodeByEl": {
     "fire": 3,

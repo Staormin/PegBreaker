@@ -79,7 +79,7 @@ test('paysage : plateau visible, HUD hors du plateau, un drag réel tire', async
   const { hudBoxes, hits } = await hudOverlap(page, board);
   test.info().annotations.push({ type: 'hud', description: JSON.stringify({ board, hud: hudBoxes.map((b) => [b.cls, Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)]), hits }) });
   await page.screenshot({ path: `${SHOTS}/01-partie.png` });
-  // LS-01 (bandeau de contrat et sélecteur d'ouverture sur le plateau) : couvert par le test « BUG LS-01 »
+  // LS-01 (bandeau de contrat et sélecteur d'ouverture sur le plateau) : couvert par le test « LS-01 (corrigé) »
   expect(hits.filter((h) => !KNOWN_LS01.some((k) => h.cls.includes(k))), 'HUD sans chevauchement avec le plateau (hors LS-01)').toEqual([]);
   await playDrag(page);
   expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice())).toEqual([]);
@@ -123,9 +123,9 @@ async function playDrag(page: Page): Promise<void> {
   await page.screenshot({ path: `${SHOTS}/02-tir.png` });
 }
 
-// BUG LS-01 : en 1176×560, le bandeau de contrat (.hud-band) recouvre le haut de la rangée 0 et le sélecteur d'ouverture
+// LS-01 (corrigé) : en 1176×560, le bandeau de contrat (.hud-band) recouvre le haut de la rangée 0 et le sélecteur d'ouverture
 // (.hud-spread) recouvre la zone de lancement (bas du plateau). `test.fail` : passera au rouge une fois corrigé.
-test('BUG LS-01 : aucun élément du HUD ne chevauche le plateau', async ({ page }) => {
+test('LS-01 (corrigé) : aucun élément du HUD ne chevauche le plateau', async ({ page }) => {
   await page.goto('/?seed=land-play&qa=1');
   await waitReady(page);
   await page.waitForTimeout(300);
@@ -159,7 +159,8 @@ test('paysage : récompense (« Passer » visible), boutique 14 balles sans déf
     api.sim.chooseReward(0);
   }, volley);
   await expect(page.locator('#ui[data-screen="shop"]')).toBeVisible();
-  await expect(page.locator('.screen-shop .volley-group')).toHaveCount(6);
+  await expect(page.locator('.screen-shop .volley-tile')).toHaveCount(6);
+  await expect(page.locator('.screen-shop [title]'), 'aucune infobulle native (title)').toHaveCount(0);
   await page.waitForTimeout(300);
   // pas de défilement : page, écran et colonnes
   expect(await pageFits(page), 'la page ne défile pas').toEqual({ sw: W, sh: H });
@@ -168,14 +169,15 @@ test('paysage : récompense (« Passer » visible), boutique 14 balles sans déf
       const e = document.querySelector<HTMLElement>(s);
       return e ? { sh: e.scrollHeight, ch: e.clientHeight } : null;
     };
-    return { screen: q('.screen-shop'), panel: q('.screen-shop .panel'), cols: q('.screen-shop .shop-cols'), buy: q('.screen-shop .shop-col-buy'), side: q('.screen-shop .shop-col-side') };
+    return { screen: q('.screen-shop'), panel: q('.screen-shop .panel'), main: q('.screen-shop .shop-main'), left: q('.screen-shop .shop-col-left'), right: q('.screen-shop .shop-col-right'), grid: q('.screen-shop .volley-grid') };
   });
   test.info().annotations.push({ type: 'shop-scroll', description: JSON.stringify(scroll) });
-  expect(scroll.buy && scroll.side, 'deux colonnes (≥ 900 px)').toBeTruthy();
+  expect(scroll.left && scroll.right, 'deux colonnes (≥ 900 px)').toBeTruthy();
   for (const [k, v] of Object.entries(scroll)) if (v) expect(v.sh, `${k} : contenu ${v.sh} ≤ hauteur ${v.ch} (aucun défilement)`).toBeLessThanOrEqual(v.ch + 1);
   await expectInViewport(page.locator('.screen-shop [data-action="reroll"]'), 'Reroll');
   await expectInViewport(page.locator('.screen-shop [data-action="leave-shop"]'), 'Continuer');
-  for (const g of await page.locator('.screen-shop .volley-group').all()) await expectInViewport(g, 'groupe de la volée');
+  for (const g of await page.locator('.screen-shop .volley-tile').all()) await expectInViewport(g, 'tuile de la volée');
+  await expectInViewport(page.locator('.screen-shop .volley-detail'), 'panneau détail');
   // HUD masqué derrière la boutique
   const hud = await page.evaluate(() => {
     const h = document.querySelector<HTMLElement>('.hud');
@@ -191,19 +193,89 @@ test('paysage : récompense (« Passer » visible), boutique 14 balles sans déf
   // vendre 1 pierre (groupe de 6 → 5), puis « Vendre tout » des pierres
   const coins = (): Promise<number> => page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.state.coins);
   const sellPrices = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.config.economy.sell.byTier);
-  const stone = page.locator('.screen-shop .volley-group[data-element="stone"][data-tier="1"]');
+  const stone = page.locator('.screen-shop .volley-tile[data-element="stone"][data-tier="1"]');
+  const det = page.locator('.screen-shop .volley-detail');
   await expect(stone).toHaveAttribute('data-count', '6');
   const c0 = await coins();
-  await stone.locator('[data-action="sell"]').click();
+  await stone.click();
+  await expect(stone).toHaveAttribute('data-selected', 'true');
+  await det.locator('[data-action="sell"]').click();
   await expect(stone).toHaveAttribute('data-count', '5');
   expect(await coins()).toBe(c0 + sellPrices[0]);
-  const all = page.locator('.screen-shop [data-action="sell-all"][data-element="stone"][data-tier="1"]');
+  await stone.click();
+  const all = det.locator('[data-action="sell-all"][data-element="stone"][data-tier="1"]');
   await expectInViewport(all, '« Vendre tout » des pierres');
   await all.click();
   await expect(stone).toHaveCount(0);
   expect(await coins()).toBe(c0 + 6 * sellPrices[0]);
   expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.state.volley.length)).toBe(8);
   await page.screenshot({ path: `${SHOTS}/05-boutique-apres-vente.png` });
+  expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice())).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Boutique refaite (docs/SHOP-UI.md) : 29 balles en 21 groupes (base, hybrides, Divine) à 1176×560.
+test('paysage : boutique 29 balles — pas de défilement de page, rien sous le pied, tuiles ≥ 44 px, panneau visible', async ({ page }) => {
+  test.setTimeout(150_000);
+  const errors = watchErrors(page);
+  await page.goto('/?seed=land-shop29&goal=0');
+  await waitReady(page);
+  await reachReward(page, 'land-shop29', 3);
+  const groups: [BallElement, BallTier, number][] = [
+    ['divine', 1, 1], ['steam', 3, 1], ['laser', 2, 1], ['wraith', 1, 1], ['fire', 3, 2], ['ice', 2, 2], ['stone', 1, 3], ['lightning', 1, 2],
+    ['bomb', 2, 1], ['nova', 1, 2], ['crystal', 2, 1], ['gold', 1, 1], ['lucky', 3, 1], ['split', 1, 2], ['ghost', 2, 1], ['pierce', 1, 1],
+    ['acid', 1, 1], ['void', 2, 1], ['twin', 1, 1], ['echo', 3, 1], ['magnet', 1, 2],
+  ];
+  const volley = groups.flatMap(([e, t, n]) => vb(e, t, n));
+  expect(volley).toHaveLength(29);
+  await page.evaluate((volley) => {
+    const api = (window as unknown as QaWindow).__pegbreaker;
+    const s = api.sim.state as unknown as { volley: VolleyBall[]; coins: number; rewardOffer: unknown[] };
+    s.volley.length = 0;
+    for (const b of volley) s.volley.push({ ...b });
+    s.coins = 254;
+    s.rewardOffer = [{ kind: 'coins', amount: 0 }];
+    api.sim.chooseReward(0);
+  }, volley);
+  await expect(page.locator('#ui[data-screen="shop"]')).toBeVisible();
+  await expect(page.locator('.screen-shop .volley-tile')).toHaveCount(groups.length);
+  await page.waitForTimeout(300);
+  expect(await pageFits(page), 'aucun défilement de page').toEqual({ sw: W, sh: H });
+  const m = await page.evaluate(() => {
+    const r = (s: string): DOMRect | null => document.querySelector<HTMLElement>(s)?.getBoundingClientRect() ?? null;
+    const footer = r('.screen-shop .screen-footer') ?? r('.screen-shop .actions');
+    const boxes: Record<string, number> = {};
+    for (const k of ['.shop-main', '.shop-col-left', '.shop-col-right', '.volley-grid', '.volley-detail', '.shop-buy', '.shop-forge']) {
+      const b = r(`.screen-shop ${k}`);
+      if (b && b.height > 0) boxes[k] = Math.round(b.bottom * 10) / 10;
+    }
+    const tiles = [...document.querySelectorAll<HTMLElement>('.screen-shop .volley-tile')].map((t) => t.getBoundingClientRect());
+    const grid = document.querySelector<HTMLElement>('.screen-shop .volley-grid');
+    return {
+      footerTop: footer ? Math.round(footer.top * 10) / 10 : null,
+      bottoms: boxes,
+      tileMin: { w: Math.min(...tiles.map((t) => t.width)), h: Math.min(...tiles.map((t) => t.height)) },
+      tilesVisible: tiles.filter((t) => grid && t.top >= grid.getBoundingClientRect().top - 0.5 && t.bottom <= grid.getBoundingClientRect().bottom + 0.5).length,
+      gridScroll: grid ? { sh: grid.scrollHeight, ch: grid.clientHeight } : null,
+    };
+  });
+  test.info().annotations.push({ type: 'shop-29', description: JSON.stringify(m) });
+  await page.screenshot({ path: `${SHOTS}/10-boutique-29-balles.png` });
+  expect(m.footerTop, 'pied présent').not.toBeNull();
+  for (const [k, b] of Object.entries(m.bottoms)) expect(b, `${k} : bas ${b} ≤ haut du pied ${m.footerTop} (rien sous le pied)`).toBeLessThanOrEqual((m.footerTop ?? 0) + 0.5);
+  expect(m.tileMin.w, 'tuiles ≥ 44 px de large').toBeGreaterThanOrEqual(44);
+  expect(m.tileMin.h, 'tuiles ≥ 44 px de haut').toBeGreaterThanOrEqual(44);
+  await expectInViewport(page.locator('.screen-shop .volley-detail'), 'panneau détail');
+  await expectInViewport(page.locator('.screen-shop [data-action="reroll"]'), 'Reroll');
+  await expectInViewport(page.locator('.screen-shop [data-action="leave-shop"]'), 'Continuer');
+  // sélection d'une tuile : le panneau suit (Divine : pas d'upgrade, vente possible)
+  const div = page.locator('.screen-shop .volley-tile[data-element="divine"]');
+  await div.click();
+  await expect(div).toHaveAttribute('data-selected', 'true');
+  await expect(page.locator('.screen-shop .volley-detail [data-action="sell"]')).toBeEnabled();
+  await expect(page.locator('.screen-shop .volley-detail [data-action="upgrade"]')).toHaveCount(0);
+  await expect(page.locator('.screen-shop [title]'), 'aucune infobulle native').toHaveCount(0);
   expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice())).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -236,7 +308,7 @@ test('paysage : revanche tient à l\'écran, fin de run : « Rejouer » visible 
   await page.screenshot({ path: `${SHOTS}/07-fin-de-run.png` });
   const panel = await page.locator('.screen-gameover .panel').boundingBox();
   test.info().annotations.push({ type: 'gameover-panel', description: JSON.stringify(panel) });
-  // LS-02 (panneau de 651 px centré dans 560 px : titre hors écran, inatteignable) : couvert par le test « BUG LS-02 »
+  // LS-02 (panneau de 651 px centré dans 560 px : titre hors écran, inatteignable) : couvert par le test « LS-02 (corrigé) »
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.hud') as HTMLElement).visibility)).toBe('hidden');
   await page.screenshot({ path: `${SHOTS}/07-fin-de-run.png` });
   expect(await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.errors.slice())).toEqual([]);
@@ -280,10 +352,10 @@ test('paysage : Puits et codex utilisables (défilement interne seulement)', asy
   expect(errors).toEqual([]);
 });
 
-// BUG LS-02 : fin de run en 1176×560 : le panneau fait 651 px dans un écran de 560 px centré (flex, align/justify center,
+// LS-02 (corrigé) : fin de run en 1176×560 : le panneau fait 651 px dans un écran de 560 px centré (flex, align/justify center,
 // overflow auto) → le titre « Fin de la descente » est à y = −45 px, hors de la zone défilable (débordement négatif
 // perdu) ; « Le Puits » / « Défi du jour » finissent à 605 px. `test.fail` : passera au rouge une fois corrigé.
-test('BUG LS-02 : le panneau de fin de run est entièrement atteignable', async ({ page }) => {
+test('LS-02 (corrigé) : le panneau de fin de run est entièrement atteignable', async ({ page }) => {
   test.setTimeout(150_000);
   await page.goto('/?seed=land-end&qa=1');
   await waitReady(page);

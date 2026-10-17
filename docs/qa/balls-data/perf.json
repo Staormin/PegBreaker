@@ -36,71 +36,231 @@
   ],
   "shots": 3,
   "fpsSamples": [
-    39,
-    33,
-    57,
-    60,
-    60,
-    57,
-    50,
-    52,
-    54,
-    57,
-    54,
+    31,
+    31,
+    11,
+    29,
     51,
-    59
+    48,
+    38,
+    30,
+    38,
+    43,
+    31,
+    36,
+    56
   ],
-  "fpsMin": 33,
-  "fpsMean": 52.53846153846154,
-  "frameP50": 16.699999999999818,
-  "frameP95": 33.30000000000109,
-  "frameP99": 33.400000000001455,
-  "frameMax": 200,
-  "frames": 750,
+  "fpsMin": 11,
+  "fpsMean": 36.38461538461539,
+  "frameP50": 16.700000000000728,
+  "frameP95": 50,
+  "frameP99": 116.69999999999982,
+  "frameMax": 383.4000000000001,
+  "frames": 558,
   "slowFrames": [
     {
-      "sinceFireMs": 45,
-      "dt": 67,
-      "live": 2
+      "sinceFireMs": -31,
+      "dt": 50,
+      "live": 1
     },
     {
-      "sinceFireMs": 512,
-      "dt": 83,
+      "sinceFireMs": 69,
+      "dt": 100,
+      "live": 3
+    },
+    {
+      "sinceFireMs": 136,
+      "dt": 67,
+      "live": 4
+    },
+    {
+      "sinceFireMs": 186,
+      "dt": 50,
+      "live": 5
+    },
+    {
+      "sinceFireMs": 552,
+      "dt": 133,
       "live": 10
     },
     {
-      "sinceFireMs": 562,
-      "dt": 50,
-      "live": 11
+      "sinceFireMs": 669,
+      "dt": 117,
+      "live": 12
     },
     {
-      "sinceFireMs": 962,
-      "dt": 83,
+      "sinceFireMs": 719,
+      "dt": 50,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 1102,
+      "dt": 383,
+      "live": 15
+    },
+    {
+      "sinceFireMs": 1269,
+      "dt": 167,
       "live": 16
     },
     {
-      "sinceFireMs": 1162,
-      "dt": 200,
-      "live": 17
+      "sinceFireMs": 1386,
+      "dt": 117,
+      "live": 16
     },
     {
-      "sinceFireMs": 1212,
-      "dt": 50,
+      "sinceFireMs": 1486,
+      "dt": 100,
       "live": 18
     },
     {
-      "sinceFireMs": 1462,
+      "sinceFireMs": 1586,
+      "dt": 100,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 1669,
+      "dt": 83,
+      "live": 20
+    },
+    {
+      "sinceFireMs": 1919,
+      "dt": 250,
+      "live": 21
+    },
+    {
+      "sinceFireMs": 2102,
+      "dt": 183,
+      "live": 24
+    },
+    {
+      "sinceFireMs": 2219,
+      "dt": 117,
+      "live": 26
+    },
+    {
+      "sinceFireMs": 2336,
+      "dt": 117,
+      "live": 26
+    },
+    {
+      "sinceFireMs": 2419,
+      "dt": 83,
+      "live": 25
+    },
+    {
+      "sinceFireMs": 2486,
+      "dt": 67,
+      "live": 24
+    },
+    {
+      "sinceFireMs": 2536,
+      "dt": 50,
+      "live": 24
+    },
+    {
+      "sinceFireMs": 2686,
       "dt": 50,
       "live": 21
     },
     {
-      "sinceFireMs": 1845,
+      "sinceFireMs": 3102,
+      "dt": 50,
+      "live": 15
+    },
+    {
+      "sinceFireMs": 3352,
+      "dt": 50,
+      "live": 11
+    },
+    {
+      "sinceFireMs": 3702,
+      "dt": 50,
+      "live": 5
+    },
+    {
+      "sinceFireMs": -13,
+      "dt": 50,
+      "live": 1
+    },
+    {
+      "sinceFireMs": 37,
+      "dt": 50,
+      "live": 2
+    },
+    {
+      "sinceFireMs": 103,
+      "dt": 67,
+      "live": 3
+    },
+    {
+      "sinceFireMs": 537,
+      "dt": 50,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 987,
+      "dt": 50,
+      "live": 17
+    },
+    {
+      "sinceFireMs": 1120,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1670,
       "dt": 50,
       "live": 26
+    },
+    {
+      "sinceFireMs": 1753,
+      "dt": 50,
+      "live": 27
+    },
+    {
+      "sinceFireMs": 1820,
+      "dt": 67,
+      "live": 25
+    },
+    {
+      "sinceFireMs": 2137,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 2187,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 2270,
+      "dt": 50,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 3187,
+      "dt": 50,
+      "live": 3
+    },
+    {
+      "sinceFireMs": 3937,
+      "dt": 50,
+      "live": 1
+    },
+    {
+      "sinceFireMs": 4420,
+      "dt": 50,
+      "live": 1
+    },
+    {
+      "sinceFireMs": 118,
+      "dt": 50,
+      "live": 3
     }
   ],
   "rendererDpr": [
-    1,
+    1.25,
     1,
     1,
     1,
@@ -114,7 +274,7 @@
     1,
     1
   ],
-  "maxParticles": 52,
+  "maxParticles": 46,
   "maxLive": 27,
   "explodeByEl": {
     "bomb": 6

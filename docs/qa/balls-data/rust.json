@@ -67,7 +67,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 11799.999999999714,
+    "simMs": 11816.666666666379,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
@@ -139,7 +139,7 @@
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1566.6666666667647,
+        "1": 1566.6666666667666,
         "2": 1566.6666666667807,
         "3": 1566.6666666667807
       },

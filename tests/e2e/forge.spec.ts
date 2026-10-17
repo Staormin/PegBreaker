@@ -145,7 +145,16 @@ async function shoot(page: Page, n: number): Promise<number> {
   );
 }
 
-const chip = (page: Page, el: BallElement, tier: BallTier) => page.locator(`.screen-shop .volley-group[data-element="${el}"][data-tier="${tier}"]`).first();
+// boutique refaite (docs/SHOP-UI.md) : une tuile par groupe ; les actions sont dans `.volley-detail`, pour la tuile sélectionnée
+const chip = (page: Page, el: BallElement, tier: BallTier) => page.locator(`.screen-shop .volley-tile[data-element="${el}"][data-tier="${tier}"]`).first();
+const detail = (page: Page) => page.locator('.screen-shop .volley-detail');
+/** sélectionne la tuile (élément, rang) et renvoie le panneau détail */
+async function pick(page: Page, el: BallElement, tier: BallTier) {
+  const t = chip(page, el, tier);
+  await t.click();
+  await expect(t).toHaveAttribute('data-selected', 'true');
+  return detail(page);
+}
 
 test.beforeAll(() => {
   mkdirSync(SHOTS, { recursive: true });
@@ -165,15 +174,16 @@ test('(a) vente : prix par rang, hybride, dernière balle invendable', async ({ 
   ];
   let coins = 0;
   for (const [el, tier, price] of steps) {
-    const btn = chip(page, el, tier).locator('[data-action="sell"]');
+    const btn = (await pick(page, el, tier)).locator('[data-action="sell"]');
     await expect(btn).toBeEnabled();
     await expect(btn).toContainText(`+${price}`);
     await btn.click();
     coins += price;
-    await expect(page.locator(`.screen-shop .volley-chip[data-element="${el}"]`)).toHaveCount(0);
+    await expect(page.locator(`.screen-shop .volley-tile[data-element="${el}"]`)).toHaveCount(0);
     expect((await state(page)).coins, `vente ${el} ${tier} : +${price}`).toBe(coins);
   }
-  const last = page.locator('.screen-shop [data-action="sell"]');
+  await expect(page.locator('.screen-shop .volley-tile')).toHaveCount(1);
+  const last = (await pick(page, 'stone', 1)).locator('[data-action="sell"]');
   await expect(last).toHaveCount(1);
   await expect(last, 'dernière balle invendable').toBeDisabled();
   const refused = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.sell(0));
@@ -248,20 +258,20 @@ test('(c) upgrade d\'une hybride I → II → III via le DOM', async ({ page }) 
   const errors = watchErrors(page);
   await reachShop(page, 'forge-upgrade', [...vb('laser', 1), ...vb('stone', 1, 2)], 500);
   const up = await page.evaluate(() => (window as unknown as QaWindow).__pegbreaker.sim.config.economy.forge.upgradeCost);
-  const btn1 = chip(page, 'laser', 1).locator('[data-action="upgrade"]');
+  await expect((await pick(page, 'stone', 1)).locator('[data-action="upgrade"]'), 'pas d\'upgrade sur une balle de base').toHaveCount(0);
+  const btn1 = (await pick(page, 'laser', 1)).locator('[data-action="upgrade"]');
   await expect(btn1).toHaveAttribute('data-cost', String(up[0]));
-  await expect(page.locator('.screen-shop .volley-chip[data-element="stone"] [data-action="upgrade"]'), 'pas d\'upgrade sur une balle de base').toHaveCount(0);
   await btn1.click();
   await expect(chip(page, 'laser', 2)).toBeVisible();
   expect((await state(page)).coins).toBe(500 - up[0]);
-  const btn2 = chip(page, 'laser', 2).locator('[data-action="upgrade"]');
+  const btn2 = (await pick(page, 'laser', 2)).locator('[data-action="upgrade"]');
   await expect(btn2).toHaveAttribute('data-cost', String(up[1]));
   await btn2.click();
   await expect(chip(page, 'laser', 3)).toBeVisible();
   const st = await state(page);
   expect(st.coins).toBe(500 - up[0] - up[1]);
   expect(st.volley.filter((b) => b.element === 'laser')).toEqual([{ element: 'laser', tier: 3 }]);
-  await expect(chip(page, 'laser', 3).locator('[data-action="upgrade"]'), 'plus d\'upgrade au rang III').toHaveCount(0);
+  await expect((await pick(page, 'laser', 3)).locator('[data-action="upgrade"]'), 'plus d\'upgrade au rang III').toHaveCount(0);
   // les événements d'une action de boutique sont distribués au pas suivant de la boucle (une frame)
   await expect.poll(async () => (await rec(page)).ev.filter((e) => e.type === 'shop:upgraded').length).toBe(2);
   const ups = (await rec(page)).ev.filter((e) => e.type === 'shop:upgraded').map((e) => [e['element'], e['tier'], e['cost']]);
@@ -294,7 +304,7 @@ test('(d) Divine : deux hybrides III → carte .forge-divine → 3 tirs : nova e
   expect(st.coins).toBe(300 - cost);
   await expect.poll(() => codex(page), 'Divine inscrite au codex (une frame)').toContain('divine');
   // deux Divines ne fusionnent pas / pas d'upgrade, pas de forge restante
-  await expect(chip(page, 'divine', 1).locator('[data-action="upgrade"]')).toHaveCount(0);
+  await expect((await pick(page, 'divine', 1)).locator('[data-action="upgrade"]')).toHaveCount(0);
   await expect(page.locator('.forge-option')).toHaveCount(0);
   const sig = async (p: Page): Promise<string> =>
     p.evaluate(() => JSON.stringify((window as unknown as QaWindow).__pegbreaker.sim.state.blocks.map((b) => [b.kind, b.col, b.row, Math.round(b.hp)])));
@@ -373,7 +383,8 @@ test('(e) catalyseur : un seul parent rang I → article partenaire rang II, ach
   expect(items[ci]?.option, 'partenaire manquant (Glace) au rang II').toEqual({ kind: 'ball', element: 'ice', tier: 2 });
   expect(items[ci]?.price).toBe(cfg.forge.catalystCost);
   expect(items, 'nombre d\'articles inchangé').toHaveLength(cfg.shop.itemCount);
-  await expect(cat.locator('.catalyst-line')).toHaveText(`Partenaire de ${n['fire']} → ${n['steam']}`);
+  await expect(cat.locator('.si-catalyst'), 'ligne du catalyseur : hybride visée').toHaveText(`→ ${n['steam']}`);
+  expect(await cat.getAttribute('aria-label')).toContain(`Avec ${n['fire']}, forge ${n['steam']}`);
   await expect(cat).toHaveAttribute('data-shop-index', String(ci));
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${SHOTS}/05-catalyseur.png`, fullPage: true });
@@ -395,7 +406,10 @@ test('(e) catalyseur : un seul parent rang I → article partenaire rang II, ach
 test('(f) codex : 14 entrées « ? + ? », recette connue après la forge, compteur', async ({ page }) => {
   test.setTimeout(120_000);
   const errors = watchErrors(page);
-  await reachShop(page, 'forge-codex', [...vb('crystal', 2), ...vb('nova', 1), ...vb('stone', 1, 2)], 100);
+  // boutique refaite (SHOP-UI.md) : « Voir les recettes » n'existe que sur la ligne « forge vide » → on part d'une volée
+  // sans forge (Cristal II seul), on ouvre le codex, puis le catalyseur (Nova II) rend la forge possible (lien masqué),
+  // on forge (plus aucune recette ouverte : lien de retour) et on rouvre le codex.
+  await reachShop(page, 'forge-codex', [...vb('crystal', 2), ...vb('stone', 1, 3)], 100);
   const n = await names(page);
   const pane = page.locator('.screen-meta .pane-codex');
   const openCodex = async (): Promise<void> => {
@@ -419,7 +433,13 @@ test('(f) codex : 14 entrées « ? + ? », recette connue après la forge, compt
   expect(await pane.locator('.codex-entry[data-element="supernova"]').textContent(), 'nom caché').not.toContain(n['supernova']);
   await page.screenshot({ path: `${SHOTS}/06-codex-vide.png`, fullPage: true });
   await back();
-  await page.locator('.forge-option[data-action="forge"][data-result="supernova"]').click();
+  const cat = page.locator('.shop-item[data-catalyst="true"]');
+  await expect(cat.locator('.si-catalyst')).toHaveText(`→ ${n['supernova']}`);
+  await cat.click();
+  const row = page.locator('.forge-option[data-action="forge"][data-result="supernova"]');
+  await expect(row).toHaveCount(1);
+  await expect(page.locator('.screen-shop [data-action="open-codex"]'), 'lien codex masqué quand une forge est possible (SHOP-UI.md)').toBeHidden();
+  await row.click();
   await expect(page.locator('.toast-codex')).toBeVisible({ timeout: 3000 });
   await openCodex();
   const known = pane.locator('.codex-entry[data-element="supernova"]');
