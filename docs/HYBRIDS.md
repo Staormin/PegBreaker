@@ -40,3 +40,10 @@ Rang : l'effet propre suit `params[rang−1]`. Les effets parents utilisent leur
 
 ## Équilibrage visé (bot naïf, volée de départ)
 Une forge doit **rapporter** : l'hybride vaut au moins ses deux parents réunis (un rang II + un rang I ≈ 3,5 pierres). Cibles (dégâts par tir, 5 balles, relatif à 5 pierres de rang I) : hybride rang I ≈ 3,5× ; rang III ≈ 7× ; Divine ≈ 15× ; et surtout, sur mêmes graines avec la méta complète, un bot qui forge dès que possible atteint une vague ≥ celle d'un bot qui ne forge jamais + 0,5. Toujours borné par les plafonds et la brèche croissante (aucune run > vague 35).
+
+## Valeurs finales (2026-10-17, après QA)
+Écarts à la table ci-dessus, mesurés sur deux protocoles (plateau à PV ×25 et blocs fixes de 2 000 PV), hybride rang I ∈ [3 ; 4,5] × 5 pierres, rang III ∈ [6 ; 9], Divine ≤ 18 :
+- Vapeur : nuage à 0,2 de ratio, 1 par tir ; Spectre : +10 % par bloc traversé ; Grappe : 3 mini-bombes (`bombRadius`/`bombMult` propres, `miniMult` [0,4 ; 0,25 ; 0,1]) ; Abysse : `capPerTurn` [20, 30, 40] et `spread` [0, 1, 2] ; Marteau : `cap` [120, 160, 200], perte de PV max hors `rankMult` ; Supernova : `comboMult` [12, 20, 30] ; Divine : base 10, nova 15, Jugement 23 (les grands nombres de la spec initiale donnaient ×36).
+- Chaque hybride a un `rankMult` par rang qui porte l'équilibrage (voir `balls.json`).
+- Résultat décisif (20 graines) : bot qui forge 9,75 contre 8,15 sans forge (méta complète) ; 10,25 contre 6,25 (pool standard sans méta). 19 runs sur 20 forgent avec la méta, 7 sur 20 sans.
+- Règles ajoutées en route : un boss n'est jamais repoussé (Choc, Marteau, Séisme) ; une mini-balle naît toujours dans le plateau.

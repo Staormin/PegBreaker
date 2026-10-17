@@ -222,6 +222,36 @@ export function createUI(deps: UiDeps): UI {
   const screens: ScreenEl[] = [reward, shop, revive, gameover, ...subScreens];
   for (const s of screens) root.append(s.root);
 
+  // --- placement des toasts (QA FG-04) : jamais sur un onglet ou un bouton -----------
+  /** boutique / Puits : pied d'écran collant (pile de toasts + boutons d'action) */
+  const footers = new Map<UiLocalScreen, HTMLElement>();
+  for (const s of [shop, ...(well ? [well] : [])]) {
+    const actions = s.panel.querySelector<HTMLElement>(':scope > .actions');
+    if (!actions) continue;
+    const footer = document.createElement('div');
+    footer.className = 'screen-footer';
+    actions.before(footer);
+    footer.append(actions);
+    footers.set(s.id, footer);
+  }
+  function placeToasts(): void {
+    const footer = footers.get(screen);
+    if (footer) return toasts.dock(footer);
+    if (screen !== 'game' && screen !== 'title') return toasts.float();
+    // écran de jeu : bande entre le bas de la barre du haut et le haut du plateau
+    const rootTop = root.getBoundingClientRect().top;
+    const c = canvas.getBoundingClientRect();
+    // bas réel de la barre : ses pastilles peuvent déborder du conteneur
+    let barBottom = 0;
+    const bar = root.querySelector('.hud-top');
+    if (bar) for (const e of [bar, ...Array.from(bar.querySelectorAll('*'))]) barBottom = Math.max(barBottom, e.getBoundingClientRect().bottom);
+    if (barBottom <= 0) barBottom = c.top + 40;
+    let boardTop = c.top + c.height * 0.1;
+    const bt = renderer.boardToScreen({ x: 0, y: 0 }).y;
+    if (Number.isFinite(bt) && bt > 0) boardTop = c.top + bt;
+    toasts.band(barBottom - rootTop + 2, Math.max(0, boardTop - barBottom - 4));
+  }
+
   // focus automatique seulement pour les joueurs au clavier (sinon l'anneau de focus
   // ressemble à une recommandation sur la première carte)
   let keyboardUser = false;
@@ -236,6 +266,7 @@ export function createUI(deps: UiDeps): UI {
     for (const s of screens) s.root.classList.toggle('visible', s.id === next);
     root.dataset.screen = next;
     if (next === 'game') hud.layout();
+    placeToasts();
     if (next === 'meta') well?.refresh(true);
     else if (next === 'daily') dailyScreen?.refresh(true);
     else if (next === 'settings') settingsScreen?.refresh(true);
@@ -461,6 +492,7 @@ export function createUI(deps: UiDeps): UI {
   const relayout = (): void => {
     hud.layout();
     onboarding.relayout();
+    placeToasts();
   };
   window.addEventListener('resize', relayout);
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(relayout).observe(canvas);

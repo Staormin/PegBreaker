@@ -83,12 +83,13 @@ export function recipeHint(config: GameConfig, e: BallElement): string {
   return `${FAMILY_SINGULAR[t.get(info.recipe[0]).family]} + ${FAMILY_SINGULAR[t.get(info.recipe[1]).family]}`;
 }
 
-/** « Feu III + Glace III » ou, pour la Divine, « Hybride III + Hybride III » */
+/** « Feu II+ + Glace I+ (ou l'inverse) » ; Divine : « Hybride III + Hybride III »
+ *  Règle (docs/HYBRIDS.md, QA FG-02) : un parent de rang II ou plus + l'autre de rang I ou plus. */
 export function recipeLabel(config: GameConfig, e: BallElement): string {
   const t = elementTable(config);
   const info = t.get(e);
   if (!info.recipe) return 'Hybride III + Hybride III';
-  return `${t.get(info.recipe[0]).name} III + ${t.get(info.recipe[1]).name} III`;
+  return `${t.get(info.recipe[0]).name} + ${t.get(info.recipe[1]).name} (l'un rang II+, l'autre I+)`;
 }
 
 /** Catalyseur (ShopItem.catalyst) : recette dont `element` est un parent, de préférence celle

@@ -12,7 +12,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 10099.999999999962,
+    "simMs": 10066.666666666633,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
@@ -21,7 +21,7 @@
       "ball:grounded": 30,
       "volley:end": 6,
       "rows:advanced": 6,
-      "block:destroyed": 9,
+      "block:destroyed": 8,
       "combo:milestone": 5,
       "block:explode": 10,
       "drop:spawned": 2,
@@ -35,14 +35,14 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "supernova": 9
+      "supernova": 8
     },
     "hitsByEl": {
       "supernova": 67,
       "nova": 8
     },
     "damageByEl": {
-      "supernova": 4628,
+      "supernova": 4278,
       "nova": 216
     },
     "kinds": {
@@ -96,22 +96,22 @@
     "devSamples": 66,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 271,
+    "maxParticles": 270,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      221,
-      221,
-      221,
-      221,
-      3426,
-      534
+      252,
+      252,
+      252,
+      252,
+      2876,
+      610
     ],
     "captured": true,
     "hyb": {
       "acidUnhit": 0,
-      "wraithBoost": 26,
+      "wraithBoost": 22,
       "wraithSamples": 26,
       "critCoinSteps": 0,
       "critHits": 6,

@@ -48,7 +48,7 @@
       "missile": 28
     },
     "damageByEl": {
-      "missile": 2123
+      "missile": 2289
     },
     "kinds": {
       "main": 30
@@ -101,17 +101,17 @@
     "devSamples": 70,
     "devOver2": 63,
     "maxLive": 5,
-    "maxParticles": 170,
+    "maxParticles": 172,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
       127,
       62,
-      163,
-      493,
+      165,
+      524,
       62,
-      1216
+      1349
     ],
     "captured": true,
     "hyb": {

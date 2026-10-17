@@ -121,10 +121,10 @@ export function addAcidCharge(ctx: Ctx, blk: Block, pct: number, turns: number, 
   return true;
 }
 
-/** Relève à `cap` le plafond par tour de toutes les charges d'acide du bloc `id` (abysse). */
-export function raiseAcidCap(ctx: Ctx, id: number, cap: number): void {
+/** Fixe à `cap` le plafond par tour de toutes les charges d'acide du bloc `id` (abysse). */
+export function setAcidCap(ctx: Ctx, id: number, cap: number): void {
   const a = ctx.s.internal.acidQ;
-  for (let k = 0; k + AQ - 1 < a.length; k += AQ) if (a[k] === id && (a[k + 3] as number) < cap) a[k + 3] = cap;
+  for (let k = 0; k + AQ - 1 < a.length; k += AQ) if (a[k] === id) a[k + 3] = cap;
 }
 
 /** Nombre de charges d'acide du bloc `id`. */

@@ -52,7 +52,8 @@ describe('hybrides', () => {
   it('indices du codex : familles des parents', () => {
     expect(recipeHint(config, 'steam')).toBe('élémentaire + élémentaire');
     expect(recipeHint(config, 'divine')).toBe('hybride III + hybride III');
-    expect(recipeLabel(config, 'steam')).toBe(`${t.get('fire').name} III + ${t.get('ice').name} III`);
+    expect(recipeLabel(config, 'steam')).toBe(`${t.get('fire').name} + ${t.get('ice').name} (l'un rang II+, l'autre I+)`);
+    expect(recipeLabel(config, 'divine')).toBe('Hybride III + Hybride III');
   });
 });
 

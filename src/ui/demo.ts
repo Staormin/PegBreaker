@@ -148,7 +148,7 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
     }
     return out;
   }
-  /** forges possibles : deux rang III d'une recette → hybride ; deux hybrides III → Divine */
+  /** forges possibles : parents d'une recette (l'un ≥ II, l'autre ≥ I) → hybride ; deux hybrides III → Divine */
   function demoForgeOptions(): { i: number; j: number; result: BallElement; cost: number }[] {
     const out: { i: number; j: number; result: BallElement; cost: number }[] = [];
     const t = elementTable(config);
@@ -157,13 +157,16 @@ export function mountUiDemo(root: HTMLElement, canvas: HTMLCanvasElement): void 
       for (let j = i + 1; j < v.length; j++) {
         const a = v[i];
         const b = v[j];
-        if (!a || !b || a.tier !== 3 || b.tier !== 3) continue;
+        if (!a || !b) continue;
         const fa = t.get(a.element).family;
         const fb = t.get(b.element).family;
         if (fa === 'hybrid' && fb === 'hybrid') {
+          if (a.tier !== 3 || b.tier !== 3) continue;
           out.push({ i, j, result: 'divine', cost: config.economy.forge.divineCost });
           continue;
         }
+        // règle : un parent de rang II ou plus, l'autre de rang I ou plus
+        if (Math.max(a.tier, b.tier) < 2) continue;
         const h = t.list.find((x) => x.recipe && ((x.recipe[0] === a.element && x.recipe[1] === b.element) || (x.recipe[0] === b.element && x.recipe[1] === a.element)));
         if (h) out.push({ i, j, result: h.id, cost: config.economy.forge.hybridCost });
       }

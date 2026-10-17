@@ -9,12 +9,12 @@
   "shots": 6,
   "ranks": {
     "r1": {
-      "damage": 8031,
-      "perShotMean": 446
+      "damage": 8290,
+      "perShotMean": 461
     },
     "r2": {
-      "damage": 10052,
-      "perShotMean": 558
+      "damage": 10497,
+      "perShotMean": 583
     },
     "r3": {
       "damage": 10531,

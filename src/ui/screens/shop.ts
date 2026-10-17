@@ -50,7 +50,7 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
   const forgeSec = el('section', 'shop-section shop-forge');
   const forgeHead = el('h3', 'shop-section-title', '⚒ Forge');
   const forgeList = el('div', 'forge-list');
-  const forgeEmpty = el('p', 'forge-empty muted', "Forge : rien à combiner (il faut deux balles de rang III d'une recette)");
+  const forgeEmpty = el('p', 'forge-empty muted', "Forge : rien à combiner (il faut les deux parents d'une recette : l'un de rang II ou plus, l'autre de rang I ou plus)");
   const codexLink = button(bus, 'btn-link', 'Voir les recettes', () => onCodex?.());
   codexLink.dataset.action = 'open-codex';
   codexLink.hidden = !onCodex;
@@ -200,7 +200,7 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
       const a = v[o.i];
       const b = v[o.j];
       if (!a || !b) continue;
-      // une carte par paire d'éléments (3 × Feu III + Glace III ne donnent qu'une ligne)
+      // une carte par paire d'éléments (3 × Feu II + Glace I ne donnent qu'une ligne)
       const key = [a.element, b.element].sort().join('+');
       if (seen.has(key)) continue;
       seen.add(key);

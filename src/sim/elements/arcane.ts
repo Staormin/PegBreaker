@@ -56,6 +56,7 @@ export const rust: ElementHooks = {
     }
     const loss = Math.min((prm(ctx, 'rust', 'pctMaxHp', b.tier) / 100) * target.maxHp, prm(ctx, 'rust', 'cap', b.tier));
     target.maxHp = Math.max(1, Math.round(target.maxHp - loss));
+    if (target.hp > target.maxHp) target.hp = target.maxHp; // PV ≤ PV max même si l'impact est bloqué
     return dmg + loss;
   },
   onShotStart(ctx) {

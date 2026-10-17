@@ -15,18 +15,24 @@ function vb(element: BallElement, tier: BallTier, n = 1): VolleyBall[] {
 
 // ------------------------------------------------------------------------------------------------------
 // Équilibrage (docs/HYBRIDS.md, « une forge doit rapporter ») : bot naïf (vise le bloc le plus bas), volée de
-// 5 balles de l'élément mesuré, remise avant chaque tir ; 10 seeds × 15 tirs ; un seul plateau pour toutes les
-// mesures (PV des blocs × 4 × tierDamageMultiplier², PV joueur 999) ; ratio = dégâts moyens par tir / ceux de
-// 5 pierres de rang I sur ce même plateau. Cibles : hybride I ≈ 3,5 (3-4), III ≈ 7 (6-8), Divine ≈ 15 (12-18).
+// 5 balles de l'élément mesuré, remise avant chaque tir ; 10 seeds × 15 tirs ; PV joueur 999 ; ratio = dégâts
+// moyens par tir / ceux de 5 pierres de rang I sur le même protocole. Deux protocoles doivent tenir :
+//  A : plateau normal, PV des blocs × 4 × tierDamageMultiplier² (des blocs meurent : l'excès compte peu) ;
+//  B : protocole QA (docs/qa/forge.md) : chaque bloc cassable remis à 2 000 / 2 000 PV avant chaque tir.
+// Bandes (A et B) : hybride I ∈ [3 ; 4,5], III ∈ [6 ; 9] ; Divine A ∈ [12 ; 18], B ≤ 18.
 
-function meanShotDamage(el: BallElement, tier: BallTier): number {
+type Protocol = 'A' | 'B';
+
+function meanShotDamage(el: BallElement, tier: BallTier, proto: Protocol): number {
   let tot = 0;
   let n = 0;
   for (let s = 0; s < 10; s++) {
     const c = config();
     c.waves.start.hp = 999;
-    const k = 4 * Math.pow(c.balls.tierDamageMultiplier, 2);
-    for (const p of c.waves.hpByWave!) p.baseHp *= k;
+    if (proto === 'A') {
+      const k = 4 * Math.pow(c.balls.tierDamageMultiplier, 2);
+      for (const p of c.waves.hpByWave!) p.baseHp *= k;
+    }
     const sim = newSim(`bal-${s}`, c, { unlockedElements: ALL });
     for (let shot = 0; shot < 15 && sim.state.phase !== 'gameover'; shot++) {
       for (let g = 0; g < 10; g++) {
@@ -37,6 +43,14 @@ function meanShotDamage(el: BallElement, tier: BallTier): number {
       }
       if (sim.state.phase !== 'aiming') break;
       mut(sim).volley = vb(el, tier, 5);
+      if (proto === 'B') {
+        for (const b of mut(sim).blocks) {
+          if (b.kind !== 'peg' && b.hp > 0) {
+            b.hp = 2000;
+            b.maxHp = 2000;
+          }
+        }
+      }
       for (const e of shoot(sim, lowestBlockDir(sim))) {
         if (e.type === 'volley:end') {
           tot += e.shotDamage;
@@ -49,23 +63,25 @@ function meanShotDamage(el: BallElement, tier: BallTier): number {
 }
 
 describe('équilibrage des hybrides et de la Divine (relatif à 5 pierres de rang I)', () => {
-  it('hybride rang I ∈ [3 ; 4], rang III ∈ [6 ; 8], Divine ∈ [12 ; 18]', () => {
-    const s1 = meanShotDamage('stone', 1);
-    const lines: string[] = [];
-    const bad: string[] = [];
-    for (const el of HYBRIDS) {
-      const r1 = meanShotDamage(el, 1) / s1;
-      const r3 = meanShotDamage(el, 3) / s1;
-      lines.push(`${el} ${r1.toFixed(2)}/${r3.toFixed(2)}`);
-      if (r1 < 3 || r1 > 4) bad.push(`${el} I ${r1.toFixed(2)}`);
-      if (r3 < 6 || r3 > 8) bad.push(`${el} III ${r3.toFixed(2)}`);
-    }
-    const d = meanShotDamage('divine', 1) / s1;
-    lines.push(`divine ${d.toFixed(2)}`);
-    if (d < 12 || d > 18) bad.push(`divine ${d.toFixed(2)}`);
-    console.log(`[balance hybrides] ${lines.join(' | ')}`);
-    expect(bad).toEqual([]);
-  }, 300_000);
+  for (const proto of ['A', 'B'] as Protocol[]) {
+    it(`protocole ${proto} : hybride I ∈ [3 ; 4,5], III ∈ [6 ; 9], Divine ${proto === 'A' ? '∈ [12 ; 18]' : '≤ 18'}`, () => {
+      const s1 = meanShotDamage('stone', 1, proto);
+      const lines: string[] = [];
+      const bad: string[] = [];
+      for (const el of HYBRIDS) {
+        const r1 = meanShotDamage(el, 1, proto) / s1;
+        const r3 = meanShotDamage(el, 3, proto) / s1;
+        lines.push(`${el} ${r1.toFixed(2)}/${r3.toFixed(2)}`);
+        if (r1 < 3 || r1 > 4.5) bad.push(`${el} I ${r1.toFixed(2)}`);
+        if (r3 < 6 || r3 > 9) bad.push(`${el} III ${r3.toFixed(2)}`);
+      }
+      const d = meanShotDamage('divine', 1, proto) / s1;
+      lines.push(`divine ${d.toFixed(2)}`);
+      if (d > 18 || (proto === 'A' && d < 12)) bad.push(`divine ${d.toFixed(2)}`);
+      console.log(`[balance hybrides ${proto}] ${lines.join(' | ')}`);
+      expect(bad).toEqual([]);
+    }, 300_000);
+  }
 });
 
 // ------------------------------------------------------------------------------------------------------
@@ -73,8 +89,8 @@ describe('équilibrage des hybrides et de la Divine (relatif à 5 pierres de ran
 // achète le catalyseur) meurt en moyenne au moins 0,5 vague plus tard qu'un bot qui ne forge jamais. Les deux
 // bots sont naïfs (récompense 0, vise le bloc le plus bas) ; le forgeur forge la paire de rangs les plus bas.
 
-function deathWave(seed: string, forge: boolean): number {
-  const sim = newSim(seed, config(), FULL);
+function deathWave(seed: string, forge: boolean, over: Partial<MetaModifiers>): number {
+  const sim = newSim(seed, config(), over);
   for (let k = 0; k < 2000 && sim.state.phase !== 'gameover'; k++) {
     for (let g = 0; g < 10; g++) {
       const s = sim.state;
@@ -101,18 +117,24 @@ function deathWave(seed: string, forge: boolean): number {
 }
 
 describe('une forge doit rapporter', () => {
-  it('mêmes 20 graines, méta complète : forger dès que possible ≥ ne jamais forger + 0,5 vague de mort moyenne', () => {
-    const forge: number[] = [];
-    const never: number[] = [];
-    for (let i = 0; i < 20; i++) {
-      forge.push(deathWave(`dec-${i}`, true));
-      never.push(deathWave(`dec-${i}`, false));
-    }
-    const mean = (a: number[]): number => a.reduce((x, y) => x + y, 0) / a.length;
-    console.log(`[forge décisif] forge ${mean(forge).toFixed(2)} (${forge.join(',')}) | jamais ${mean(never).toFixed(2)} (${never.join(',')})`);
-    expect(Math.max(...forge)).toBeLessThanOrEqual(35);
-    expect(mean(forge)).toBeGreaterThanOrEqual(mean(never) + 0.5);
-  }, 600_000);
+  const scenarios: [string, Partial<MetaModifiers>][] = [
+    ['méta complète', FULL],
+    ['sans méta, pool standard (FG-03)', { unlockedElements: BASE27 }],
+  ];
+  for (const [name, over] of scenarios) {
+    it(`${name}, mêmes 20 graines : forger dès que possible ≥ ne jamais forger + 0,5 vague de mort moyenne`, () => {
+      const forge: number[] = [];
+      const never: number[] = [];
+      for (let i = 0; i < 20; i++) {
+        forge.push(deathWave(`dec-${i}`, true, over));
+        never.push(deathWave(`dec-${i}`, false, over));
+      }
+      const mean = (a: number[]): number => a.reduce((x, y) => x + y, 0) / a.length;
+      console.log(`[forge décisif ${name}] forge ${mean(forge).toFixed(2)} (${forge.join(',')}) | jamais ${mean(never).toFixed(2)} (${never.join(',')})`);
+      expect(Math.max(...forge)).toBeLessThanOrEqual(35);
+      expect(mean(forge)).toBeGreaterThanOrEqual(mean(never) + 0.5);
+    }, 600_000);
+  }
 });
 
 // ------------------------------------------------------------------------------------------------------

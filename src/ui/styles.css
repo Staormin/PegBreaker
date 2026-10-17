@@ -2436,3 +2436,59 @@ body {
 .shop-item[data-catalyst='true'] {
   border-color: color-mix(in srgb, var(--coin) 60%, var(--wall));
 }
+
+/* --- placement des toasts (QA FG-04) --------------------------------------- */
+/* boutique / Puits : pied d'écran collant ; la pile y prend sa place au-dessus des boutons */
+.screen-footer {
+  position: sticky;
+  bottom: calc(-16px - var(--safe-b));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 -16px calc(-16px - var(--safe-b));
+  padding: 10px 16px calc(16px + var(--safe-b));
+  background: linear-gradient(to bottom, transparent, var(--bg0) 10px);
+}
+.toasts.toasts-dock {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: 420px;
+  align-self: center;
+  gap: 6px;
+}
+.toasts.toasts-dock:empty {
+  display: none;
+}
+/* compact (une ligne) : jeu et pied d'écran */
+.toasts-band .toast,
+.toasts-dock .toast {
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'title detail';
+  min-height: 30px;
+  padding: 3px 12px;
+  border-width: 2px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+.toasts-band .toast-kicker,
+.toasts-dock .toast-kicker {
+  display: none;
+}
+.toasts-band .toast-title,
+.toasts-dock .toast-title {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toasts-band .toast-detail,
+.toasts-dock .toast-detail {
+  font-size: 16px;
+}
+.toasts.toasts-band {
+  gap: 6px;
+}
+.toast[hidden] {
+  display: none;
+}

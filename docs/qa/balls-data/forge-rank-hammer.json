@@ -9,24 +9,19 @@
   "shots": 6,
   "ranks": {
     "r1": {
-      "damage": 5199,
-      "perShotMean": 289
+      "damage": 4083,
+      "perShotMean": 227
     },
     "r2": {
-      "damage": 6895,
-      "perShotMean": 383
+      "damage": 5795,
+      "perShotMean": 322
     },
     "r3": {
-      "damage": 9564,
-      "perShotMean": 531
+      "damage": 8961,
+      "perShotMean": 498
     }
   },
-  "errors": [
-    "tir 6 : bloc 7 hp 1671/1600",
-    "tir 6 : bloc 8 hp 1609/1600",
-    "tir 6 : bloc 7 hp 1671/1600",
-    "tir 6 : bloc 8 hp 1609/1600"
-  ],
-  "knownBugFG01": 4,
+  "errors": [],
+  "knownBugFG01": 0,
   "consoleErrors": []
 }

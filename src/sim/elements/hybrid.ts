@@ -20,7 +20,7 @@ import { heal } from '../rewards';
 import type { BallFx } from '../state';
 import type { ElementHooks } from './types';
 import { DEG, centerX, centerY, blockIndex, lastFx, prm, setAttrib, spawnMini } from './common';
-import { acid, acidChargesOf, addAcidCharge, comet, fire, ice, lightning, raiseAcidCap, tryFreeze } from './elemental';
+import { acid, acidChargesOf, addAcidCharge, comet, fire, ice, lightning, setAcidCap, tryFreeze } from './elemental';
 import { bomb, giant, lead, pushBlockUp, shock } from './heavy';
 import { boomerang, echo, ghost, homing, pierce } from './tricky';
 import { splitHooks, twin } from './swarm';
@@ -369,10 +369,24 @@ const laserOwn: ElementHooks = {
   },
 };
 
-/** Grappe : au sol (après l'explosion de la bombe), `count` mini-bombes repartent vers le haut en éventail ±spreadDeg. */
+/**
+ * Grappe : au sol, l'explosion de la bombe (parent, mais avec les tables bombRadius / bombMult de la grappe : la
+ * bombe de base écrasait l'équilibrage sur gros blocs), puis `count` mini-bombes repartent vers le haut (±spreadDeg).
+ */
 const clusterOwn: ElementHooks = {
-  params: ['count', 'miniRadius', 'miniMult', 'spreadDeg'],
-  onGrounded(ctx, b) {
+  params: ['count', 'miniRadius', 'miniMult', 'spreadDeg', 'bombRadius', 'bombMult'],
+  onGrounded(ctx, b, fx) {
+    const br = prm(ctx, 'cluster', 'bombRadius', b.tier) * ctx.relic.bigboom;
+    const bd = ballDamage(ctx, b, null, fx) * prm(ctx, 'cluster', 'bombMult', b.tier);
+    if (br > 0 && bd > 0) {
+      const pb = ctx.curBall;
+      const pf = ctx.curFx;
+      const pid = ctx.curBallId;
+      const pg = ctx.curGolden;
+      setAttrib(ctx, b, fx, b.id, b.golden);
+      explode(ctx, b.pos.x, ctx.cfg.blocks.board.rows, br, bd, 'bomb', -1, false, 'bomb');
+      setAttrib(ctx, pb, pf, pid, pg);
+    }
     const n = Math.round(prm(ctx, 'cluster', 'count', b.tier));
     if (n <= 0) return;
     const half = prm(ctx, 'cluster', 'spreadDeg', b.tier) * DEG;
@@ -404,12 +418,12 @@ const wraithOwn: ElementHooks = {
   },
 };
 
-/** Abysse : ses charges d'acide plafonnent à capPerTurn et se propagent à `spread` voisins sans acide à chaque tour. */
+/** Abysse : les charges d'acide du bloc touché plafonnent à capPerTurn (fixé, pas seulement relevé) et se propagent à `spread` voisins sans acide à chaque tour. */
 const abyssOwn: ElementHooks = {
   params: ['spread', 'capPerTurn'],
   onBlockHit(ctx, b, _fx, _bi, blk, _px, _py, _dmg, isPeg) {
     if (isPeg || !isBreakable(blk) || acidChargesOf(ctx, blk.id) === 0) return;
-    raiseAcidCap(ctx, blk.id, prm(ctx, 'abyss', 'capPerTurn', b.tier));
+    setAcidCap(ctx, blk.id, prm(ctx, 'abyss', 'capPerTurn', b.tier));
     mark(ctx.s.internal.abyss, blk.id, b.tier);
   },
   onShotStart(ctx) {
@@ -613,11 +627,13 @@ const orbitOwn: ElementHooks = {
 /**
  * Marteau : dégâts × damageMult (remplace le × du plomb) ; au premier contact, le bloc perd son armure et
  * pctMaxHp % de ses PV max (au plus `cap`, remplace la rouille) ; puis il remonte d'une rangée (une fois par tir).
+ * FG-01 : la perte de PV max n'est PAS réduite par rankMult (appliqué ensuite par la composition à tout le
+ * retour de modifyDamage : la perte est donc divisée d'avance par rankMult), et PV ≤ PV max.
  */
 const hammerOwn: ElementHooks = {
   params: ['damageMult', 'pctMaxHp', 'cap'],
   modifyDamage(ctx, b, _fx, dmg, target) {
-    let d = dmg * prm(ctx, 'hammer', 'damageMult', b.tier);
+    const d = dmg * prm(ctx, 'hammer', 'damageMult', b.tier);
     if (!target || !isBreakable(target)) return d;
     const rusted = ctx.s.internal.rusted;
     if (rusted.includes(target.id)) return d;
@@ -628,8 +644,9 @@ const hammerOwn: ElementHooks = {
     }
     const loss = Math.min((prm(ctx, 'hammer', 'pctMaxHp', b.tier) / 100) * target.maxHp, prm(ctx, 'hammer', 'cap', b.tier));
     target.maxHp = Math.max(1, Math.round(target.maxHp - loss));
-    d += loss;
-    return d;
+    if (target.hp > target.maxHp) target.hp = target.maxHp;
+    const rm = rankOf(ctx, 'hammer', b.tier);
+    return rm > 0 ? d + loss / rm : d;
   },
   onBlockHit(ctx, _b, _fx, _bi, blk, _px, _py, _dmg, isPeg) {
     if (!isPeg) pushBlockUp(ctx, blk, 1);
@@ -640,7 +657,7 @@ const hammerOwn: ElementHooks = {
 export const HYBRIDS: Readonly<Partial<Record<BallElement, ElementHooks>>> = {
   steam: composeHybrid('steam', fire, ice, steamOwn),
   laser: composeHybrid('laser', lightning, prism, laserOwn),
-  cluster: composeHybrid('cluster', bomb, splitHooks, clusterOwn),
+  cluster: composeHybrid('cluster', without(bomb, ['onGrounded']), splitHooks, clusterOwn),
   wraith: composeHybrid('wraith', ghost, pierce, wraithOwn),
   abyss: composeHybrid('abyss', acid, voidHooks, abyssOwn),
   jackpot: composeHybrid('jackpot', gold, lucky, jackpotOwn),

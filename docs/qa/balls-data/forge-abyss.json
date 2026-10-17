@@ -2,7 +2,7 @@
   "element": "abyss",
   "seed": "forge-abyss",
   "signal": "acide sur un bloc jamais touché par l'abysse (propagation)",
-  "measured": "7 blocs contaminés à distance, 9 blocs chargés (max 3)",
+  "measured": "6 blocs contaminés à distance, 8 blocs chargés (max 3)",
   "ok": true,
   "consoleErrors": [],
   "report": {
@@ -12,11 +12,11 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 7450.000000000185,
+    "simMs": 7333.3333333335095,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 53,
+      "block:hit": 52,
       "ball:bounce": 35,
       "ball:grounded": 30,
       "volley:end": 6,
@@ -29,15 +29,15 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "abyss": 1
+      "acid": 1
     },
     "hitsByEl": {
       "abyss": 30,
-      "acid": 23
+      "acid": 22
     },
     "damageByEl": {
-      "abyss": 1026,
-      "acid": 2340
+      "abyss": 1650,
+      "acid": 880
     },
     "kinds": {
       "main": 30
@@ -47,12 +47,12 @@
       "critHits": 0,
       "hits": 30,
       "acidMax": 3,
-      "acidBlocks": 9,
+      "acidBlocks": 8,
       "acidChargedAtFire": 14,
       "acidTickBlocks": 14,
-      "acidTickDamage": 2340,
-      "acidQAtFire": 26,
-      "acidAliveAtEnd": 22,
+      "acidTickDamage": 880,
+      "acidQAtFire": 25,
+      "acidAliveAtEnd": 21,
       "rowUp": 0,
       "maxHpDrop": 0,
       "radiusMin": 0.12,
@@ -90,21 +90,21 @@
     "devSamples": 35,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 122,
+    "maxParticles": 115,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      171,
-      471,
-      571,
-      671,
-      591,
-      891
+      275,
+      395,
+      435,
+      475,
+      435,
+      515
     ],
     "captured": true,
     "hyb": {
-      "acidUnhit": 7,
+      "acidUnhit": 6,
       "wraithBoost": 0,
       "wraithSamples": 0,
       "critCoinSteps": 0,

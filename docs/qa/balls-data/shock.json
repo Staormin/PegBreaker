@@ -67,7 +67,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 11683.333333333065,
+    "simMs": 11549.99999999975,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
@@ -148,7 +148,7 @@
     "devSamples": 58,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 78,
+    "maxParticles": 83,
     "nan": [],
     "violations": [],
     "pageErrors": [],

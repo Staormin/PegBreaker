@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-17T16:19:49.240Z",
+  "generatedAt": "2026-10-17T16:40:55.894Z",
   "build": "0.4.0-j4",
   "load": {
-    "readyToAimMs": 184,
-    "domContentLoadedMs": 120,
-    "loadMs": 120,
+    "readyToAimMs": 237,
+    "domContentLoadedMs": 153,
+    "loadMs": 153,
     "titleScreenShown": false
   },
   "method": {
@@ -20,9 +20,9 @@
         "bot": "naive",
         "seed": "qa-1",
         "stopReason": "gameover",
-        "timeToFirstRewardMs": 2424,
-        "timeToFirstChoiceRealMs": 24341,
-        "timeToFirstChoiceHumanMs": 23967,
+        "timeToFirstRewardMs": 2427,
+        "timeToFirstChoiceRealMs": 24329,
+        "timeToFirstChoiceHumanMs": 23934,
         "shotsInWave1": 7,
         "firstShot": {
           "damage": 40,
@@ -34,13 +34,13 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 57,
-        "decisionsPerMinSim": 26.5,
-        "decisionsPerMinHuman": 18.9,
-        "durationSimMs": 128833,
-        "durationSpecMs": 205333,
-        "durationHumanMs": 181016,
-        "botAimingSimMs": 24317,
-        "choiceSimMs": 2317,
+        "decisionsPerMinSim": 26.9,
+        "decisionsPerMinHuman": 19.1,
+        "durationSimMs": 127167,
+        "durationSpecMs": 203667,
+        "durationHumanMs": 179517,
+        "botAimingSimMs": 24150,
+        "choiceSimMs": 1917,
         "waveOfDeath": 6,
         "depth": 51,
         "shotsPerWave": 8.5,
@@ -91,36 +91,36 @@
         "deadMoments": [],
         "maxFeedbackGapMs": 1783,
         "maxFiringMs": 6667,
-        "avgFiringMs": 1777,
+        "avgFiringMs": 1781,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
             "samples": 23,
             "min": 58,
-            "avg": 59.9,
-            "frameMsP95": 19.1,
-            "frameMsMax": 54.5
+            "avg": 59.8,
+            "frameMsP95": 19,
+            "frameMsMax": 69.5
           },
           "cpu4Volley": {
             "samples": 2,
-            "min": 59,
-            "avg": 59.5,
-            "frameMsP95": 21.4,
-            "frameMsMax": 37.3
+            "min": 60,
+            "avg": 60,
+            "frameMsP95": 21.1,
+            "frameMsMax": 36.6
           },
           "speed8": {
             "samples": 12,
-            "min": 24,
-            "avg": 31.1,
-            "frameMsP95": 66.2,
-            "frameMsMax": 98
+            "min": 20,
+            "avg": 29.8,
+            "frameMsP95": 72.3,
+            "frameMsMax": 110.5
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 40.1
+        "realSeconds": 39.9
       },
       {
         "bot": "naive",
@@ -128,7 +128,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 19700,
+        "timeToFirstChoiceHumanMs": 20267,
         "shotsInWave1": 6,
         "firstShot": {
           "damage": 65,
@@ -140,13 +140,13 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 58,
-        "decisionsPerMinSim": 27.7,
+        "decisionsPerMinSim": 27.5,
         "decisionsPerMinHuman": 18.6,
-        "durationSimMs": 125479,
-        "durationSpecMs": 203479,
-        "durationHumanMs": 187196,
-        "botAimingSimMs": 16283,
-        "choiceSimMs": 2133,
+        "durationSimMs": 126429,
+        "durationSpecMs": 204429,
+        "durationHumanMs": 187079,
+        "botAimingSimMs": 17350,
+        "choiceSimMs": 2533,
         "waveOfDeath": 6,
         "depth": 52,
         "shotsPerWave": 8.7,
@@ -194,9 +194,9 @@
           "6": 1528
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 833,
-        "maxFiringMs": 4400,
-        "avgFiringMs": 1841,
+        "maxFeedbackGapMs": 733,
+        "maxFiringMs": 4533,
+        "avgFiringMs": 1823,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -215,17 +215,17 @@
           },
           "speed8": {
             "samples": 15,
-            "min": 23,
-            "avg": 28.1,
-            "frameMsP95": 62.8,
-            "frameMsMax": 98.2
+            "min": 20,
+            "avg": 26.6,
+            "frameMsP95": 70.2,
+            "frameMsMax": 107.9
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 16.2
+        "realSeconds": 16.5
       },
       {
         "bot": "naive",
@@ -233,7 +233,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 13800,
+        "timeToFirstChoiceHumanMs": 13917,
         "shotsInWave1": 4,
         "firstShot": {
           "damage": 65,
@@ -246,12 +246,12 @@
         "buys": 3,
         "decisions": 98,
         "decisionsPerMinSim": 23.9,
-        "decisionsPerMinHuman": 16.8,
-        "durationSimMs": 246154,
-        "durationSpecMs": 375154,
-        "durationHumanMs": 350687,
-        "botAimingSimMs": 24467,
-        "choiceSimMs": 4533,
+        "decisionsPerMinHuman": 16.9,
+        "durationSimMs": 245721,
+        "durationSpecMs": 374721,
+        "durationHumanMs": 347154,
+        "botAimingSimMs": 27567,
+        "choiceSimMs": 4400,
         "waveOfDeath": 10,
         "depth": 86,
         "shotsPerWave": 8.6,
@@ -316,7 +316,7 @@
         "deadMoments": [],
         "maxFeedbackGapMs": 850,
         "maxFiringMs": 6667,
-        "avgFiringMs": 2310,
+        "avgFiringMs": 2274,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -335,17 +335,17 @@
           },
           "speed8": {
             "samples": 30,
-            "min": 16,
-            "avg": 28.7,
-            "frameMsP95": 62.5,
-            "frameMsMax": 185.8
+            "min": 18,
+            "avg": 26.9,
+            "frameMsP95": 68.1,
+            "frameMsMax": 152
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 31.7
+        "realSeconds": 31.6
       },
       {
         "bot": "naive",
@@ -353,7 +353,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 15633,
+        "timeToFirstChoiceHumanMs": 15400,
         "shotsInWave1": 4,
         "firstShot": {
           "damage": 20,
@@ -365,12 +365,12 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 53,
-        "decisionsPerMinSim": 23.9,
-        "decisionsPerMinHuman": 16.9,
-        "durationSimMs": 132871,
-        "durationSpecMs": 203371,
-        "durationHumanMs": 188004,
-        "botAimingSimMs": 15367,
+        "decisionsPerMinSim": 23.4,
+        "decisionsPerMinHuman": 16.7,
+        "durationSimMs": 135688,
+        "durationSpecMs": 206188,
+        "durationHumanMs": 190171,
+        "botAimingSimMs": 16017,
         "choiceSimMs": 2400,
         "waveOfDeath": 6,
         "depth": 47,
@@ -421,9 +421,9 @@
           "6": 2557
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 900,
-        "maxFiringMs": 6533,
-        "avgFiringMs": 2213,
+        "maxFeedbackGapMs": 733,
+        "maxFiringMs": 6400,
+        "avgFiringMs": 2255,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -442,17 +442,17 @@
           },
           "speed8": {
             "samples": 16,
-            "min": 24,
-            "avg": 27.5,
-            "frameMsP95": 61.8,
-            "frameMsMax": 105
+            "min": 20,
+            "avg": 25.4,
+            "frameMsP95": 73.7,
+            "frameMsMax": 134.6
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 17.4
+        "realSeconds": 17.8
       },
       {
         "bot": "naive",
@@ -460,7 +460,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 26517,
+        "timeToFirstChoiceHumanMs": 26250,
         "shotsInWave1": 9,
         "firstShot": {
           "damage": 20,
@@ -472,13 +472,13 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 58,
-        "decisionsPerMinSim": 31.9,
-        "decisionsPerMinHuman": 20.2,
-        "durationSimMs": 109079,
-        "durationSpecMs": 187079,
-        "durationHumanMs": 172112,
-        "botAimingSimMs": 14967,
-        "choiceSimMs": 2133,
+        "decisionsPerMinSim": 32,
+        "decisionsPerMinHuman": 20.5,
+        "durationSimMs": 108679,
+        "durationSpecMs": 186679,
+        "durationHumanMs": 169579,
+        "botAimingSimMs": 17100,
+        "choiceSimMs": 2400,
         "waveOfDeath": 6,
         "depth": 52,
         "shotsPerWave": 8.7,
@@ -513,11 +513,11 @@
           "relic:safetynet"
         ],
         "comboShare": {
-          "ge5": 0.21,
+          "ge5": 0.22,
           "ge10": 0.08,
           "ge20": 0
         },
-        "firstShotComboAbove5": 12,
+        "firstShotComboAbove5": 11,
         "damageByWave": {
           "1": 122,
           "2": 435,
@@ -527,9 +527,9 @@
           "6": 1109
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 883,
+        "maxFeedbackGapMs": 817,
         "maxFiringMs": 5600,
-        "avgFiringMs": 1518,
+        "avgFiringMs": 1493,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -548,44 +548,44 @@
           },
           "speed8": {
             "samples": 13,
-            "min": 24,
-            "avg": 28.5,
-            "frameMsP95": 59.2,
-            "frameMsMax": 110
+            "min": 20,
+            "avg": 27.8,
+            "frameMsP95": 70.7,
+            "frameMsMax": 121.5
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 14.3
+        "realSeconds": 14.4
       }
     ],
     "average": {
       "runs": 5,
       "shots": 57.6,
-      "decisionsPerMinSim": 26.8,
-      "decisionsPerMinHuman": 18.3,
-      "durationSpecMs": 234883.2,
-      "durationHumanMs": 215803,
+      "decisionsPerMinSim": 26.7,
+      "decisionsPerMinHuman": 18.4,
+      "durationSpecMs": 235136.8,
+      "durationHumanMs": 214700,
       "waveOfDeath": 6.8,
       "shotsPerWave": 8.5,
       "bestCombo": 26.2,
       "bestShotDamage": 3543.6,
       "finalVolley": 18,
       "deadMoments": 0,
-      "avgFiringMs": 1931.8,
+      "avgFiringMs": 1925.2,
       "cappedVolleys": 0,
-      "maxFeedbackGapMs": 1049.8,
+      "maxFeedbackGapMs": 983.2,
       "firstShotDestroyed": 1.6,
-      "timeToFirstChoiceHumanMs": 19923.4,
+      "timeToFirstChoiceHumanMs": 19953.6,
       "shotsInWave1": 6,
       "bossesKilled": 1.2,
       "bossesSpawned": 1.2,
       "damageTaken": 6.8,
       "comboShareGe5": 0.2,
       "comboShareGe10": 0.1,
-      "fps8Min": 22.2,
+      "fps8Min": 19.6,
       "consoleErrors": 0,
       "waveOfDeathStdDev": 1.6,
       "waveOfDeathMinMax": [
@@ -656,7 +656,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 16300,
+        "timeToFirstChoiceHumanMs": 16650,
         "shotsInWave1": 5,
         "firstShot": {
           "damage": 42,
@@ -668,12 +668,12 @@
         "rewardChoices": 3,
         "buys": 0,
         "decisions": 38,
-        "decisionsPerMinSim": 28.9,
+        "decisionsPerMinSim": 29.2,
         "decisionsPerMinHuman": 18.9,
-        "durationSimMs": 78800,
-        "durationSpecMs": 131300,
-        "durationHumanMs": 120867,
-        "botAimingSimMs": 10433,
+        "durationSimMs": 78117,
+        "durationSpecMs": 130617,
+        "durationHumanMs": 120417,
+        "botAimingSimMs": 10200,
         "choiceSimMs": 1067,
         "waveOfDeath": 4,
         "depth": 35,
@@ -718,9 +718,9 @@
           "4": 875
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 617,
+        "maxFeedbackGapMs": 650,
         "maxFiringMs": 6533,
-        "avgFiringMs": 1714,
+        "avgFiringMs": 1691,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -739,17 +739,17 @@
           },
           "speed8": {
             "samples": 9,
-            "min": 25,
-            "avg": 28.2,
-            "frameMsP95": 60.9,
-            "frameMsMax": 92.4
+            "min": 24,
+            "avg": 28.6,
+            "frameMsP95": 64.7,
+            "frameMsMax": 102
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 10.6
+        "realSeconds": 10.5
       },
       {
         "bot": "greedy",
@@ -757,7 +757,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 9516,
+        "timeToFirstChoiceHumanMs": 10083,
         "shotsInWave1": 2,
         "firstShot": {
           "damage": 103,
@@ -769,13 +769,13 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 45,
-        "decisionsPerMinSim": 29.9,
+        "decisionsPerMinSim": 30.4,
         "decisionsPerMinHuman": 20,
-        "durationSimMs": 90358,
-        "durationSpecMs": 148858,
-        "durationHumanMs": 134991,
-        "botAimingSimMs": 13867,
-        "choiceSimMs": 2933,
+        "durationSimMs": 88942,
+        "durationSpecMs": 147442,
+        "durationHumanMs": 135025,
+        "botAimingSimMs": 12417,
+        "choiceSimMs": 2667,
         "waveOfDeath": 6,
         "depth": 39,
         "shotsPerWave": 6.5,
@@ -824,9 +824,9 @@
           "6": 953
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 817,
-        "maxFiringMs": 5200,
-        "avgFiringMs": 1658,
+        "maxFeedbackGapMs": 767,
+        "maxFiringMs": 5333,
+        "avgFiringMs": 1674,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -845,17 +845,17 @@
           },
           "speed8": {
             "samples": 11,
-            "min": 20,
-            "avg": 26.7,
-            "frameMsP95": 68.1,
-            "frameMsMax": 83.5
+            "min": 22,
+            "avg": 27.6,
+            "frameMsP95": 65.9,
+            "frameMsMax": 156
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 12.1
+        "realSeconds": 12
       },
       {
         "bot": "greedy",
@@ -863,7 +863,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 20433,
+        "timeToFirstChoiceHumanMs": 20750,
         "shotsInWave1": 5,
         "firstShot": {
           "damage": 65,
@@ -875,13 +875,13 @@
         "rewardChoices": 3,
         "buys": 0,
         "decisions": 35,
-        "decisionsPerMinSim": 28.9,
-        "decisionsPerMinHuman": 18.9,
-        "durationSimMs": 72729,
-        "durationSpecMs": 120729,
-        "durationHumanMs": 110846,
-        "botAimingSimMs": 9883,
-        "choiceSimMs": 1183,
+        "decisionsPerMinSim": 28.3,
+        "decisionsPerMinHuman": 18.5,
+        "durationSimMs": 74129,
+        "durationSpecMs": 122129,
+        "durationHumanMs": 113596,
+        "botAimingSimMs": 8533,
+        "choiceSimMs": 1067,
         "waveOfDeath": 4,
         "depth": 32,
         "shotsPerWave": 8,
@@ -928,9 +928,9 @@
           "4": 211
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 750,
+        "maxFeedbackGapMs": 667,
         "maxFiringMs": 5733,
-        "avgFiringMs": 1700,
+        "avgFiringMs": 1738,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -948,18 +948,18 @@
             "frameMsMax": null
           },
           "speed8": {
-            "samples": 8,
-            "min": 23,
-            "avg": 27.3,
-            "frameMsP95": 59.4,
-            "frameMsMax": 91.9
+            "samples": 9,
+            "min": 24,
+            "avg": 27.6,
+            "frameMsP95": 62,
+            "frameMsMax": 101.8
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 9.8
+        "realSeconds": 10.1
       },
       {
         "bot": "greedy",
@@ -979,13 +979,13 @@
         "rewardChoices": 5,
         "buys": 1,
         "decisions": 49,
-        "decisionsPerMinSim": 27.5,
-        "decisionsPerMinHuman": 18.4,
-        "durationSimMs": 106958,
-        "durationSpecMs": 171458,
-        "durationHumanMs": 159458,
-        "botAimingSimMs": 12000,
-        "choiceSimMs": 2400,
+        "decisionsPerMinSim": 27.3,
+        "decisionsPerMinHuman": 18.5,
+        "durationSimMs": 107625,
+        "durationSpecMs": 172125,
+        "durationHumanMs": 159192,
+        "botAimingSimMs": 12933,
+        "choiceSimMs": 2267,
         "waveOfDeath": 6,
         "depth": 43,
         "shotsPerWave": 7.2,
@@ -1034,9 +1034,9 @@
           "6": 797
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 750,
-        "maxFiringMs": 6533,
-        "avgFiringMs": 1947,
+        "maxFeedbackGapMs": 700,
+        "maxFiringMs": 6800,
+        "avgFiringMs": 1970,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -1055,17 +1055,17 @@
           },
           "speed8": {
             "samples": 13,
-            "min": 23,
-            "avg": 27.8,
-            "frameMsP95": 61.7,
-            "frameMsMax": 93.9
+            "min": 19,
+            "avg": 26.7,
+            "frameMsP95": 66.4,
+            "frameMsMax": 146.5
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 14.2
+        "realSeconds": 14.3
       },
       {
         "bot": "greedy",
@@ -1073,7 +1073,7 @@
         "stopReason": "gameover",
         "timeToFirstRewardMs": null,
         "timeToFirstChoiceRealMs": null,
-        "timeToFirstChoiceHumanMs": 13883,
+        "timeToFirstChoiceHumanMs": 14367,
         "shotsInWave1": 4,
         "firstShot": {
           "damage": 65,
@@ -1085,13 +1085,13 @@
         "rewardChoices": 5,
         "buys": 0,
         "decisions": 52,
-        "decisionsPerMinSim": 29.1,
-        "decisionsPerMinHuman": 19.1,
-        "durationSimMs": 107042,
-        "durationSpecMs": 177542,
-        "durationHumanMs": 163375,
-        "botAimingSimMs": 14167,
-        "choiceSimMs": 2000,
+        "decisionsPerMinSim": 28.5,
+        "decisionsPerMinHuman": 18.8,
+        "durationSimMs": 109492,
+        "durationSpecMs": 179992,
+        "durationHumanMs": 165592,
+        "botAimingSimMs": 14400,
+        "choiceSimMs": 2133,
         "waveOfDeath": 6,
         "depth": 47,
         "shotsPerWave": 7.8,
@@ -1139,9 +1139,9 @@
           "6": 704
         },
         "deadMoments": [],
-        "maxFeedbackGapMs": 667,
-        "maxFiringMs": 6400,
-        "avgFiringMs": 1725,
+        "maxFeedbackGapMs": 833,
+        "maxFiringMs": 6533,
+        "avgFiringMs": 1741,
         "cappedVolleys": 0,
         "fps": {
           "speed1": {
@@ -1160,44 +1160,44 @@
           },
           "speed8": {
             "samples": 13,
-            "min": 24,
-            "avg": 28.2,
-            "frameMsP95": 61.4,
-            "frameMsMax": 85.7
+            "min": 19,
+            "avg": 26,
+            "frameMsP95": 72.8,
+            "frameMsMax": 117.6
           }
         },
         "consoleErrors": [],
         "pageErrors": [],
         "softlocks": [],
         "invariantViolations": [],
-        "realSeconds": 14.1
+        "realSeconds": 14.5
       }
     ],
     "average": {
       "runs": 5,
       "shots": 39.2,
-      "decisionsPerMinSim": 28.9,
-      "decisionsPerMinHuman": 19.1,
-      "durationSpecMs": 149977.4,
-      "durationHumanMs": 137907.4,
+      "decisionsPerMinSim": 28.7,
+      "decisionsPerMinHuman": 18.9,
+      "durationSpecMs": 150461,
+      "durationHumanMs": 138764.4,
       "waveOfDeath": 5.2,
       "shotsPerWave": 7.7,
       "bestCombo": 25.6,
       "bestShotDamage": 1266.4,
       "finalVolley": 11.8,
       "deadMoments": 0,
-      "avgFiringMs": 1748.8,
+      "avgFiringMs": 1762.8,
       "cappedVolleys": 0,
-      "maxFeedbackGapMs": 720.2,
+      "maxFeedbackGapMs": 723.4,
       "firstShotDestroyed": 2.2,
-      "timeToFirstChoiceHumanMs": 15006.4,
+      "timeToFirstChoiceHumanMs": 15350,
       "shotsInWave1": 3.8,
       "bossesKilled": 0.6,
       "bossesSpawned": 0.6,
       "damageTaken": 5,
       "comboShareGe5": 0.2,
       "comboShareGe10": 0.1,
-      "fps8Min": 23,
+      "fps8Min": 21.6,
       "consoleErrors": 0,
       "waveOfDeathStdDev": 0.98,
       "waveOfDeathMinMax": [
@@ -1246,20 +1246,20 @@
     "qualitySwitchMs": 0,
     "rendererDprBefore": 1,
     "rendererDprAfter": 1,
-    "idleFpsBefore": 58,
+    "idleFpsBefore": 55,
     "cpu4Volley30": {
       "samples": 4,
-      "min": 18,
-      "avg": 39.5,
-      "frameMsP95": 52.9,
-      "frameMsMax": 280.8
+      "min": 20,
+      "avg": 41.3,
+      "frameMsP95": 54.1,
+      "frameMsMax": 277.5
     },
     "cpu1Volley30": {
       "samples": 3,
-      "min": 50,
-      "avg": 56.3,
-      "frameMsP95": 20.1,
-      "frameMsMax": 35.3
+      "min": 57,
+      "avg": 58.7,
+      "frameMsP95": 21,
+      "frameMsMax": 30.7
     },
     "shotLog": [
       {
@@ -1269,7 +1269,7 @@
         "combo": 5,
         "destroyed": 5,
         "volley": 30,
-        "firingMs": 4117,
+        "firingMs": 4133,
         "spread": 0,
         "targetPx": 0,
         "contract": null,
@@ -1295,23 +1295,23 @@
   "perf30_dpr1_5": {
     "deviceScaleFactor": 1.5,
     "viewport": "720×1280",
-    "qualitySwitchMs": 12.400000005960464,
+    "qualitySwitchMs": 8.900000005960464,
     "rendererDprBefore": 1.25,
     "rendererDprAfter": 1,
-    "idleFpsBefore": 51,
+    "idleFpsBefore": 53,
     "cpu4Volley30": {
       "samples": 4,
-      "min": 11,
-      "avg": 30,
-      "frameMsP95": 135.8,
-      "frameMsMax": 401.8
+      "min": 14,
+      "avg": 36.8,
+      "frameMsP95": 71.1,
+      "frameMsMax": 304.1
     },
     "cpu1Volley30": {
       "samples": 3,
-      "min": 48,
-      "avg": 55.3,
-      "frameMsP95": 22.5,
-      "frameMsMax": 40.1
+      "min": 57,
+      "avg": 59,
+      "frameMsP95": 20.4,
+      "frameMsMax": 39.5
     },
     "shotLog": [
       {
@@ -1321,7 +1321,7 @@
         "combo": 5,
         "destroyed": 5,
         "volley": 30,
-        "firingMs": 4083,
+        "firingMs": 4100,
         "spread": 0,
         "targetPx": 0,
         "contract": null,
@@ -1347,23 +1347,23 @@
   "perf30_dpr2": {
     "deviceScaleFactor": 2,
     "viewport": "720×1280",
-    "qualitySwitchMs": 46.79999998211861,
+    "qualitySwitchMs": 8.599999994039536,
     "rendererDprBefore": 1.25,
     "rendererDprAfter": 1,
-    "idleFpsBefore": 54,
+    "idleFpsBefore": 48,
     "cpu4Volley30": {
       "samples": 4,
-      "min": 16,
-      "avg": 44.8,
-      "frameMsP95": 56.6,
-      "frameMsMax": 235.4
+      "min": 20,
+      "avg": 46.5,
+      "frameMsP95": 44.4,
+      "frameMsMax": 193.4
     },
     "cpu1Volley30": {
       "samples": 3,
       "min": 60,
       "avg": 60,
-      "frameMsP95": 19.9,
-      "frameMsMax": 24.3
+      "frameMsP95": 19.1,
+      "frameMsMax": 24.2
     },
     "shotLog": [
       {
@@ -1399,23 +1399,23 @@
   "perf30_mobile375_dpr2": {
     "deviceScaleFactor": 2,
     "viewport": "375×812",
-    "qualitySwitchMs": 7.299999982118607,
+    "qualitySwitchMs": 3.300000011920929,
     "rendererDprBefore": 1.5,
-    "rendererDprAfter": 1,
-    "idleFpsBefore": 59,
+    "rendererDprAfter": 1.5,
+    "idleFpsBefore": 60,
     "cpu4Volley30": {
       "samples": 4,
-      "min": 31,
-      "avg": 51,
-      "frameMsP95": 40.7,
-      "frameMsMax": 204.7
+      "min": 43,
+      "avg": 54.5,
+      "frameMsP95": 26.8,
+      "frameMsMax": 161.5
     },
     "cpu1Volley30": {
       "samples": 3,
       "min": 60,
       "avg": 60,
-      "frameMsP95": 18.9,
-      "frameMsMax": 21.6
+      "frameMsP95": 18.6,
+      "frameMsMax": 22.1
     },
     "shotLog": [
       {

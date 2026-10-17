@@ -2,66 +2,64 @@
   "element": "cluster",
   "seed": "forge-cluster",
   "signal": "ball:split element 'cluster' + block:explode 'cluster' (mini-bombes)",
-  "measured": "56 grappes, 133 mini-explosions, 56 bombes",
+  "measured": "60 grappes, 165 mini-explosions, 60 bombes",
   "ok": true,
   "consoleErrors": [],
   "report": {
     "done": "shots",
     "shots": 6,
-    "wave": 3,
+    "wave": 2,
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 21850.000000000637,
+    "simMs": 18133.33333333289,
     "counts": {
       "volley:start": 6,
-      "ball:launched": 213,
-      "block:hit": 187,
-      "ball:split": 82,
-      "ball:bounce": 479,
-      "block:destroyed": 24,
-      "drop:spawned": 9,
-      "ball:grounded": 106,
-      "block:explode": 189,
-      "drop:collected": 9,
+      "ball:launched": 210,
+      "block:hit": 225,
+      "ball:split": 90,
+      "ball:bounce": 425,
+      "block:destroyed": 22,
+      "drop:spawned": 8,
+      "ball:grounded": 75,
+      "block:explode": 225,
+      "drop:collected": 8,
       "volley:end": 6,
-      "rows:advanced": 4,
+      "rows:advanced": 5,
       "contract:progress": 1,
-      "wave:cleared": 2,
+      "wave:cleared": 1,
       "contract:failed": 1,
-      "reward:offered": 2,
+      "reward:offered": 1,
       "volley:fusion": 1,
-      "reward:chosen": 2,
-      "combo:milestone": 1,
-      "contract:offered": 1
+      "reward:chosen": 1
     },
     "explodeByEl": {
-      "bomb": 56,
-      "cluster": 133
+      "bomb": 60,
+      "cluster": 165
     },
     "chainByEl": {},
     "splitByEl": {
-      "split": 26,
-      "cluster": 56
+      "split": 30,
+      "cluster": 60
     },
     "healBySource": {},
     "destroyedByEl": {
-      "cluster": 24
+      "cluster": 22
     },
     "hitsByEl": {
-      "cluster": 187
+      "cluster": 225
     },
     "damageByEl": {
-      "cluster": 1103
+      "cluster": 1296
     },
     "kinds": {
-      "main": 56,
-      "mini": 183
+      "main": 60,
+      "mini": 180
     },
     "focus": {
       "critLowCombo": 0,
       "critHits": 0,
-      "hits": 187,
+      "hits": 225,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -80,10 +78,10 @@
       "homingMaxDevDeg": 0,
       "groundBounces": 0,
       "groundedAtOrigin": 0,
-      "groundedTotal": 56,
+      "groundedTotal": 60,
       "magnetRemote": 0,
       "magnetRemoteMaxDist": 0,
-      "dropsCollectedInFlight": 9,
+      "dropsCollectedInFlight": 8,
       "pierceHits": 0,
       "pierceBlockBounces": 0,
       "voidMatch": 0,
@@ -92,31 +90,31 @@
       "goldCoin": 0,
       "goldBall": 0,
       "goldDestroyed": 0,
-      "ceilingBounces": 65,
-      "comboMax": 3,
+      "ceilingBounces": 20,
+      "comboMax": 1,
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1483.333333333765,
-        "2": 1500.0000000004366,
-        "3": 1483.333333333765
+        "1": 1549.9999999999009,
+        "2": 1549.9999999998645,
+        "3": 1549.99999999985
       },
       "groundedBeforeMs": 0
     },
-    "devSamples": 80,
-    "devOver2": 26,
+    "devSamples": 56,
+    "devOver2": 25,
     "maxLive": 30,
-    "maxParticles": 641,
+    "maxParticles": 639,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      219,
-      78,
-      252,
-      247,
-      289,
-      18
+      228,
+      196,
+      273,
+      251,
+      146,
+      202
     ],
     "captured": true,
     "hyb": {

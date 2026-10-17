@@ -2,7 +2,7 @@
   "element": "steam",
   "seed": "forge-steam",
   "signal": "block:explode element 'steam' (nuage)",
-  "measured": "20 nuages, 13 gels",
+  "measured": "18 nuages, 13 gels",
   "ok": true,
   "consoleErrors": [],
   "report": {
@@ -12,13 +12,13 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 13133.333333332854,
+    "simMs": 13166.666666666182,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 55,
+      "block:hit": 51,
       "block:destroyed": 20,
-      "block:explode": 45,
+      "block:explode": 43,
       "block:frozen": 13,
       "ball:bounce": 65,
       "drop:spawned": 7,
@@ -34,7 +34,7 @@
     },
     "explodeByEl": {
       "fire": 22,
-      "steam": 20,
+      "steam": 18,
       "explosive": 3
     },
     "chainByEl": {},
@@ -45,12 +45,12 @@
       "fire": 7
     },
     "hitsByEl": {
-      "steam": 36,
+      "steam": 32,
       "fire": 19
     },
     "damageByEl": {
-      "steam": 653,
-      "fire": 281
+      "steam": 539,
+      "fire": 274
     },
     "kinds": {
       "main": 30
@@ -58,7 +58,7 @@
     "focus": {
       "critLowCombo": 0,
       "critHits": 0,
-      "hits": 36,
+      "hits": 32,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -94,7 +94,7 @@
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 2866.666666666874,
+        "1": 2866.6666666668752,
         "2": 1516.666666666777,
         "3": 1516.666666666777
       },
@@ -103,23 +103,23 @@
     "devSamples": 64,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 279,
+    "maxParticles": 248,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      120,
-      56,
-      108,
-      152,
-      414,
-      84
+      109,
+      52,
+      100,
+      149,
+      320,
+      83
     ],
     "captured": true,
     "hyb": {
       "acidUnhit": 0,
       "wraithBoost": 1,
-      "wraithSamples": 15,
+      "wraithSamples": 11,
       "critCoinSteps": 0,
       "critHits": 0,
       "rowShiftSteps": 0,

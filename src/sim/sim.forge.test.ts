@@ -311,16 +311,16 @@ describe('hybrides : effet propre + effet parent', () => {
     }
   });
 
-  it('abysse : vide (+% PV max), acide posé au plafond de l abysse, propagé aux voisins au tir suivant', () => {
-    const { evs, sim } = single(vb('abyss', 1), (s) => [block(s, 'normal', 3, 4, STURDY), block(s, 'normal', 4, 4, STURDY)]);
+  it('abysse (rang II, spread ≥ 1) : vide (+% PV max), acide posé au plafond de l abysse, propagé aux voisins au tir suivant', () => {
+    const { evs, sim } = single(vb('abyss', 2), (s) => [block(s, 'normal', 3, 4, STURDY), block(s, 'normal', 4, 4, STURDY)]);
     const target = sim.state.blocks.find((b) => b.col === 3)!;
     const neighbor = sim.state.blocks.find((b) => b.col === 4)!;
     const first = ofType(evs, 'block:hit').find((e) => e.blockId === target.id)!;
-    expect(first.damage).toBe(Math.round((baseDmg('abyss', 1) + P('void', 'cap', 1)) * P('abyss', 'rankMult', 1)));
+    expect(first.damage).toBe(Math.round((baseDmg('abyss', 2) + P('void', 'cap', 2)) * P('abyss', 'rankMult', 2)));
     const q = mut(sim).internal.acidQ;
     const k = q.indexOf(target.id);
     expect(k).toBeGreaterThanOrEqual(0);
-    expect(q[k + 3]).toBe(P('abyss', 'capPerTurn', 1));
+    expect(q[k + 3]).toBe(P('abyss', 'capPerTurn', 2));
     expect(q.includes(neighbor.id)).toBe(false);
     // tir suivant : propagation au début du tir
     for (let f = 0; f < 200 && sim.state.phase !== 'aiming'; f++) sim.step(FRAME);
@@ -460,13 +460,23 @@ describe('hybrides : effet propre + effet parent', () => {
     const { evs, sim } = single(vb('hammer', 1), (s) => [block(s, 'armored', 3, 4, STURDY)]);
     const hit = ofType(evs, 'block:hit')[0]!;
     const loss = Math.min((P('hammer', 'pctMaxHp', 1) / 100) * STURDY, P('hammer', 'cap', 1));
-    expect(hit.damage).toBe(Math.round((baseDmg('hammer', 1) * P('hammer', 'damageMult', 1) + loss) * P('hammer', 'rankMult', 1)));
+    expect(hit.damage).toBe(Math.round(baseDmg('hammer', 1) * P('hammer', 'damageMult', 1) * P('hammer', 'rankMult', 1) + loss));
     expect(hit.combo).toBe(0);
     const b = sim.state.blocks[0]!;
     expect(b.kind).toBe('normal');
     expect(b.maxHp).toBe(STURDY - loss);
     expect(b.row).toBe(3);
     expect(ofType(evs, 'ball:bounce').every((e) => e.combo === 0)).toBe(true);
+  });
+
+  it('FG-01 : marteau III sur un bloc de 2 000 PV : PV ≤ PV max, perte de PV max non réduite par rankMult', () => {
+    const { evs, sim } = single(vb('hammer', 3), (s) => [block(s, 'normal', 3, 4, 2000)]);
+    const b = sim.state.blocks[0]!;
+    const loss = Math.min((P('hammer', 'pctMaxHp', 3) / 100) * 2000, P('hammer', 'cap', 3));
+    expect(b.maxHp).toBe(2000 - loss);
+    expect(b.hp).toBeLessThanOrEqual(b.maxHp);
+    const first = ofType(evs, 'block:hit')[0]!;
+    expect(first.damage).toBe(Math.round(baseDmg('hammer', 3) * P('hammer', 'damageMult', 3) * P('hammer', 'rankMult', 3) + loss));
   });
 });
 
@@ -566,7 +576,7 @@ function playForged(sim: Sim, seed: string, shots: number, check: boolean): void
       if (check) {
         for (const b of st.balls) {
           if (!Number.isFinite(b.pos.x) || !Number.isFinite(b.pos.y) || !Number.isFinite(b.vel.x) || !Number.isFinite(b.vel.y)) throw new Error(`NaN balle ${b.element}`);
-          if (b.pos.x < 0 || b.pos.x > cols || b.pos.y < 0 || b.pos.y > rows) throw new Error(`balle hors plateau ${b.element}`);
+          if (b.pos.x < 0 || b.pos.x > cols || b.pos.y < 0 || b.pos.y > rows) throw new Error(`balle hors plateau ${b.element} ${JSON.stringify(b)} fx ${JSON.stringify(mut(sim).internal.bfx[st.balls.indexOf(b)])} blocks ${JSON.stringify(st.blocks.map((k) => [k.kind, k.col, k.row, k.width]))}`);
         }
         for (const b of st.blocks) if (!Number.isFinite(b.hp) || !Number.isFinite(b.maxHp) || !Number.isFinite(b.row)) throw new Error('NaN bloc');
         for (const d of st.drops) if (!Number.isFinite(d.pos.y) || !Number.isFinite(d.value)) throw new Error('NaN drop');

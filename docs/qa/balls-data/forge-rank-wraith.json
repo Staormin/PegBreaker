@@ -13,12 +13,12 @@
       "perShotMean": 378
     },
     "r2": {
-      "damage": 11921,
-      "perShotMean": 662
+      "damage": 10203,
+      "perShotMean": 567
     },
     "r3": {
-      "damage": 19653,
-      "perShotMean": 1092
+      "damage": 13933,
+      "perShotMean": 774
     }
   },
   "errors": [],

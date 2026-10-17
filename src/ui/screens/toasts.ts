@@ -1,6 +1,12 @@
 // ui/screens/toasts.ts — notifications de succès en FILE (QA J3-01 : 12 toasts empilés d'un coup).
 // Au plus 2 visibles ; chacun reste 2,2 s ; au-delà de 5 en attente, la file est regroupée
 // en un seul toast « +N succès · +X ◆ ».
+// Placement (QA FG-04) : jamais sur un onglet ou un bouton.
+// - `band(top, height)` : écran de jeu → toasts compacts (une ligne) dans la bande entre la barre
+//   du haut et le plateau ; autant de toasts visibles que la bande en contient (au moins 1).
+// - `dock(footer)` : boutique / Puits → la pile entre dans le pied d'écran collant, au-dessus
+//   des boutons (elle prend sa propre place, ne recouvre rien).
+// - `float()` : autres écrans → en haut, comme avant.
 import { el } from '../dom';
 
 const TOAST_MS = 2200;
@@ -24,7 +30,16 @@ export interface Toasts {
   achievement(name: string, frags: number): void;
   /** annonce courte (record de vague…) : `variant` → classe `toast-<variant>` */
   notice(kicker: string, title: string, detail: string, variant: string): void;
+  /** écran de jeu : bande libre (px, relatifs à l'overlay) */
+  band(top: number, height: number): void;
+  /** boutique / Puits : pile insérée en tête de `footer` (au-dessus des boutons) */
+  dock(footer: HTMLElement): void;
+  /** autres écrans : en haut de l'overlay */
+  float(): void;
 }
+
+/** hauteur d'un toast compact (CSS `.toasts-band .toast`) + écart */
+const BAND_ROW = 36;
 
 export function createToasts(root: HTMLElement): Toasts {
   const box = el('div', 'toasts');
@@ -32,6 +47,7 @@ export function createToasts(root: HTMLElement): Toasts {
   root.append(box);
   const queue: Item[] = [];
   let visible = 0;
+  let maxVisible = MAX_VISIBLE;
 
   function display(it: Item): void {
     visible++;
@@ -47,7 +63,7 @@ export function createToasts(root: HTMLElement): Toasts {
   }
 
   function pump(): void {
-    while (visible < MAX_VISIBLE) {
+    while (visible < maxVisible) {
       const next = queue.shift();
       if (!next) return;
       display(next);
@@ -81,6 +97,30 @@ export function createToasts(root: HTMLElement): Toasts {
     notice(kicker, title, detail, variant) {
       // annonce prioritaire : en tête de file
       queue.unshift({ kicker, title, frags: 0, count: 1, detail, variant });
+      pump();
+    },
+    band(top, height) {
+      if (box.parentElement !== root) root.append(box);
+      box.className = 'toasts toasts-band';
+      box.style.top = `${Math.round(top)}px`;
+      maxVisible = Math.max(1, Math.min(MAX_VISIBLE, Math.floor((height + 6) / BAND_ROW)));
+      // déjà affichés au-delà de la place : masqués (leur minuterie suit son cours)
+      Array.from(box.children).forEach((c, i) => ((c as HTMLElement).hidden = i >= maxVisible));
+    },
+    dock(footer) {
+      if (box.parentElement !== footer) footer.prepend(box);
+      box.className = 'toasts toasts-dock';
+      box.style.top = '';
+      maxVisible = MAX_VISIBLE;
+      for (const c of Array.from(box.children)) (c as HTMLElement).hidden = false;
+      pump();
+    },
+    float() {
+      if (box.parentElement !== root) root.append(box);
+      box.className = 'toasts';
+      box.style.top = '';
+      maxVisible = MAX_VISIBLE;
+      for (const c of Array.from(box.children)) (c as HTMLElement).hidden = false;
       pump();
     },
   };

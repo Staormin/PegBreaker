@@ -5,7 +5,7 @@ import { emit } from '../ctx';
 import { acquireBall } from '../pools';
 import { fixVelocity } from '../physics';
 import type { ElementHooks } from './types';
-import { DEG, liveRoom, prm, spawnMini } from './common';
+import { DEG, clampToBoard, liveRoom, prm, spawnMini } from './common';
 
 /** Scission (code d'origine) : au premier impact, `splitParts` balles réparties de +θ à −θ. */
 function split(ctx: Ctx, b: Ball): void {
@@ -39,6 +39,7 @@ function split(ctx: Ctx, b: Ball): void {
       nb.radius = b.radius;
       nb.pos.x = b.pos.x;
       nb.pos.y = b.pos.y;
+      clampToBoard(ctx, nb); // la poussée de collision a pu sortir le parent du plateau (il est recadré plus tard)
     }
     nb.vel.x = vx * c - vy * sn;
     nb.vel.y = vx * sn + vy * c;

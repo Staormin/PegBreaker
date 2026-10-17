@@ -56,7 +56,18 @@ export function spawnMini(
   fx.dirX = vx;
   fx.dirY = vy;
   fixVelocity(ctx, nb, fx);
+  clampToBoard(ctx, nb);
   return nb;
+}
+
+/** Ramène une balle née pendant une collision (scission, mini-balle) dans [r, cols − r] × [r, rows − r]. */
+export function clampToBoard(ctx: Ctx, b: Ball): void {
+  const { cols, rows } = ctx.cfg.blocks.board;
+  const r = b.radius;
+  if (b.pos.x < r) b.pos.x = r;
+  else if (b.pos.x > cols - r) b.pos.x = cols - r;
+  if (b.pos.y < r) b.pos.y = r;
+  else if (b.pos.y > rows - r) b.pos.y = rows - r;
 }
 
 /** Effets de la dernière balle acquise (juste après spawnMini/acquireBall). */

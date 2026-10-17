@@ -16,9 +16,9 @@
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 33,
+      "block:hit": 32,
       "contract:progress": 5,
-      "ball:bounce": 161,
+      "ball:bounce": 165,
       "block:destroyed": 21,
       "drop:spawned": 12,
       "drop:collected": 12,
@@ -42,10 +42,10 @@
       "orbit": 21
     },
     "hitsByEl": {
-      "orbit": 33
+      "orbit": 32
     },
     "damageByEl": {
-      "orbit": 2403
+      "orbit": 2055
     },
     "kinds": {
       "main": 30
@@ -53,7 +53,7 @@
     "focus": {
       "critLowCombo": 0,
       "critHits": 1,
-      "hits": 33,
+      "hits": 32,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -70,8 +70,8 @@
       "homingSamples": 0,
       "homingDeviated": 0,
       "homingMaxDevDeg": 0,
-      "groundBounces": 46,
-      "groundedAtOrigin": 23,
+      "groundBounces": 48,
+      "groundedAtOrigin": 24,
       "groundedTotal": 30,
       "magnetRemote": 10,
       "magnetRemoteMaxDist": 0.7228563422665775,
@@ -84,7 +84,7 @@
       "goldCoin": 0,
       "goldBall": 0,
       "goldDestroyed": 0,
-      "ceilingBounces": 54,
+      "ceilingBounces": 57,
       "comboMax": 4,
       "homingMaxDevByTier": {},
       "homingOverMax": [],
@@ -95,20 +95,20 @@
       },
       "groundedBeforeMs": 0
     },
-    "devSamples": 159,
-    "devOver2": 46,
+    "devSamples": 163,
+    "devOver2": 48,
     "maxLive": 5,
     "maxParticles": 129,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      99,
-      567,
-      139,
-      1096,
-      403,
-      99
+      107,
+      176,
+      149,
+      1104,
+      412,
+      107
     ],
     "captured": true,
     "hyb": {

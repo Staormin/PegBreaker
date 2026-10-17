@@ -295,7 +295,7 @@ export function createWellScreen(d: WellDeps): WellScreen {
     const grid = el('div', 'codex-grid');
     grid.setAttribute('role', 'list');
     for (const id of ids) grid.append(codexEntry(id, known.has(id)));
-    b.append(count, el('p', 'muted codex-help', 'Forge deux balles de rang III en boutique pour révéler une recette.'), grid);
+    b.append(count, el('p', 'muted codex-help', "Forge en boutique les deux parents d'une recette (l'un de rang II ou plus, l'autre de rang I ou plus) pour la révéler. Divine : deux hybrides de rang III."), grid);
   }
 
   function codexEntry(id: BallElement, known: boolean): HTMLElement {
@@ -309,7 +309,7 @@ export function createWellScreen(d: WellDeps): WellScreen {
     const formula = el('div', 'codex-formula');
     formula.setAttribute('aria-hidden', 'true');
     if (known) {
-      if (info.recipe) formula.append(ballIcon(config, info.recipe[0], 3, 28), el('span', 'fr-op', '+'), ballIcon(config, info.recipe[1], 3, 28));
+      if (info.recipe) formula.append(ballIcon(config, info.recipe[0], 2, 28), el('span', 'fr-op', '+'), ballIcon(config, info.recipe[1], 1, 28));
       else formula.append(el('span', 'codex-q', 'Hybride III'), el('span', 'fr-op', '+'), el('span', 'codex-q', 'Hybride III'));
       formula.append(el('span', 'fr-op fr-arrow', '→'), ballIcon(config, id, 1, 36));
       const text = el('div', 'codex-text');

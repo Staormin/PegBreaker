@@ -2,7 +2,7 @@
   "element": "rust",
   "seed": "balls-rust",
   "signal": "maxHp d'un bloc qui diminue",
-  "measured": "12 blocs rouillés",
+  "measured": "11 blocs rouillés",
   "ok": true,
   "consoleErrors": [],
   "ref": {
@@ -10,7 +10,7 @@
       {
         "seed": "balls-ref-1",
         "shots": 6,
-        "damage": 783,
+        "damage": 214,
         "destroyed": 10,
         "wave": 2,
         "coins": 5,
@@ -20,13 +20,13 @@
         "heal": {},
         "acidMax": 0,
         "rowUp": 0,
-        "maxHpDrop": 7
+        "maxHpDrop": 4
       },
       {
         "seed": "balls-ref-2",
         "shots": 6,
-        "damage": 831,
-        "destroyed": 11,
+        "damage": 1395,
+        "destroyed": 14,
         "wave": 2,
         "coins": 11,
         "explode": {},
@@ -35,7 +35,7 @@
         "heal": {},
         "acidMax": 0,
         "rowUp": 0,
-        "maxHpDrop": 9
+        "maxHpDrop": 8
       },
       {
         "seed": "balls-ref-3",
@@ -53,8 +53,8 @@
         "maxHpDrop": 8
       }
     ],
-    "damage": 2659,
-    "destroyed": 33,
+    "damage": 2654,
+    "destroyed": 36,
     "coins": 27,
     "errors": [],
     "nan": []
@@ -67,19 +67,19 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 11533.333333333087,
+    "simMs": 11816.666666666379,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 31,
-      "ball:bounce": 75,
-      "block:destroyed": 14,
+      "block:hit": 30,
+      "ball:bounce": 70,
+      "block:destroyed": 15,
       "drop:spawned": 6,
       "drop:collected": 6,
       "ball:grounded": 30,
       "volley:end": 6,
       "rows:advanced": 5,
-      "combo:milestone": 1,
+      "combo:milestone": 2,
       "wave:cleared": 1,
       "reward:offered": 1,
       "reward:chosen": 1
@@ -89,21 +89,21 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "rust": 14
+      "rust": 15
     },
     "hitsByEl": {
-      "rust": 31
+      "rust": 30
     },
     "damageByEl": {
-      "rust": 902
+      "rust": 904
     },
     "kinds": {
       "main": 30
     },
     "focus": {
       "critLowCombo": 0,
-      "critHits": 3,
-      "hits": 31,
+      "critHits": 1,
+      "hits": 30,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -112,7 +112,7 @@
       "acidQAtFire": 0,
       "acidAliveAtEnd": 0,
       "rowUp": 0,
-      "maxHpDrop": 12,
+      "maxHpDrop": 11,
       "radiusMin": 0.12,
       "radiusMax": 0.12,
       "speedRatioMin": 1,
@@ -134,39 +134,39 @@
       "goldCoin": 0,
       "goldBall": 0,
       "goldDestroyed": 0,
-      "ceilingBounces": 15,
-      "comboMax": 6,
+      "ceilingBounces": 11,
+      "comboMax": 4,
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1950.000000000126,
+        "1": 1566.6666666667666,
         "2": 1566.6666666667807,
         "3": 1566.6666666667807
       },
       "groundedBeforeMs": 0
     },
-    "devSamples": 74,
-    "devOver2": 2,
+    "devSamples": 69,
+    "devOver2": 1,
     "maxLive": 5,
-    "maxParticles": 127,
+    "maxParticles": 118,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
       60,
       222,
-      124,
-      33,
+      106,
+      34,
       242,
-      221
+      240
     ],
     "captured": true,
     "hyb": {
       "acidUnhit": 0,
-      "wraithBoost": 0,
-      "wraithSamples": 2,
+      "wraithBoost": 2,
+      "wraithSamples": 3,
       "critCoinSteps": 1,
-      "critHits": 3,
+      "critHits": 1,
       "rowShiftSteps": 0,
       "speedUpMax": 1.0000000000000002,
       "groundBouncesMaxPerBall": 0
