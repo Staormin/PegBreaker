@@ -88,18 +88,23 @@ function boot(): void {
   window.addEventListener('pagehide', () => {
     persistEnabled = false;
   });
+  // runOver : la run a émis run:over (abandon ou restart) ; plus aucune sauvegarde jusqu'au prochain run:started,
+  // sinon la sauvegarde périodique réenregistrait une run terminée en phase 'gameover' (bug « Revanche ? » au rechargement).
+  let runOver = false;
   const persistRun = (): void => {
-    if (forcedSeed || isDaily || !persistEnabled) return; // runs QA/debug et quotidiennes : jamais sauvegardées (mods hors état)
+    if (forcedSeed || isDaily || !persistEnabled || runOver) return; // runs QA/debug et quotidiennes : jamais sauvegardées (mods hors état)
     // en 'gameover' (run:lost) on garde le snapshot : la seconde chance peut reprendre ; run:over efface
     meta.setCurrentRun(sim.snapshot());
   };
   bus.on('run:over', (e) => {
+    runOver = true;
     if (isQa) return;
     const unlocked = meta.onRunEnd(e.summary);
     meta.setCurrentRun(null);
     for (const id of unlocked) bus.emit({ type: 'achievement:unlocked', achievementId: id });
   });
   bus.on('run:started', () => {
+    runOver = false;
     sinceSave = 0;
   });
 
@@ -182,6 +187,12 @@ function boot(): void {
   };
   // run reprise depuis la sauvegarde : la sim n'émet pas run:started, on le fait pour render/audio
   if (resume) bus.emit({ type: 'run:started', seed: sim.state.seed });
+  // sauvegarde en phase 'gameover' (écran Revanche fermé par un rechargement) : on clôt la run (run:over si pas déjà
+  // émis, la méta est créditée) et on repart sur une run neuve plutôt que de bloquer sur « Revanche ? ».
+  if (resume && sim.state.phase === 'gameover') {
+    sim.giveUp();
+    sim.restart();
+  }
   requestAnimationFrame(frame);
 }
 
