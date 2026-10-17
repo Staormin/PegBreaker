@@ -1,0 +1,130 @@
+{
+  "element": "steam",
+  "seed": "forge-steam",
+  "signal": "block:explode element 'steam' (nuage)",
+  "measured": "20 nuages, 13 gels",
+  "ok": true,
+  "consoleErrors": [],
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 2,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 13133.333333332854,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 55,
+      "block:destroyed": 20,
+      "block:explode": 45,
+      "block:frozen": 13,
+      "ball:bounce": 65,
+      "drop:spawned": 7,
+      "drop:collected": 7,
+      "ball:grounded": 30,
+      "volley:end": 6,
+      "rows:advanced": 5,
+      "contract:progress": 1,
+      "wave:cleared": 1,
+      "contract:failed": 1,
+      "reward:offered": 1,
+      "reward:chosen": 1
+    },
+    "explodeByEl": {
+      "fire": 22,
+      "steam": 20,
+      "explosive": 3
+    },
+    "chainByEl": {},
+    "splitByEl": {},
+    "healBySource": {},
+    "destroyedByEl": {
+      "steam": 13,
+      "fire": 7
+    },
+    "hitsByEl": {
+      "steam": 36,
+      "fire": 19
+    },
+    "damageByEl": {
+      "steam": 653,
+      "fire": 281
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 0,
+      "hits": 36,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 7,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 8,
+      "comboMax": 2,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 2866.666666666874,
+        "2": 1516.666666666777,
+        "3": 1516.666666666777
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 64,
+    "devOver2": 0,
+    "maxLive": 5,
+    "maxParticles": 279,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      120,
+      56,
+      108,
+      152,
+      414,
+      84
+    ],
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 1,
+      "wraithSamples": 15,
+      "critCoinSteps": 0,
+      "critHits": 0,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1,
+      "groundBouncesMaxPerBall": 0
+    }
+  }
+}

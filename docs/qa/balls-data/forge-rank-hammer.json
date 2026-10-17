@@ -1,0 +1,32 @@
+{
+  "element": "hammer",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 5199,
+      "perShotMean": 289
+    },
+    "r2": {
+      "damage": 6895,
+      "perShotMean": 383
+    },
+    "r3": {
+      "damage": 9564,
+      "perShotMean": 531
+    }
+  },
+  "errors": [
+    "tir 6 : bloc 7 hp 1671/1600",
+    "tir 6 : bloc 8 hp 1609/1600",
+    "tir 6 : bloc 7 hp 1671/1600",
+    "tir 6 : bloc 8 hp 1609/1600"
+  ],
+  "knownBugFG01": 4,
+  "consoleErrors": []
+}

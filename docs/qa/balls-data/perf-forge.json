@@ -1,0 +1,228 @@
+{
+  "viewport": "720×1280",
+  "deviceScaleFactor": 1.5,
+  "cpuThrottle": 4,
+  "mix": [
+    "steam",
+    "laser",
+    "cluster",
+    "wraith",
+    "abyss",
+    "jackpot",
+    "quake",
+    "missile",
+    "supernova",
+    "plague",
+    "choir",
+    "orbit",
+    "hammer",
+    "steam",
+    "laser",
+    "cluster",
+    "wraith",
+    "abyss",
+    "jackpot",
+    "quake",
+    "missile",
+    "supernova",
+    "plague",
+    "choir",
+    "orbit",
+    "hammer",
+    "divine",
+    "divine",
+    "bomb",
+    "nova"
+  ],
+  "shots": 3,
+  "fpsSamples": [
+    41,
+    37,
+    46,
+    52,
+    60,
+    58,
+    47,
+    40,
+    43,
+    60,
+    38,
+    52,
+    37,
+    57,
+    60
+  ],
+  "fpsMin": 37,
+  "fpsMean": 48.53333333333333,
+  "frameP50": 16.699999999999818,
+  "frameP95": 33.40000000000009,
+  "frameP99": 50.100000000000364,
+  "frameMax": 183.19999999999982,
+  "frames": 781,
+  "slowFrames": [
+    {
+      "sinceFireMs": 29,
+      "dt": 50,
+      "live": 2
+    },
+    {
+      "sinceFireMs": 562,
+      "dt": 117,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 612,
+      "dt": 50,
+      "live": 11
+    },
+    {
+      "sinceFireMs": 662,
+      "dt": 50,
+      "live": 12
+    },
+    {
+      "sinceFireMs": 962,
+      "dt": 67,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1145,
+      "dt": 183,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1262,
+      "dt": 83,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1312,
+      "dt": 50,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 2379,
+      "dt": 50,
+      "live": 20
+    },
+    {
+      "sinceFireMs": 2429,
+      "dt": 50,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 3079,
+      "dt": 67,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 2239,
+      "dt": 50,
+      "live": 22
+    },
+    {
+      "sinceFireMs": 2323,
+      "dt": 50,
+      "live": 20
+    },
+    {
+      "sinceFireMs": 2373,
+      "dt": 50,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 2556,
+      "dt": 50,
+      "live": 19
+    },
+    {
+      "sinceFireMs": -18,
+      "dt": 67,
+      "live": 2
+    },
+    {
+      "sinceFireMs": 466,
+      "dt": 50,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 532,
+      "dt": 67,
+      "live": 12
+    },
+    {
+      "sinceFireMs": 582,
+      "dt": 50,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 716,
+      "dt": 50,
+      "live": 15
+    },
+    {
+      "sinceFireMs": 799,
+      "dt": 50,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 2199,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 2282,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 2332,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 3099,
+      "dt": 50,
+      "live": 5
+    }
+  ],
+  "rendererDpr": [
+    1.25,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "maxParticles": 113,
+  "maxLive": 29,
+  "explodeByEl": {
+    "fire": 3,
+    "steam": 3,
+    "bomb": 10,
+    "cluster": 17,
+    "divine": 10
+  },
+  "splitByEl": {
+    "choir": 6,
+    "cluster": 7,
+    "split": 1
+  },
+  "kinds": {
+    "main": 91,
+    "mini": 21,
+    "echo": 9
+  },
+  "nan": [],
+  "violations": [],
+  "note": "mesure valable seulement si le test tourne seul (npx playwright test balls -g perf --workers=1) ; en suite parallèle le CPU est partagé"
+}

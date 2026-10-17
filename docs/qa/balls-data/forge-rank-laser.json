@@ -1,0 +1,27 @@
+{
+  "element": "laser",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 4452,
+      "perShotMean": 247
+    },
+    "r2": {
+      "damage": 6277,
+      "perShotMean": 349
+    },
+    "r3": {
+      "damage": 8757,
+      "perShotMean": 487
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

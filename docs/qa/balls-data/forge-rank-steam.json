@@ -1,0 +1,27 @@
+{
+  "element": "steam",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 6287,
+      "perShotMean": 349
+    },
+    "r2": {
+      "damage": 9793,
+      "perShotMean": 544
+    },
+    "r3": {
+      "damage": 15597,
+      "perShotMean": 867
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

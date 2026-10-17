@@ -69,7 +69,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 24083.33333333462,
+    "simMs": 24100.00000000129,
     "counts": {
       "volley:start": 6,
       "ball:launched": 60,
@@ -157,7 +157,7 @@
     "devSamples": 84,
     "devOver2": 1,
     "maxLive": 5,
-    "maxParticles": 130,
+    "maxParticles": 125,
     "nan": [],
     "violations": [],
     "pageErrors": [],
@@ -169,6 +169,16 @@
       210,
       451
     ],
-    "captured": true
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 0,
+      "wraithSamples": 4,
+      "critCoinSteps": 1,
+      "critHits": 4,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1.0000000000000002,
+      "groundBouncesMaxPerBall": 0
+    }
   }
 }

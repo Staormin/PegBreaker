@@ -182,6 +182,16 @@
       230,
       210
     ],
-    "captured": true
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 0,
+      "wraithSamples": 1,
+      "critCoinSteps": 1,
+      "critHits": 2,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1,
+      "groundBouncesMaxPerBall": 0
+    }
   }
 }

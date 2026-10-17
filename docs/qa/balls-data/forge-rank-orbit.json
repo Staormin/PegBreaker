@@ -1,0 +1,27 @@
+{
+  "element": "orbit",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 8031,
+      "perShotMean": 446
+    },
+    "r2": {
+      "damage": 10052,
+      "perShotMean": 558
+    },
+    "r3": {
+      "damage": 10531,
+      "perShotMean": 585
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

@@ -116,6 +116,9 @@ function summarize(bot: Group, seed: string, r: QaReport, consoleErrors: string[
     violations: r.violations,
     consoleErrors,
     pageErrors: r.pageErrors,
+    forge: r.forge,
+    /** volée finale : contient une hybride ou la Divine ? */
+    hybridInVolley: r.state.stats.forged ?? 0,
   };
 }
 type Row = ReturnType<typeof summarize>;
@@ -175,13 +178,13 @@ function aggregate(rows: Row[]) {
   };
 }
 
-async function runFast(page: Page, group: Group, seed: string, url?: string): Promise<Row> {
+async function runFast(page: Page, group: Group, seed: string, url?: string, forge = false, maxRealMs = 170_000): Promise<Row> {
   const g = GROUPS[group];
   const { consoleErrors } = await openGame(page, seed, url ? { url } : {});
   // même graine de bot que le lot 1 (hash « naive:<seed> » / « contracts:<seed> ») : seul le mode d'éventail change
-  await installBot(page, { bot: g.bot, seed, spreadMode: g.spreadMode, onLost: 'reviveIfAffordable' });
+  await installBot(page, { bot: g.bot, seed, spreadMode: g.spreadMode, onLost: 'reviveIfAffordable', forge });
   await setSpeed(page, 8);
-  const r = await play(page, { maxRealMs: 170_000 });
+  const r = await play(page, { maxRealMs });
   const row = summarize(group, seed, r, consoleErrors, null);
   // balles prises (récompenses) : pour l'analyse du pool standard
   (row as Row & { rewardsTaken?: string[] }).rewardsTaken = r.rewardsTaken;
@@ -191,6 +194,8 @@ async function runFast(page: Page, group: Group, seed: string, url?: string): Pr
 
 /** lignes du pool personnel produites par le premier test (réutilisées par le test des pools) */
 let personalRows: Row[] | null = null;
+/** lignes du pool standard (bot sans forge) produites par le test des pools (référence du test forge) */
+let standardRows: Row[] | null = null;
 
 test.describe.configure({ mode: 'serial' });
 
@@ -417,6 +422,7 @@ test('pools : personnel (profil vierge, 3 éléments) contre standard (défi, 27
     }
   const all = await Promise.all(jobs);
   const standard = all.filter((r) => !r.seed.startsWith('perso:'));
+  standardRows = standard;
   if (!personal) personal = all.filter((r) => r.seed.startsWith('perso:')).map((r) => ({ ...r, seed: r.seed.slice(6) }));
   const baseline = existsSync('docs/qa/balls-fun-baseline.json') ? (JSON.parse(readFileSync('docs/qa/balls-fun-baseline.json', 'utf8')) as unknown) : null;
   const usage: Record<string, number> = {};
@@ -436,6 +442,83 @@ test('pools : personnel (profil vierge, 3 éléments) contre standard (défi, 27
     expect(row.pageErrors, `erreurs page ${tag}`).toEqual([]);
     expect(row.consoleErrors, `erreurs console ${tag}`).toEqual([]);
     expect(row.softlocks, `softlocks ${tag}`).toEqual([]);
+    expect(FATAL, `arrêt fatal ${tag}`).not.toContain(row.stopReason);
+    if (row.stopReason === 'gameover') expect(row.runOverCount, `run:over unique ${tag}`).toBe(1);
+  }
+});
+
+// --- Forge (docs/HYBRIDS.md, 2026-10-17) : pool standard du défi (27 balles), mêmes bots et graines que le test des pools,
+// avec la boutique « forgeron » (forge dès que possible, Divine d'abord ; sinon catalyseur s'il est payable ; puis la
+// politique d'achat habituelle). Référence « sans forge » : les lignes standard du test précédent (même graine, même bot).
+// Mesures : taux de runs qui forgent, boutiques où une forge est possible (cible HYBRIDS.md : ≥ 1 sur 4), vague atteinte
+// avec / sans hybride. Sortie : docs/qa/forge-fun.json. N'échoue que sur crash, softlock ou erreur.
+/** budget par run du forgeron (ms réelles, vitesse 8) : une run qui forge beaucoup dépasse vague 20 ; coupée (stop 'timeout') pour tenir la suite < 10 min */
+const FORGE_MAX_MS = 110_000;
+test('forge : pool standard, bot forgeron contre bot sans forge (mêmes graines)', async ({ context }) => {
+  test.setTimeout(420_000);
+  const jobs: Promise<Row>[] = [];
+  for (const g of POOL_GROUPS) for (const seed of SEEDS) jobs.push(context.newPage().then((p) => runFast(p, g, seed, `/?seed=${seed}&goal=0&qa=1`, true, FORGE_MAX_MS)));
+  let base = standardRows;
+  if (!base) for (const g of POOL_GROUPS) for (const seed of SEEDS) jobs.push(context.newPage().then((p) => runFast(p, g, seed, `/?seed=${seed}&goal=0&qa=1`).then((r) => ({ ...r, seed: `base:${seed}` }))));
+  const all = await Promise.all(jobs);
+  const forgeRows = all.filter((r) => !r.seed.startsWith('base:'));
+  if (!base) base = all.filter((r) => r.seed.startsWith('base:')).map((r) => ({ ...r, seed: r.seed.slice(5) }));
+  const shops = forgeRows.reduce((a, r) => a + r.forge.shops, 0);
+  const sum = (rows: Row[], f: (r: Row) => number): number => rows.reduce((a, r) => a + f(r), 0);
+  const withH = forgeRows.filter((r) => r.forge.forged.length > 0);
+  const withoutH = forgeRows.filter((r) => r.forge.forged.length === 0);
+  const pairs = forgeRows.map((r) => {
+    const b = base!.find((x) => x.bot === r.bot && x.seed === r.seed);
+    return {
+      bot: r.bot, seed: r.seed, forged: r.forge.forged, firstForgeWave: r.forge.firstForgeWave, shops: r.forge.shops,
+      shopsWithCatalyst: r.forge.shopsWithCatalyst, shopsForgeable: r.forge.shopsForgeable, shopsForgeTooExpensive: r.forge.shopsForgeTooExpensive, catalysts: r.forge.catalysts,
+      wave: r.waveOfDeath, depth: r.depth, bestShotDamage: r.bestShotDamage, min: r.durationHumanMin, stop: r.stopReason,
+      baseWave: b?.waveOfDeath ?? null, baseDepth: b?.depth ?? null, baseBestShotDamage: b?.bestShotDamage ?? null,
+      baseShopsForgeable: b?.forge.shopsForgeable ?? null, baseShops: b?.forge.shops ?? null,
+      volley: r.finalVolley,
+    };
+  });
+  const out = {
+    generatedAt: new Date().toISOString(),
+    method: 'pool standard (?seed=qa-N&goal=0&qa=1), bots tight (naïf rafale) et conditional, seeds qa-1…qa-5, vitesse 8, seconde chance gratuite ; forgeron = forge dès que possible (Divine d\'abord), sinon catalyseur payable, puis achat habituel',
+    summary: {
+      runs: forgeRows.length,
+      forgeRunRate: Math.round((withH.length / Math.max(1, forgeRows.length)) * 100) / 100,
+      forgedTotal: sum(forgeRows, (r) => r.forge.forged.length),
+      forgedByResult: forgeRows.flatMap((r) => r.forge.forged).reduce<Record<string, number>>((m, k) => ((m[k] = (m[k] ?? 0) + 1), m), {}),
+      shops,
+      shopsWithCatalystRate: Math.round((sum(forgeRows, (r) => r.forge.shopsWithCatalyst) / Math.max(1, shops)) * 100) / 100,
+      shopsForgeableRate: Math.round((sum(forgeRows, (r) => r.forge.shopsForgeable) / Math.max(1, shops)) * 100) / 100,
+      shopsForgeTooExpensive: sum(forgeRows, (r) => r.forge.shopsForgeTooExpensive),
+      catalystsBought: sum(forgeRows, (r) => r.forge.catalysts),
+      baseShopsForgeableRate: Math.round((sum(base, (r) => r.forge.shopsForgeable) / Math.max(1, sum(base, (r) => r.forge.shops))) * 100) / 100,
+      firstForgeWave: avg(withH, (r) => r.forge.firstForgeWave),
+      waveWithHybrid: avg(withH, (r) => r.waveOfDeath),
+      waveWithoutHybrid: avg(withoutH, (r) => r.waveOfDeath),
+      waveForgeBot: avg(forgeRows, (r) => r.waveOfDeath),
+      waveBaseBot: avg(base, (r) => r.waveOfDeath),
+      /** mêmes graines : vague du forgeron − vague sans forge, sur les runs qui ont forgé */
+      waveDeltaWhenForged: avg(withH, (r) => {
+        const b = base!.find((x) => x.bot === r.bot && x.seed === r.seed);
+        return b ? r.waveOfDeath - b.waveOfDeath : null;
+      }),
+      bestShotDamageWithHybrid: avg(withH, (r) => r.bestShotDamage),
+      bestShotDamageWithoutHybrid: avg(withoutH, (r) => r.bestShotDamage),
+      durationHumanMinForge: avg(forgeRows, (r) => r.durationHumanMin),
+      durationHumanMinBase: avg(base, (r) => r.durationHumanMin),
+      deadMoments: sum(forgeRows, (r) => r.deadMoments.length),
+      errors: sum(forgeRows, (r) => r.consoleErrors.length + r.pageErrors.length),
+    },
+    runs: pairs,
+  };
+  writeFileSync('docs/qa/forge-fun.json', JSON.stringify(out, null, 2) + '\n');
+  test.info().annotations.push({ type: 'forge-fun', description: JSON.stringify(out.summary) });
+  for (const row of forgeRows) {
+    const tag = `forge ${row.bot}/${row.seed}`;
+    expect(row.pageErrors, `erreurs page ${tag}`).toEqual([]);
+    expect(row.consoleErrors, `erreurs console ${tag}`).toEqual([]);
+    expect(row.softlocks, `softlocks ${tag}`).toEqual([]);
+    expect(row.violations.filter((v) => v.kind.includes('nan')), `NaN ${tag}`).toEqual([]);
     expect(FATAL, `arrêt fatal ${tag}`).not.toContain(row.stopReason);
     if (row.stopReason === 'gameover') expect(row.runOverCount, `run:over unique ${tag}`).toBe(1);
   }

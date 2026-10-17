@@ -1,0 +1,27 @@
+{
+  "element": "quake",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 4896,
+      "perShotMean": 272
+    },
+    "r2": {
+      "damage": 8956,
+      "perShotMean": 498
+    },
+    "r3": {
+      "damage": 9572,
+      "perShotMean": 532
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

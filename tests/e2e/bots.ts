@@ -34,6 +34,23 @@ export interface QaInstallOptions {
   /** zone morte et plage du geste (px CSS), recopiées de ui/input.ts (défaut 150 / 220) */
   spreadDeadPx?: number;
   spreadRangePx?: number;
+  /** boutique « forgeron » (docs/HYBRIDS.md) : forge dès que possible (Divine d'abord), sinon achète le catalyseur,
+   *  puis la politique d'achat habituelle du bot ; défaut false (comportement d'avant la forge) */
+  forge?: boolean;
+}
+
+export interface ForgeTally {
+  /** boutiques ouvertes */
+  shops: number;
+  /** boutiques avec un article catalyseur à l'ouverture */
+  shopsWithCatalyst: number;
+  /** boutiques où sim.forgeOptions() a été non vide à un moment (avant ou après le catalyseur) */
+  shopsForgeable: number;
+  /** boutiques où une forge était possible mais trop chère */
+  shopsForgeTooExpensive: number;
+  catalysts: number;
+  forged: string[];
+  firstForgeWave: number | null;
 }
 
 export interface PlayCondition {
@@ -138,6 +155,7 @@ export interface QaReport {
   /** dégâts totaux de block:hit (pour la part de la balle dorée) */
   hitDamage: number;
   rewardSources: Record<string, number>;
+  forge: ForgeTally;
   /** premier reward:offered (source) */
   firstOfferSource: string | null;
   pageErrors: string[];
@@ -242,6 +260,9 @@ export function qaInstall(opt: QaInstallOptions): void {
     shotGoldenKills: 0,
     hitDamage: 0,
     rewardSources: {} as Record<string, number>,
+    forge: { shops: 0, shopsWithCatalyst: 0, shopsForgeable: 0, shopsForgeTooExpensive: 0, catalysts: 0, forged: [], firstForgeWave: null } as ForgeTally,
+    forgeableShop: false,
+    forgePoorShop: false,
     firstOfferSource: null as string | null,
   };
   for (const d of sim.config.contracts?.defs ?? []) rec.contractKind.set(d.id, d.kind);
@@ -624,6 +645,35 @@ export function qaInstall(opt: QaInstallOptions): void {
     shop.items.forEach((it, i) => {
       if (!it.sold && it.price <= s.coins) affordable.push(i);
     });
+    // suivi de la forge (tous les bots) : une forge est-elle possible dans cette boutique ?
+    const fopts = typeof sim.forgeOptions === 'function' ? sim.forgeOptions() : [];
+    if (fopts.length && !rec.forgeableShop) {
+      rec.forgeableShop = true;
+      rec.forge.shopsForgeable++;
+    }
+    if (opt.forge) {
+      const ok = fopts.filter((o) => o.cost <= s.coins);
+      if (fopts.length && !ok.length && !rec.forgePoorShop) {
+        rec.forgePoorShop = true;
+        rec.forge.shopsForgeTooExpensive++;
+      }
+      const o = ok.find((x) => x.result === 'divine') ?? ok[0];
+      if (o && sim.forge(o.i, o.j)) {
+        rec.forge.forged.push(o.result);
+        if (rec.forge.firstForgeWave === null) rec.forge.firstForgeWave = s.wave;
+        return;
+      }
+      const ci = shop.items.findIndex((it) => it.catalyst === true && !it.sold && it.price <= s.coins);
+      if (ci >= 0) {
+        const before = s.coins;
+        sim.buy(ci);
+        if (sim.state.coins !== before) {
+          rec.forge.catalysts++;
+          rec.buys++;
+          return;
+        }
+      }
+    }
     let pick = -1;
     if (opt.bot === 'greedy') {
       pick = affordable.find((i) => shop.items[i]?.option.kind === 'ball') ?? -1;
@@ -671,7 +721,13 @@ export function qaInstall(opt: QaInstallOptions): void {
       });
       rec.firingStart = -1;
     }
-    if (next === 'shop') rec.buysAtShopOpen = rec.buys;
+    if (next === 'shop') {
+      rec.buysAtShopOpen = rec.buys;
+      rec.forge.shops++;
+      rec.forgeableShop = false;
+      rec.forgePoorShop = false;
+      if (s.shop?.items.some((it) => it.catalyst === true)) rec.forge.shopsWithCatalyst++;
+    }
     if (next === 'gameover') closeGap();
     checkInvariants(`${prev}->${next}`);
   }
@@ -711,6 +767,7 @@ export function qaInstall(opt: QaInstallOptions): void {
       hitDamage: rec.hitDamage,
       rewardSources: { ...rec.rewardSources },
       firstOfferSource: rec.firstOfferSource,
+      forge: { ...rec.forge, forged: rec.forge.forged.slice() },
       pageErrors: api.errors.slice(startErrors),
       state: {
         phase: s.phase,
@@ -884,6 +941,7 @@ export function qaInstall(opt: QaInstallOptions): void {
     if (p.spreadMode !== undefined) opt.spreadMode = p.spreadMode;
     if (p.spreadDeadPx !== undefined) opt.spreadDeadPx = p.spreadDeadPx;
     if (p.spreadRangePx !== undefined) opt.spreadRangePx = p.spreadRangePx;
+    if (p.forge !== undefined) opt.forge = p.forge;
     rec.nextFireAt = -1;
   }
 
@@ -956,6 +1014,7 @@ export async function installBot(page: Page, o: Partial<QaInstallOptions> & { bo
     spreadMode: o.spreadMode ?? 'none',
     spreadDeadPx: o.spreadDeadPx ?? 150,
     spreadRangePx: o.spreadRangePx ?? 220,
+    forge: o.forge ?? false,
   };
   await page.evaluate(qaInstall, opts);
 }

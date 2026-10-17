@@ -1,0 +1,31 @@
+{
+  "seed": "forge-divine",
+  "sameBoard": true,
+  "divine": {
+    "shots": 3,
+    "shotDamage": [
+      249,
+      342,
+      296
+    ],
+    "maxShot": 342,
+    "maxHit": 57,
+    "explodeDivine": 4,
+    "chainDivine": 5,
+    "hitsByEl": {
+      "stone": 9,
+      "divine": 27
+    }
+  },
+  "stone": {
+    "shots": 3,
+    "shotDamage": [
+      54,
+      54,
+      54
+    ],
+    "maxShot": 54,
+    "maxHit": 24
+  },
+  "ratioMaxShot": 6.33
+}

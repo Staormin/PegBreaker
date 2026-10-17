@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T15:28:18.622Z",
+  "generatedAt": "2026-10-17T16:22:27.062Z",
   "method": "tight = naïf rafale, conditional = sélecteur conditionnel ; seeds qa-1…qa-5 ; vitesse 8 ; seconde chance gratuite (qa=1, stats.runs = 0)",
   "baseline": {
     "source": "docs/qa/fun-final.json au commit 8294ebb (rapport docs/qa/fun-final.md, généré 2026-10-16T22:57:18.939Z, build 0.4.0-j4) : pool personnel d'un profil vierge (stone, fire, lightning)",
@@ -74,7 +74,7 @@
         "contractsOfferedPerRun": 7.6,
         "contractsCompletedPerRun": 3.2,
         "contractSuccessRate": 0.42,
-        "durationHumanMin": 4.58,
+        "durationHumanMin": 4.59,
         "bestShotDamage": 4495.8,
         "fusions": 1.8,
         "shots": 72.4,
@@ -90,7 +90,7 @@
           "contracts": 2,
           "fusions": 2,
           "volley": 12,
-          "min": 3.5,
+          "min": 3.49,
           "stop": "gameover"
         },
         {
@@ -101,7 +101,7 @@
           "contracts": 3,
           "fusions": 1,
           "volley": 21,
-          "min": 4.45,
+          "min": 4.48,
           "stop": "gameover"
         },
         {
@@ -112,7 +112,7 @@
           "contracts": 5,
           "fusions": 5,
           "volley": 29,
-          "min": 6.79,
+          "min": 6.78,
           "stop": "gameover"
         },
         {
@@ -134,7 +134,7 @@
           "contracts": 1,
           "fusions": 0,
           "volley": 16,
-          "min": 3.57,
+          "min": 3.61,
           "stop": "gameover"
         }
       ]
@@ -149,7 +149,7 @@
         "contractsOfferedPerRun": 10.6,
         "contractsCompletedPerRun": 6.6,
         "contractSuccessRate": 0.62,
-        "durationHumanMin": 9.15,
+        "durationHumanMin": 9.16,
         "bestShotDamage": 39335.2,
         "fusions": 18.8,
         "shots": 116.6,
@@ -165,7 +165,7 @@
           "contracts": 5,
           "fusions": 2,
           "volley": 18,
-          "min": 5.18,
+          "min": 5.23,
           "stop": "gameover"
         },
         {
@@ -176,7 +176,7 @@
           "contracts": 13,
           "fusions": 73,
           "volley": 29,
-          "min": 18.84,
+          "min": 18.88,
           "stop": "gameover"
         },
         {
@@ -187,7 +187,7 @@
           "contracts": 7,
           "fusions": 14,
           "volley": 29,
-          "min": 9.22,
+          "min": 9.18,
           "stop": "gameover"
         },
         {
@@ -198,7 +198,7 @@
           "contracts": 5,
           "fusions": 4,
           "volley": 29,
-          "min": 8.55,
+          "min": 8.52,
           "stop": "gameover"
         },
         {
@@ -209,7 +209,7 @@
           "contracts": 3,
           "fusions": 1,
           "volley": 15,
-          "min": 3.94,
+          "min": 3.98,
           "stop": "gameover"
         }
       ]
@@ -218,18 +218,18 @@
   "standard": {
     "tight": {
       "average": {
-        "waveOfDeath": 11.8,
-        "depth": 123.4,
-        "firstLossWave": 9.6,
+        "waveOfDeath": 11.6,
+        "depth": 120.4,
+        "firstLossWave": 9.4,
         "comboGe5": 0.6,
         "comboGe8": 0.46,
-        "contractsOfferedPerRun": 10.4,
-        "contractsCompletedPerRun": 5.4,
-        "contractSuccessRate": 0.52,
-        "durationHumanMin": 10.41,
-        "bestShotDamage": 33913.8,
-        "fusions": 11.8,
-        "shots": 123.4,
+        "contractsOfferedPerRun": 10.2,
+        "contractsCompletedPerRun": 5,
+        "contractSuccessRate": 0.49,
+        "durationHumanMin": 10.02,
+        "bestShotDamage": 14941.6,
+        "fusions": 11.4,
+        "shots": 120.4,
         "deadMoments": 0,
         "errors": 0
       },
@@ -237,34 +237,34 @@
         {
           "seed": "qa-1",
           "waveOfDeath": 10,
-          "depth": 115,
-          "comboGe5": 0.62,
+          "depth": 113,
+          "comboGe5": 0.6,
           "contracts": 6,
           "fusions": 3,
           "volley": 23,
-          "min": 8.67,
+          "min": 8.83,
           "stop": "gameover"
         },
         {
           "seed": "qa-2",
           "waveOfDeath": 11,
-          "depth": 120,
-          "comboGe5": 0.42,
+          "depth": 119,
+          "comboGe5": 0.47,
           "contracts": 5,
-          "fusions": 12,
+          "fusions": 10,
           "volley": 29,
-          "min": 9.62,
+          "min": 8.97,
           "stop": "gameover"
         },
         {
           "seed": "qa-3",
-          "waveOfDeath": 17,
-          "depth": 177,
-          "comboGe5": 0.75,
-          "contracts": 8,
+          "waveOfDeath": 16,
+          "depth": 165,
+          "comboGe5": 0.74,
+          "contracts": 6,
           "fusions": 23,
           "volley": 30,
-          "min": 17.05,
+          "min": 15.56,
           "stop": "gameover"
         },
         {
@@ -275,7 +275,7 @@
           "contracts": 6,
           "fusions": 20,
           "volley": 30,
-          "min": 12.66,
+          "min": 12.6,
           "stop": "gameover"
         },
         {
@@ -286,7 +286,7 @@
           "contracts": 2,
           "fusions": 1,
           "volley": 16,
-          "min": 4.07,
+          "min": 4.13,
           "stop": "gameover"
         }
       ]
@@ -294,17 +294,17 @@
     "conditional": {
       "average": {
         "waveOfDeath": 9.6,
-        "depth": 94.4,
+        "depth": 94.6,
         "firstLossWave": 7.4,
-        "comboGe5": 0.56,
-        "comboGe8": 0.46,
+        "comboGe5": 0.55,
+        "comboGe8": 0.45,
         "contractsOfferedPerRun": 8.4,
-        "contractsCompletedPerRun": 4.8,
-        "contractSuccessRate": 0.57,
-        "durationHumanMin": 8.01,
-        "bestShotDamage": 7536.6,
-        "fusions": 7.4,
-        "shots": 94.4,
+        "contractsCompletedPerRun": 4.6,
+        "contractSuccessRate": 0.55,
+        "durationHumanMin": 7.98,
+        "bestShotDamage": 7521.6,
+        "fusions": 7.6,
+        "shots": 94.6,
         "deadMoments": 0,
         "errors": 0
       },
@@ -317,18 +317,18 @@
           "contracts": 4,
           "fusions": 0,
           "volley": 16,
-          "min": 5.61,
+          "min": 5.62,
           "stop": "gameover"
         },
         {
           "seed": "qa-2",
           "waveOfDeath": 7,
-          "depth": 66,
-          "comboGe5": 0.39,
-          "contracts": 4,
-          "fusions": 2,
-          "volley": 20,
-          "min": 4.87,
+          "depth": 67,
+          "comboGe5": 0.33,
+          "contracts": 3,
+          "fusions": 3,
+          "volley": 18,
+          "min": 4.72,
           "stop": "gameover"
         },
         {
@@ -339,7 +339,7 @@
           "contracts": 6,
           "fusions": 11,
           "volley": 29,
-          "min": 9.9,
+          "min": 9.91,
           "stop": "gameover"
         },
         {
@@ -350,7 +350,7 @@
           "contracts": 8,
           "fusions": 24,
           "volley": 29,
-          "min": 17.22,
+          "min": 17.24,
           "stop": "gameover"
         },
         {
@@ -361,50 +361,52 @@
           "contracts": 2,
           "fusions": 0,
           "volley": 11,
-          "min": 2.45,
+          "min": 2.4,
           "stop": "gameover"
         }
       ]
     }
   },
   "rewardsTakenStandard": {
-    "fuse:stone2": 10,
+    "fuse:stone2": 11,
     "relic:piggy": 5,
-    "relic:bouncy": 5,
     "relic:pactole": 4,
-    "relic:radar": 4,
-    "ball:lead": 4,
-    "ball:echo": 4,
     "relic:permafrost": 4,
+    "relic:bouncy": 4,
     "ball:rust": 3,
     "ball:stone": 3,
     "relic:ricochet": 3,
     "ball:giant": 3,
+    "ball:lead": 3,
     "relic:berserk": 3,
     "relic:catalyseur": 3,
     "relic:firstblood": 3,
     "relic:flipper": 3,
+    "ball:prism": 3,
+    "ball:pierce": 3,
+    "relic:radar": 2,
+    "relic:bigboom": 2,
     "relic:enclume": 2,
-    "ball:void": 2,
+    "fuse:stone3": 2,
+    "ball:twin": 2,
     "ball:split": 2,
-    "relic:safetynet": 2,
-    "ball:shock": 2,
-    "ball:boomerang": 2,
+    "ball:echo": 2,
+    "relic:paratonnerre": 2,
     "relic:alchimie": 2,
-    "ball:pierce": 2,
-    "ball:prism": 2,
     "relic:magnet": 2,
     "relic:gourmand": 2,
     "ball:lightning": 1,
-    "relic:bigboom": 1,
     "ball:nova": 1,
-    "fuse:rust3": 1,
+    "ball:fire": 1,
+    "fuse:split3": 1,
     "ball:crystal": 1,
     "ball:swarm": 1,
     "ball:vampire": 1,
-    "relic:paratonnerre": 1,
+    "ball:shock": 1,
+    "ball:void": 1,
     "relic:spectre": 1,
-    "fuse:stone3": 1,
+    "ball:boomerang": 1,
+    "relic:safetynet": 1,
     "relic:mitose": 1
   }
 }

@@ -1,0 +1,27 @@
+{
+  "element": "cluster",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 8362,
+      "perShotMean": 465
+    },
+    "r2": {
+      "damage": 11768,
+      "perShotMean": 654
+    },
+    "r3": {
+      "damage": 16457,
+      "perShotMean": 914
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

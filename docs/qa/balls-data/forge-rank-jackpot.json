@@ -1,0 +1,27 @@
+{
+  "element": "jackpot",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 3018,
+      "perShotMean": 168
+    },
+    "r2": {
+      "damage": 4188,
+      "perShotMean": 233
+    },
+    "r3": {
+      "damage": 7169,
+      "perShotMean": 398
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

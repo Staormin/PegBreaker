@@ -1,0 +1,132 @@
+{
+  "element": "divine",
+  "seed": "forge-divine",
+  "signal": "block:explode element 'divine' (nova) + lightning:chain element 'divine' (Jugement)",
+  "measured": "18 novas, 17 éclairs du Jugement, dégâts/tir [216,117,234,228,282,363]",
+  "ok": true,
+  "consoleErrors": [],
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 3,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 12099.99999999967,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 55,
+      "block:destroyed": 23,
+      "drop:spawned": 23,
+      "contract:progress": 4,
+      "drop:collected": 22,
+      "ball:bounce": 42,
+      "combo:milestone": 15,
+      "block:explode": 20,
+      "ball:grounded": 30,
+      "lightning:chain": 17,
+      "volley:end": 6,
+      "rows:advanced": 4,
+      "contract:completed": 2,
+      "wave:cleared": 2,
+      "reward:offered": 2,
+      "reward:chosen": 2,
+      "contract:offered": 1,
+      "volley:fusion": 1
+    },
+    "explodeByEl": {
+      "divine": 18,
+      "explosive": 2
+    },
+    "chainByEl": {
+      "divine": 17
+    },
+    "splitByEl": {},
+    "healBySource": {},
+    "destroyedByEl": {
+      "divine": 22,
+      "stone": 1
+    },
+    "hitsByEl": {
+      "divine": 46,
+      "stone": 9
+    },
+    "damageByEl": {
+      "divine": 1350,
+      "stone": 90
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 7,
+      "hits": 46,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.156,
+      "radiusMax": 0.156,
+      "speedRatioMin": 0.9999999999999999,
+      "speedRatioMax": 1,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 12,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 22,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 12,
+      "comboMax": 8,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 1516.6666666666797
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 42,
+    "devOver2": 0,
+    "maxLive": 5,
+    "maxParticles": 225,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      216,
+      117,
+      234,
+      228,
+      282,
+      363
+    ],
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 0,
+      "wraithSamples": 18,
+      "critCoinSteps": 2,
+      "critHits": 7,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1,
+      "groundBouncesMaxPerBall": 0
+    }
+  }
+}

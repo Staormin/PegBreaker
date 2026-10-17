@@ -1,0 +1,27 @@
+{
+  "element": "wraith",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 6802,
+      "perShotMean": 378
+    },
+    "r2": {
+      "damage": 11921,
+      "perShotMean": 662
+    },
+    "r3": {
+      "damage": 19653,
+      "perShotMean": 1092
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

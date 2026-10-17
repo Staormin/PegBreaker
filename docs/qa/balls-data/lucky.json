@@ -156,7 +156,7 @@
     "devSamples": 49,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 69,
+    "maxParticles": 67,
     "nan": [],
     "violations": [],
     "pageErrors": [],
@@ -168,6 +168,16 @@
       30,
       520
     ],
-    "captured": true
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 0,
+      "wraithSamples": 0,
+      "critCoinSteps": 0,
+      "critHits": 3,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1,
+      "groundBouncesMaxPerBall": 0
+    }
   }
 }

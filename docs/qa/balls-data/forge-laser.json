@@ -1,0 +1,135 @@
+{
+  "element": "laser",
+  "seed": "forge-laser",
+  "signal": "lightning:chain element 'laser' (colonne)",
+  "measured": "12 rayons colonne, 5 prisme, 16 foudre",
+  "ok": true,
+  "consoleErrors": [],
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 2,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 11149.999999999809,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 51,
+      "lightning:chain": 33,
+      "ball:bounce": 48,
+      "block:destroyed": 18,
+      "drop:spawned": 10,
+      "ball:grounded": 30,
+      "volley:end": 6,
+      "rows:advanced": 5,
+      "drop:collected": 7,
+      "wave:cleared": 1,
+      "reward:offered": 1,
+      "volley:fusion": 1,
+      "reward:chosen": 1,
+      "contract:offered": 1,
+      "block:explode": 1
+    },
+    "explodeByEl": {
+      "explosive": 1
+    },
+    "chainByEl": {
+      "lightning": 16,
+      "prism": 5,
+      "laser": 12
+    },
+    "splitByEl": {},
+    "healBySource": {},
+    "destroyedByEl": {
+      "laser": 10,
+      "lightning": 5,
+      "prism": 3
+    },
+    "hitsByEl": {
+      "laser": 29,
+      "lightning": 16,
+      "prism": 6
+    },
+    "damageByEl": {
+      "laser": 579,
+      "lightning": 232,
+      "prism": 124
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 0,
+      "hits": 29,
+      "acidMax": 0,
+      "acidBlocks": 0,
+      "acidChargedAtFire": 0,
+      "acidTickBlocks": 0,
+      "acidTickDamage": 0,
+      "acidQAtFire": 0,
+      "acidAliveAtEnd": 0,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 0.9999999999999998,
+      "speedRatioMax": 1,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 7,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 10,
+      "comboMax": 2,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 1633.333333333274,
+        "2": 1516.6666666666115,
+        "3": 1499.9999999999454
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 48,
+    "devOver2": 0,
+    "maxLive": 5,
+    "maxParticles": 179,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      108,
+      75,
+      86,
+      93,
+      405,
+      168
+    ],
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 0,
+      "wraithSamples": 10,
+      "critCoinSteps": 0,
+      "critHits": 0,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1.0000000000000002,
+      "groundBouncesMaxPerBall": 0
+    }
+  }
+}

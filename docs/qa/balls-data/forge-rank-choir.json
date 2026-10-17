@@ -1,0 +1,27 @@
+{
+  "element": "choir",
+  "seeds": [
+    "balls-ref-1",
+    "balls-ref-2",
+    "balls-ref-3"
+  ],
+  "beef": 2000,
+  "shots": 6,
+  "ranks": {
+    "r1": {
+      "damage": 4552,
+      "perShotMean": 253
+    },
+    "r2": {
+      "damage": 6396,
+      "perShotMean": 355
+    },
+    "r3": {
+      "damage": 9785,
+      "perShotMean": 544
+    }
+  },
+  "errors": [],
+  "knownBugFG01": 0,
+  "consoleErrors": []
+}

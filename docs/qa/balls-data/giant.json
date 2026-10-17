@@ -69,7 +69,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 14533.33333333265,
+    "simMs": 14483.333333332657,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
@@ -148,15 +148,15 @@
       "homingOverMax": [],
       "flightMsMaxByTier": {
         "1": 2533.3333333335177,
-        "2": 1850.0000000000066,
-        "3": 2083.333333333329
+        "2": 1850.0000000000086,
+        "3": 2083.3333333333308
       },
       "groundedBeforeMs": 0
     },
     "devSamples": 78,
     "devOver2": 2,
     "maxLive": 5,
-    "maxParticles": 119,
+    "maxParticles": 116,
     "nan": [],
     "violations": [],
     "pageErrors": [],
@@ -168,6 +168,16 @@
       1184,
       278
     ],
-    "captured": true
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 0,
+      "wraithBoost": 0,
+      "wraithSamples": 11,
+      "critCoinSteps": 0,
+      "critHits": 0,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1.0000000000000002,
+      "groundBouncesMaxPerBall": 0
+    }
   }
 }

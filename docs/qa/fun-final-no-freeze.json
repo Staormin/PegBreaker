@@ -1,11 +1,11 @@
 {
-  "firingFrames": 985,
+  "firingFrames": 986,
   "firingFrozen": 0,
   "triggers": 17,
   "milestones": {
     "1": 32
   },
-  "maxParticles": 137,
+  "maxParticles": 134,
   "slowmo": {
     "level3": 0,
     "ratioMin": null

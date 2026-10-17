@@ -1,0 +1,117 @@
+{
+  "element": "abyss",
+  "seed": "forge-abyss",
+  "signal": "acide sur un bloc jamais touché par l'abysse (propagation)",
+  "measured": "7 blocs contaminés à distance, 9 blocs chargés (max 3)",
+  "ok": true,
+  "consoleErrors": [],
+  "report": {
+    "done": "shots",
+    "shots": 6,
+    "wave": 1,
+    "depth": 6,
+    "hp": 5,
+    "maxHp": 5,
+    "simMs": 7450.000000000185,
+    "counts": {
+      "volley:start": 6,
+      "ball:launched": 30,
+      "block:hit": 53,
+      "ball:bounce": 35,
+      "ball:grounded": 30,
+      "volley:end": 6,
+      "rows:advanced": 6,
+      "block:destroyed": 1,
+      "contract:progress": 1
+    },
+    "explodeByEl": {},
+    "chainByEl": {},
+    "splitByEl": {},
+    "healBySource": {},
+    "destroyedByEl": {
+      "abyss": 1
+    },
+    "hitsByEl": {
+      "abyss": 30,
+      "acid": 23
+    },
+    "damageByEl": {
+      "abyss": 1026,
+      "acid": 2340
+    },
+    "kinds": {
+      "main": 30
+    },
+    "focus": {
+      "critLowCombo": 0,
+      "critHits": 0,
+      "hits": 30,
+      "acidMax": 3,
+      "acidBlocks": 9,
+      "acidChargedAtFire": 14,
+      "acidTickBlocks": 14,
+      "acidTickDamage": 2340,
+      "acidQAtFire": 26,
+      "acidAliveAtEnd": 22,
+      "rowUp": 0,
+      "maxHpDrop": 0,
+      "radiusMin": 0.12,
+      "radiusMax": 0.12,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
+      "homingSamples": 0,
+      "homingDeviated": 0,
+      "homingMaxDevDeg": 0,
+      "groundBounces": 0,
+      "groundedAtOrigin": 0,
+      "groundedTotal": 30,
+      "magnetRemote": 0,
+      "magnetRemoteMaxDist": 0,
+      "dropsCollectedInFlight": 0,
+      "pierceHits": 0,
+      "pierceBlockBounces": 0,
+      "voidMatch": 0,
+      "voidNoBonus": 0,
+      "voidSamples": 0,
+      "goldCoin": 0,
+      "goldBall": 0,
+      "goldDestroyed": 0,
+      "ceilingBounces": 0,
+      "comboMax": 1,
+      "homingMaxDevByTier": {},
+      "homingOverMax": [],
+      "flightMsMaxByTier": {
+        "1": 1016.6666666666683,
+        "2": 1016.6666666666699,
+        "3": 1016.6666666666708
+      },
+      "groundedBeforeMs": 0
+    },
+    "devSamples": 35,
+    "devOver2": 0,
+    "maxLive": 5,
+    "maxParticles": 122,
+    "nan": [],
+    "violations": [],
+    "pageErrors": [],
+    "shotDamage": [
+      171,
+      471,
+      571,
+      671,
+      591,
+      891
+    ],
+    "captured": true,
+    "hyb": {
+      "acidUnhit": 7,
+      "wraithBoost": 0,
+      "wraithSamples": 0,
+      "critCoinSteps": 0,
+      "critHits": 0,
+      "rowShiftSteps": 0,
+      "speedUpMax": 1,
+      "groundBouncesMaxPerBall": 0
+    }
+  }
+}

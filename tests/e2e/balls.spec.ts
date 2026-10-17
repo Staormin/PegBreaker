@@ -9,6 +9,8 @@
 // il lit les événements du pas ET l'état (balles, blocs) pour détecter les signaux de mécanique, les NaN et les
 // invariants. Aucun code du jeu n'est modifié. Résultats : docs/qa/balls-data/<id>.json, capture en vol :
 // docs/qa/balls-shots/<id>.png. Dernier test : perf (30 balles des nouvelles familles, CPU 4×, DPR 1,5).
+// Forge (docs/HYBRIDS.md) : un test par hybride + Divine (effet propre, `forge-<id>.json/png`), dégâts par rang contre
+// 5 pierres (`forge-rank-<id>.json`), BUG FG-01 (test.fail), perf « hybrides + 2 Divines » (`perf-forge.json`).
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import type { BallElement } from '../../src/core/types';
@@ -36,6 +38,8 @@ export interface BallsOpts {
   capture: boolean;
   /** si > 0 : avant chaque tir, les blocs cassables sous ce nombre de PV max passent à ce nombre (hp = maxHp) */
   beef?: number;
+  /** vérifie hp ≤ maxHp à chaque pas fixe (et pas seulement en fin de tir) */
+  strictHp?: boolean;
 }
 
 export interface BallsReport {
@@ -112,6 +116,23 @@ export interface BallsReport {
   pageErrors: string[];
   shotDamage: number[];
   captured: boolean;
+  /** hybrides et Divine (forge, docs/HYBRIDS.md) : signaux des effets propres */
+  hyb: {
+    /** charges d'acide gagnées par un bloc pendant un pas où la balle suivie ne l'a pas touché (propagation : abysse, peste) */
+    acidUnhit: number;
+    /** spectre : impacts au combo du premier impact de la balle mais > 1,1 × ses dégâts */
+    wraithBoost: number;
+    wraithSamples: number;
+    /** jackpot : pas où un critique de la balle suivie et au moins autant de pièces lâchées que de critiques */
+    critCoinSteps: number;
+    critHits: number;
+    /** séisme : pas où ≥ 2 blocs d'une même rangée remontent ensemble */
+    rowShiftSteps: number;
+    /** missile : vitesse max / vitesse au lancement (balles principales suivies, hors rappel) */
+    speedUpMax: number;
+    /** orbite : rebonds au sol max d'une même balle */
+    groundBouncesMaxPerBall: number;
+  };
 }
 
 /** S'exécute dans la page. Installe window.__bt. Autonome. */
@@ -166,7 +187,17 @@ export function ballsInstall(o: BallsOpts): void {
     pageErrors: [],
     shotDamage: [],
     captured: false,
+    hyb: { acidUnhit: 0, wraithBoost: 0, wraithSamples: 0, critCoinSteps: 0, critHits: 0, rowShiftSteps: 0, speedUpMax: 0, groundBouncesMaxPerBall: 0 },
   };
+  const H = R.hyb;
+  const prevAcid = new Map<number, number>();
+  const comboFactor = (c: number): number => {
+    const bc = cfg.balls;
+    return 1 + bc.comboDamagePerBounce * Math.min(c, bc.comboSoftCap) + bc.comboDamagePerBounceAfterCap * Math.max(0, c - bc.comboSoftCap);
+  };
+  const firstHit = new Map<number, { dmg: number; combo: number }>();
+  const groundPerBall = new Map<number, number>();
+  const launchSpeed = new Map<number, number>();
   const F = R.focus;
   const ballMeta = new Map<number, { el: string; golden: boolean; tier: number; seen: boolean; kind: string }>();
   const launchAt = new Map<number, number>();
@@ -231,7 +262,37 @@ export function ballsInstall(o: BallsOpts): void {
     const s = sim.state;
     const bounceCount = new Map<number, { n: number; nx: number; ny: number; surface: string }>();
     const destroyedPos: { x: number; y: number }[] = [];
+    let stepCrit = 0;
+    let stepCoins = 0;
+    const focusHit = new Set<number>();
     for (const e of evs) {
+      if (e.type === 'drop:spawned' && e.kind === 'coin') stepCoins++;
+      if (e.type === 'block:hit' && e.element === o.focus) {
+        focusHit.add(e.blockId);
+        if (e.crit) {
+          stepCrit++;
+          H.critHits++;
+        }
+        const m0 = ballMeta.get(e.ballId);
+        if (m0 && m0.kind === 'main') {
+          const f0 = firstHit.get(e.ballId);
+          if (!f0) firstHit.set(e.ballId, { dmg: e.damage, combo: e.combo });
+          else if (!e.crit && e.hpLeft > 0) {
+            // dégâts attendus sans bonus : premier impact × rapport des facteurs de combo (impacts non létaux seulement :
+            // un coup fatal est plafonné aux PV restants)
+            H.wraithSamples++;
+            if (e.damage > ((f0.dmg * comboFactor(e.combo)) / comboFactor(f0.combo)) * 1.1) H.wraithBoost++;
+          }
+        }
+      }
+      if (e.type === 'ball:bounce' && e.normal.x === 0 && e.normal.y === -1 && e.pos.y >= ROWS - 1e-6) {
+        const m0 = ballMeta.get(e.ballId);
+        if (m0 && m0.el === o.focus) {
+          const n = (groundPerBall.get(e.ballId) ?? 0) + 1;
+          groundPerBall.set(e.ballId, n);
+          if (n > H.groundBouncesMaxPerBall) H.groundBouncesMaxPerBall = n;
+        }
+      }
       inc(R.counts, e.type);
       switch (e.type) {
         case 'volley:start':
@@ -403,6 +464,25 @@ export function ballsInstall(o: BallsOpts): void {
       prevVel.set(b.id, { x: b.vel.x, y: b.vel.y });
     }
     if (live > R.maxLive) R.maxLive = live;
+    if (stepCrit > 0 && stepCoins >= stepCrit) H.critCoinSteps++;
+    for (const b of s.balls) {
+      if (!b.alive || b.element !== o.focus || (b.kind ?? 'main') !== 'main' || s.recallSpeed > 1) continue;
+      const sp = Math.hypot(b.vel.x, b.vel.y);
+      const l0 = launchSpeed.get(b.id);
+      if (l0 === undefined) launchSpeed.set(b.id, sp);
+      else if (l0 > 0 && sp / l0 > H.speedUpMax) H.speedUpMax = sp / l0;
+    }
+    const movedRows = new Map<number, number>();
+    for (const b of s.blocks) {
+      const pr = prevRow.get(b.id);
+      if (pr !== undefined && b.row < pr) movedRows.set(pr, (movedRows.get(pr) ?? 0) + 1);
+      const ac0 = prevAcid.get(b.id) ?? 0;
+      const ac1 = b.acidCharges ?? 0;
+      if (ac1 > ac0 && !focusHit.has(b.id)) H.acidUnhit++;
+      prevAcid.set(b.id, ac1);
+    }
+    for (const n of movedRows.values()) if (n >= 2) H.rowShiftSteps++;
+    if (o.strictHp) for (const b of s.blocks) if (b.hp > b.maxHp + 1e-6) violate(`pas : bloc ${b.id} hp ${b.hp}/${b.maxHp}`);
     for (const b of s.blocks) {
       const pr = prevRow.get(b.id);
       if (pr !== undefined && b.row < pr) F.rowUp++;
@@ -628,6 +708,128 @@ for (const el of NEW) {
   });
 }
 
+// --- Hybrides et Divine (forge, docs/HYBRIDS.md) ------------------------------------------------------------------
+// Même pilote, volée forcée avant chaque tir : 5 balles de l'hybride (rangs I, I, I, II, III) ; Divine : 2 Divines + 3
+// pierres. Signal = l'EFFET PROPRE de l'hybride (les effets parents sont déjà couverts par les tests ci-dessus).
+// Peste : PV ramenés à maxHp − 3 (soin) ; abysse/peste : 8 tirs (la propagation se fait au début du tir suivant) ;
+// abysse : blocs cassables portés à 1 500 PV (`beef`, 6 tirs), à 200 PV ils meurent encore dans le tir (sonde : propagation visible à 4 000 PV).
+const HYBRIDS: BallElement[] = ['steam', 'laser', 'cluster', 'wraith', 'abyss', 'jackpot', 'quake', 'missile', 'supernova', 'plague', 'choir', 'orbit', 'hammer'];
+const HSIG: Record<string, Signal> = {
+  steam: { what: "block:explode element 'steam' (nuage)", ok: (r) => (r.explodeByEl['steam'] ?? 0) > 0, measured: (r) => `${r.explodeByEl['steam'] ?? 0} nuages, ${r.counts['block:frozen'] ?? 0} gels` },
+  laser: { what: "lightning:chain element 'laser' (colonne)", ok: (r) => (r.chainByEl['laser'] ?? 0) > 0, measured: (r) => `${r.chainByEl['laser'] ?? 0} rayons colonne, ${r.chainByEl['prism'] ?? 0} prisme, ${r.chainByEl['lightning'] ?? 0} foudre` },
+  cluster: { what: "ball:split element 'cluster' + block:explode 'cluster' (mini-bombes)", ok: (r) => (r.splitByEl['cluster'] ?? 0) > 0 && (r.explodeByEl['cluster'] ?? 0) > 0, measured: (r) => `${r.splitByEl['cluster'] ?? 0} grappes, ${r.explodeByEl['cluster'] ?? 0} mini-explosions, ${r.explodeByEl['bomb'] ?? 0} bombes` },
+  wraith: { what: 'impact au même combo > 1,1 × le premier impact de la balle (bonus par bloc traversé)', ok: (r) => r.hyb.wraithBoost > 0, measured: (r) => `${r.hyb.wraithBoost}/${r.hyb.wraithSamples} impacts bonifiés` },
+  abyss: { what: 'acide sur un bloc jamais touché par l\'abysse (propagation)', ok: (r) => r.hyb.acidUnhit > 0, measured: (r) => `${r.hyb.acidUnhit} blocs contaminés à distance, ${r.focus.acidBlocks} blocs chargés (max ${r.focus.acidMax})` },
+  jackpot: { what: 'critique → pièce lâchée dans le même pas', ok: (r) => r.hyb.critCoinSteps > 0, measured: (r) => `${r.hyb.critCoinSteps} pas critique+pièce / ${r.hyb.critHits} critiques, ${r.counts['drop:spawned'] ?? 0} drops` },
+  quake: { what: '≥ 2 blocs d\'une même rangée remontent ensemble', ok: (r) => r.hyb.rowShiftSteps > 0, measured: (r) => `${r.hyb.rowShiftSteps} rangées repoussées, ${r.focus.rowUp} reculs de bloc` },
+  missile: { what: "accélération (vitesse > 1,1 × lancement) + block:explode 'missile'", ok: (r) => r.hyb.speedUpMax > 1.1 && (r.explodeByEl['missile'] ?? 0) > 0, measured: (r) => `vitesse ×${r.hyb.speedUpMax.toFixed(2)}, ${r.explodeByEl['missile'] ?? 0} explosions` },
+  supernova: { what: "block:explode element 'supernova' (palier) et aucun éclatement du cristal", ok: (r) => (r.explodeByEl['supernova'] ?? 0) > 0 && (r.splitByEl['crystal'] ?? 0) === 0, measured: (r) => `${r.explodeByEl['supernova'] ?? 0} supernovas, ${r.explodeByEl['nova'] ?? 0} novas, ${r.splitByEl['crystal'] ?? 0} éclatements cristal (attendu 0)` },
+  plague: { what: 'acide propagé à un bloc non touché (mort d\'un bloc rongé) ou soin', ok: (r) => r.hyb.acidUnhit > 0, measured: (r) => `${r.hyb.acidUnhit} blocs contaminés à distance, ${r.healBySource['vampire'] ?? 0} soins` },
+  choir: { what: "ball:split element 'choir' + copies Ball.kind 'echo' (miroirs)", ok: (r) => (r.splitByEl['choir'] ?? 0) > 0 && (r.kinds['echo'] ?? 0) > 0, measured: (r) => `${r.splitByEl['choir'] ?? 0} chœurs, ${r.kinds['mini'] ?? 0} miroirs, ${r.kinds['echo'] ?? 0} échos` },
+  orbit: { what: '≥ 2 rebonds au sol pour une même balle (allers-retours)', ok: (r) => r.hyb.groundBouncesMaxPerBall >= 2, measured: (r) => `${r.hyb.groundBouncesMaxPerBall} rebonds sol max/balle, ${r.focus.magnetRemote} drops aspirés (max ${r.focus.magnetRemoteMaxDist.toFixed(2)} u)` },
+  hammer: { what: 'maxHp d\'un bloc qui baisse + bloc repoussé d\'une rangée', ok: (r) => r.focus.maxHpDrop > 0 && r.focus.rowUp > 0, measured: (r) => `${r.focus.maxHpDrop} blocs érodés, ${r.focus.rowUp} reculs` },
+  divine: { what: "block:explode element 'divine' (nova) + lightning:chain element 'divine' (Jugement)", ok: (r) => (r.explodeByEl['divine'] ?? 0) > 0 && (r.chainByEl['divine'] ?? 0) > 0, measured: (r) => `${r.explodeByEl['divine'] ?? 0} novas, ${r.chainByEl['divine'] ?? 0} éclairs du Jugement, dégâts/tir ${JSON.stringify(r.shotDamage)}` },
+};
+
+for (const el of [...HYBRIDS, 'divine' as BallElement]) {
+  test(`forge ${el} : effet propre observable, 0 erreur, 0 NaN`, async ({ page }) => {
+    test.setTimeout(150_000);
+    mkdirSync(SHOTS_DIR, { recursive: true });
+    mkdirSync(DATA_DIR, { recursive: true });
+    const consoleErrors = watchErrors(page);
+    await page.goto(`/?seed=forge-${el}&qa=1`);
+    await waitReady(page);
+    const divine = el === 'divine';
+    // abysse/peste : propagation au tir suivant ; jackpot/spectre : signaux rares (1 critique, 1-2 impacts bonifiés en 6 tirs)
+    const slow = el === 'abyss' || el === 'plague' || el === 'jackpot' || el === 'wraith';
+    const opts: BallsOpts = {
+      elements: divine ? ['divine', 'stone', 'stone', 'stone', 'divine'] : [el],
+      tiers: divine ? [1, 1, 1, 1, 1] : TIERS,
+      shots: slow ? 8 : SHOTS,
+      speed: 8,
+      wound: el === 'plague',
+      focus: el,
+      capture: true,
+      // abysse : blocs chargés tués dans le tir à 200 PV → 1 500 PV (propagation au tir suivant)
+      ...(el === 'abyss' ? { beef: 1500, shots: 6 } : {}),
+      // supernova : depuis e35c8cf (dégâts relevés) les blocs de vague 1-2 meurent avant le premier palier (combo max 2) →
+      // blocs de 400 PV pour que la balle rebondisse jusqu'aux paliers
+      ...(el === 'supernova' ? { beef: 400 } : {}),
+    };
+    const r = await runBalls(page, opts, `${SHOTS_DIR}/forge-${el}.png`);
+    const sig = HSIG[el] as Signal;
+    const ok = sig.ok(r);
+    const out = { element: el, seed: `forge-${el}`, signal: sig.what, measured: sig.measured(r), ok, consoleErrors, report: r };
+    writeFileSync(`${DATA_DIR}/forge-${el}.json`, JSON.stringify(out, null, 2) + '\n');
+    test.info().annotations.push({ type: el, description: `${sig.what} → ${out.measured}` });
+    expect(r.done, `run arrêtée après ${opts.shots} tirs`).toBe('shots');
+    expect(r.shots).toBe(opts.shots);
+    expect(r.nan, 'aucun NaN dans state').toEqual([]);
+    expect(r.violations, 'invariants').toEqual([]);
+    expect(r.pageErrors, '__pegbreaker.errors').toEqual([]);
+    expect(consoleErrors, 'erreurs console').toEqual([]);
+    expect(r.maxParticles, 'particules ≤ 1024').toBeLessThanOrEqual(1024);
+    expect(r.maxLive, 'balles vivantes ≤ maxLiveBalls').toBeLessThanOrEqual(30);
+    expect(ok, `signal ${el} : ${sig.what} (mesuré : ${out.measured})`).toBe(true);
+  });
+}
+
+// --- Forge : dégâts par rang (cibles HYBRIDS.md : rang I ≈ 3,5×, III ≈ 7×, Divine ≈ 15× la volée de 5 pierres I) ----------
+// Volée de 5 balles du même rang (hybride I, II, III ; Divine : 5 Divines rang I ; référence : 5 pierres I), 6 tirs × 3 graines
+// communes, blocs cassables portés à 2 000 PV (`beef`) pour que les dégâts ne soient pas plafonnés par les PV du plateau.
+// Mesure seulement (n'échoue que sur erreur / NaN) : la monotonie I < II < III est signalée dans docs/qa/forge.md.
+const RANK_SEEDS = ['balls-ref-1', 'balls-ref-2', 'balls-ref-3'];
+const RANK_BEEF = 2000;
+async function rankDamage(page: Page, el: BallElement, tier: number): Promise<{ damage: number; perShot: number[]; errors: string[] }> {
+  let damage = 0;
+  const perShot: number[] = [];
+  const errors: string[] = [];
+  for (const seed of RANK_SEEDS) {
+    await page.goto(`/?seed=${seed}&qa=1`);
+    await waitReady(page);
+    const r = await runBalls(page, { elements: [el], tiers: [tier, tier, tier, tier, tier], shots: SHOTS, speed: 8, wound: false, focus: el, capture: false, beef: RANK_BEEF }, null);
+    damage += r.shotDamage.reduce((a, b) => a + b, 0);
+    perShot.push(...r.shotDamage);
+    errors.push(...r.pageErrors, ...r.violations, ...r.nan);
+    if (r.shots !== SHOTS) errors.push(`${seed} : ${r.shots} tirs (${r.done})`);
+  }
+  return { damage, perShot, errors };
+}
+for (const el of ['stone', ...HYBRIDS, 'divine'] as BallElement[]) {
+  test(`forge rangs ${el} : dégâts I/II/III contre 5 pierres (blocs ${RANK_BEEF} PV)`, async ({ page }) => {
+    test.setTimeout(150_000);
+    mkdirSync(DATA_DIR, { recursive: true });
+    const consoleErrors = watchErrors(page);
+    const tiers = el === 'stone' || el === 'divine' ? [1] : [1, 2, 3];
+    const out: Record<string, { damage: number; perShotMean: number }> = {};
+    const errors: string[] = [];
+    for (const t of tiers) {
+      const r = await rankDamage(page, el, t);
+      out[`r${t}`] = { damage: r.damage, perShotMean: Math.round(r.damage / Math.max(1, r.perShot.length)) };
+      errors.push(...r.errors);
+    }
+    // bug connu FG-01 (docs/qa/forge.md) : Marteau rang III → PV > PV max ; couvert par le test « BUG FG-01 » ci-dessous
+    const known = el === 'hammer' ? errors.filter((e) => /bloc \d+ hp \d+\/\d+/.test(e)) : [];
+    writeFileSync(`${DATA_DIR}/forge-rank-${el}.json`, JSON.stringify({ element: el, seeds: RANK_SEEDS, beef: RANK_BEEF, shots: SHOTS, ranks: out, errors, knownBugFG01: known.length, consoleErrors }, null, 2) + '\n');
+    test.info().annotations.push({ type: el, description: JSON.stringify(out) });
+    expect(errors.filter((e) => !known.includes(e))).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+  });
+}
+
+// BUG FG-01 : Marteau rang III, bloc à PV pleins de 2 000 PV : la perte de PV max (45 %, plafond 400) est ajoutée aux dégâts
+// AVANT le rankMult (0,666) → l'impact retire 400 PV max mais n'inflige que 329 → PV 1 671 / 1 600. Marqué `test.fail` :
+// ce test passera au rouge (« expected to fail ») quand le bug sera corrigé, il faudra alors retirer `test.fail`.
+test('BUG FG-01 : Marteau rang III, PV ≤ PV max à chaque pas (1 tir, blocs 2 000 PV)', async ({ page }) => {
+  test.fail(true, 'FG-01 : hammer rankMult appliqué à la perte de PV max (src/sim/elements/hybrid.ts, hammerOwn + composeHybrid)');
+  test.setTimeout(60_000);
+  await page.goto('/?seed=balls-ref-1&qa=1');
+  await waitReady(page);
+  const r = await runBalls(page, { elements: ['hammer'], tiers: [3, 3, 3, 3, 3], shots: 1, speed: 8, wound: false, focus: 'hammer', capture: false, beef: 2000, strictHp: true }, null);
+  test.info().annotations.push({ type: 'FG-01', description: JSON.stringify(r.violations) });
+  expect(r.violations.filter((v) => /hp \d+\/\d+/.test(v)), 'hp ≤ maxHp').toEqual([]);
+});
+
 const REF_SEEDS = ['balls-ref-1', 'balls-ref-2', 'balls-ref-3'];
 interface RefOne { seed: string; shots: number; damage: number; destroyed: number; wave: number; coins: number; explode: Record<string, number>; chain: Record<string, number>; split: Record<string, number>; heal: Record<string, number>; acidMax: number; rowUp: number; maxHpDrop: number }
 interface RefResult { runs: RefOne[]; damage: number; destroyed: number; coins: number; errors: string[]; nan: string[] }
@@ -675,6 +877,8 @@ const PERF_MIXES: { key: string; label: string; mix: BallElement[]; assertFps: b
   // les 20 nouvelles puis 10 de plus (bombe, prisme, nova, essaim, cristal, jumelle, écho, foudre, feu, scission)
   { key: 'perf', label: 'nouvelles familles', mix: [...NEW, 'bomb', 'prism', 'nova', 'swarm', 'crystal', 'twin', 'echo', 'lightning', 'fire', 'split'], assertFps: true },
   // contrôle : même protocole, 30 balles des 7 éléments d'origine (référence avant les 20 nouvelles)
+  // forge : les 13 hybrides × 2 + 2 Divines + bombe + nova (30 balles)
+  { key: 'perf-forge', label: 'hybrides + 2 Divines', mix: [...HYBRIDS, ...HYBRIDS, 'divine', 'divine', 'bomb', 'nova'], assertFps: true },
   { key: 'perf-control', label: "7 éléments d'origine (contrôle)", mix: Array.from({ length: 30 }, (_, i) => ORIGINAL[i % ORIGINAL.length] as BallElement), assertFps: false },
 ];
 for (const pm of PERF_MIXES) test(`perf : 30 balles, ${pm.label}, CPU 4×, 720×1280 DPR 1,5`, async ({ browser }, testInfo) => {

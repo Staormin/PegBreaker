@@ -36,87 +36,67 @@
   ],
   "shots": 3,
   "fpsSamples": [
-    41,
-    30,
+    49,
+    33,
+    60,
+    60,
+    60,
+    58,
+    56,
     55,
-    60,
-    60,
-    57,
-    46,
-    41,
+    59,
     58,
     53,
-    46,
-    42,
-    59
+    52,
+    60
   ],
-  "fpsMin": 30,
-  "fpsMean": 49.84615384615385,
+  "fpsMin": 33,
+  "fpsMean": 54.84615384615385,
   "frameP50": 16.699999999999818,
-  "frameP95": 33.399999999999864,
-  "frameP99": 50,
-  "frameMax": 183.39999999999964,
-  "frames": 715,
+  "frameP95": 33.29999999999973,
+  "frameP99": 33.400000000001455,
+  "frameMax": 150,
+  "frames": 779,
   "slowFrames": [
     {
-      "sinceFireMs": 52,
-      "dt": 67,
+      "sinceFireMs": 36,
+      "dt": 50,
       "live": 2
     },
     {
-      "sinceFireMs": 518,
-      "dt": 83,
-      "live": 10
-    },
-    {
-      "sinceFireMs": 568,
+      "sinceFireMs": 502,
       "dt": 50,
-      "live": 11
+      "live": 9
     },
     {
-      "sinceFireMs": 1085,
-      "dt": 183,
+      "sinceFireMs": 1036,
+      "dt": 150,
       "live": 16
     },
     {
-      "sinceFireMs": 1185,
-      "dt": 50,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 1235,
-      "dt": 50,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 1468,
+      "sinceFireMs": 1452,
       "dt": 67,
       "live": 21
     },
     {
-      "sinceFireMs": 1618,
+      "sinceFireMs": 1769,
       "dt": 50,
-      "live": 25
+      "live": 27
     },
     {
-      "sinceFireMs": 1835,
+      "sinceFireMs": 1819,
       "dt": 50,
       "live": 26
     },
     {
-      "sinceFireMs": 2236,
+      "sinceFireMs": 2224,
       "dt": 50,
-      "live": 17
+      "live": 18
     },
     {
-      "sinceFireMs": 622,
+      "sinceFireMs": 2094,
       "dt": 50,
-      "live": 12
-    },
-    {
-      "sinceFireMs": 2039,
-      "dt": 50,
-      "live": 19
+      "live": 18
     }
   ],
   "rendererDpr": [
@@ -134,7 +114,7 @@
     1,
     1
   ],
-  "maxParticles": 50,
+  "maxParticles": 58,
   "maxLive": 27,
   "explodeByEl": {
     "bomb": 6

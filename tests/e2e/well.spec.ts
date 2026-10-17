@@ -1,4 +1,7 @@
 // tests/e2e/well.spec.ts — propriétaire : qa-tester. Le Puits après les 20 nouvelles balles (docs/BALLS.md).
+// Forge (docs/HYBRIDS.md, 2026-10-17) : balls.json contient aussi 13 hybrides + la Divine (familles 'hybrid' / 'divine',
+// jamais débloquables au Puits) ; l'Arsenal garde ses 26 nœuds de balles de base, le codex est un onglet à part
+// (`.pane-codex`, couvert par forge.spec.ts). On compare donc l'Arsenal aux seules balles de base.
 // 1. Profil vierge (`?fresh=1`), fragments crédités par localStorage, Puits ouvert via le HUD (.hud-frags) :
 //    26 nœuds de balles (23 `data-unlock="fragments"` + 3 `data-unlock="achievement"` : nova, comète, chance),
 //    filtre par famille (`.well-filter[data-family]`, aria-pressed, second appui = retrait), nœud de succès affiché.
@@ -58,13 +61,18 @@ test('Puits : 26 balles, filtre par famille, succès, achat → la balle entre d
   const cfg = await page.evaluate(() => {
     const c = (window as unknown as QaWindow).__pegbreaker.sim.config;
     return {
-      defs: c.balls.defs.map((d) => ({ id: d.id, family: d.family, name: d.name })),
+      // balles de base seulement : hybrides et Divine viennent de la forge (pas de nœud d'Arsenal)
+      defs: c.balls.defs.filter((d) => d.family !== 'hybrid' && d.family !== 'divine').map((d) => ({ id: d.id, family: d.family, name: d.name })),
+      forged: c.balls.defs.filter((d) => d.family === 'hybrid' || d.family === 'divine').length,
       achEls: c.meta.achievements.filter((a) => a.unlocksElement).map((a) => ({ id: a.id, el: a.unlocksElement as string, name: a.name })),
       magnetCost: c.meta.nodes.find((n) => n.id === 'el_magnet')?.costs[0] ?? -1,
     };
   });
   const nodeEls = (await ballNodes.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.element ?? ''))).sort();
-  expect(nodeEls, 'une entrée par balle sauf la pierre').toEqual(cfg.defs.map((d) => d.id).filter((id) => id !== 'stone').sort());
+  expect(nodeEls, 'une entrée par balle de base sauf la pierre').toEqual(cfg.defs.map((d) => d.id).filter((id) => id !== 'stone').sort());
+  expect(cfg.forged, '13 hybrides + la Divine dans balls.json (hors Arsenal)').toBe(14);
+  await expect(page.locator('.screen-meta .pane-codex .codex-entry'), 'codex : 14 entrées dans un onglet à part').toHaveCount(14);
+  await expect(page.locator('.screen-meta .well-filter[data-family="hybrid"], .screen-meta .well-filter[data-family="divine"]'), 'pas de filtre hybride/divine dans l\'Arsenal').toHaveCount(0);
   await expect(arsenal.locator('.node[data-unlock="fragments"][data-element]')).toHaveCount(23);
   const achNodes = arsenal.locator('.node[data-unlock="achievement"][data-element]');
   await expect(achNodes).toHaveCount(3);
