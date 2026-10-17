@@ -7,36 +7,36 @@
     "dropped": 0,
     "peak": 0,
     "clip": 0,
-    "samples": 1
+    "samples": 2
   },
   "after20Shots": {
     "unlocked": true,
     "state": "running",
-    "nodes": 8005,
-    "accepted": 1586,
-    "dropped": 673,
-    "peak": 0.835,
+    "nodes": 8160,
+    "accepted": 1611,
+    "dropped": 648,
+    "peak": 0.838,
     "clip": 0,
-    "samples": 1323
+    "samples": 1326
   },
   "afterMute": {
     "unlocked": true,
     "state": "running",
-    "nodes": 8005,
-    "accepted": 1586,
-    "dropped": 673,
-    "peak": 0.835,
+    "nodes": 8160,
+    "accepted": 1611,
+    "dropped": 648,
+    "peak": 0.838,
     "clip": 0,
-    "samples": 1392
+    "samples": 1397
   },
   "after3MutedShots": {
     "unlocked": true,
     "state": "running",
-    "nodes": 8005,
-    "accepted": 1586,
-    "dropped": 673,
-    "peak": 0.835,
+    "nodes": 8160,
+    "accepted": 1611,
+    "dropped": 648,
+    "peak": 0.838,
     "clip": 0,
-    "samples": 1642
+    "samples": 1647
   }
 }

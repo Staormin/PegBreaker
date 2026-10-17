@@ -36,62 +36,87 @@
   ],
   "shots": 3,
   "fpsSamples": [
-    50,
-    32,
-    60,
+    44,
+    30,
+    56,
     60,
     60,
     58,
-    58,
-    57,
-    58,
-    59,
+    52,
+    44,
     55,
-    51,
+    53,
+    48,
+    46,
     60
   ],
-  "fpsMin": 32,
-  "fpsMean": 55.23076923076923,
+  "fpsMin": 30,
+  "fpsMean": 51.23076923076923,
   "frameP50": 16.699999999999818,
-  "frameP95": 33.29999999999973,
-  "frameP99": 33.400000000000546,
-  "frameMax": 150,
-  "frames": 783,
+  "frameP95": 33.399999999999636,
+  "frameP99": 50,
+  "frameMax": 166.69999999999982,
+  "frames": 733,
   "slowFrames": [
     {
       "sinceFireMs": 35,
-      "dt": 50,
+      "dt": 67,
       "live": 2
     },
     {
-      "sinceFireMs": 502,
+      "sinceFireMs": 485,
+      "dt": 67,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 535,
       "dt": 50,
-      "live": 9
+      "live": 10
     },
     {
-      "sinceFireMs": 1102,
-      "dt": 150,
-      "live": 17
+      "sinceFireMs": 1018,
+      "dt": 167,
+      "live": 16
     },
     {
-      "sinceFireMs": 1452,
+      "sinceFireMs": 1068,
+      "dt": 50,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1235,
+      "dt": 67,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 1385,
       "dt": 50,
       "live": 21
     },
     {
-      "sinceFireMs": 1602,
+      "sinceFireMs": 1435,
+      "dt": 50,
+      "live": 21
+    },
+    {
+      "sinceFireMs": 1585,
       "dt": 50,
       "live": 25
     },
     {
-      "sinceFireMs": 1802,
+      "sinceFireMs": 1801,
       "dt": 50,
       "live": 26
     },
     {
-      "sinceFireMs": 1852,
+      "sinceFireMs": 1821,
       "dt": 50,
       "live": 25
+    },
+    {
+      "sinceFireMs": 622,
+      "dt": 50,
+      "live": 11
     }
   ],
   "rendererDpr": [
@@ -109,7 +134,7 @@
     1,
     1
   ],
-  "maxParticles": 49,
+  "maxParticles": 48,
   "maxLive": 27,
   "explodeByEl": {
     "bomb": 6

@@ -228,3 +228,46 @@ export function protocolC(el: import('../core/types').BallElement, tier: import(
   }
   return total;
 }
+
+/**
+ * Protocole D (réplique de tests/e2e/forge.spec.ts (d), plateau réel) : bot naïf jusqu'à la récompense de la
+ * vague 3, volée forcée (`volley`), boutique quittée, puis 3 tirs visant le bloc cassable le plus bas (puis le
+ * plus à gauche), récompenses passées. Renvoie les dégâts du meilleur tir (même plateau pour toute volée).
+ */
+export function protocolD(seed: string, volley: VolleyBall[]): number {
+  const sim = newSim(seed, config());
+  for (let k = 0; k < 400; k++) {
+    const s = mut(sim);
+    if (s.phase === 'reward' && s.wave >= 3) break;
+    if (s.phase === 'gameover') return 0;
+    if (s.phase === 'reward') sim.chooseReward(0);
+    else if (s.phase === 'shop') sim.leaveShop();
+    else shoot(sim, lowestBlockDir(sim));
+  }
+  const s = mut(sim);
+  s.volley = volley.map((v) => ({ ...v }));
+  s.coins = 150;
+  s.rewardOffer = [{ kind: 'coins', amount: 0 }];
+  sim.chooseReward(0);
+  if (sim.state.phase === 'shop') sim.leaveShop();
+  let best = 0;
+  for (let n = 0; n < 3 && sim.state.phase !== 'gameover'; ) {
+    const st = mut(sim);
+    if (st.phase === 'reward') {
+      sim.skipReward();
+      continue;
+    }
+    if (st.phase === 'shop') {
+      sim.leaveShop();
+      continue;
+    }
+    let tgt: Block | null = null;
+    for (const b of st.blocks) if (b.kind !== 'peg' && (!tgt || b.row > tgt.row || (b.row === tgt.row && b.col < tgt.col))) tgt = b;
+    const dx = (tgt ? tgt.col + tgt.width / 2 : st.launchPos.x + 0.5) - st.launchPos.x;
+    const dy = Math.min(-0.3, (tgt ? tgt.row + 0.5 : 1) - st.launchPos.y);
+    const l = Math.hypot(dx, dy);
+    for (const e of shoot(sim, { x: dx / l, y: dy / l })) if (e.type === 'volley:end') best = Math.max(best, e.shotDamage);
+    n++;
+  }
+  return best;
+}

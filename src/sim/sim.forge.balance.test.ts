@@ -1,8 +1,8 @@
 // Équilibrage des hybrides et de la Divine, accessibilité de la forge : configuration RÉELLE (dorée, contrats,
 // pénalité d'éventail actifs), contrairement à sim.forge.test.ts (useNeutralFun).
 import { describe, expect, it } from 'vitest';
-import type { BallElement, MetaModifiers } from '../core/types';
-import { config, lowestBlockDir, newSim, protocolDamage, shoot, type BalanceProtocol } from './test-helpers';
+import type { BallElement, MetaModifiers, VolleyBall } from '../core/types';
+import { config, lowestBlockDir, newSim, protocolD, protocolDamage, shoot, type BalanceProtocol } from './test-helpers';
 
 const CFG = config();
 const ALL: BallElement[] = CFG.balls.defs.map((d) => d.id);
@@ -16,11 +16,12 @@ const HYBRIDS: BallElement[] = CFG.balls.defs.filter((d) => d.family === 'hybrid
 //  A : plateau normal, PV × 100 (rien ne plafonne) ; B : blocs remis à 2 000 / 2 000 PV avant chaque tir ;
 //  C : réplique exacte du protocole QA tests/e2e/balls.spec.ts « forge rangs » (docs/qa/forge.md, FG-05).
 // Bandes : A et B : hybride I ∈ [3 ; 4,5], III ∈ [6 ; 9] ; C : III ∈ [6 ; 9] (le rang I y est seulement
-// journalisé : la pierre ne touche qu'une fois par tir sur ce plateau clairsemé) ; Divine ≤ 18 partout.
+// journalisé : la pierre ne touche qu'une fois par tir sur ce plateau clairsemé) ; Divine ≤ 24 partout
+// (balle ultime, décision 2026-10-17) et ≥ 6,5 × la run pierre sur plateau réel (protocole D).
 
 describe('équilibrage des hybrides et de la Divine (relatif à 5 pierres de rang I)', () => {
   for (const proto of ['A', 'B', 'C'] as BalanceProtocol[]) {
-    it(`protocole ${proto} : ${proto === 'C' ? '' : 'hybride I ∈ [3 ; 4,5], '}III ∈ [6 ; 9], Divine ≤ 18`, () => {
+    it(`protocole ${proto} : ${proto === 'C' ? '' : 'hybride I ∈ [3 ; 4,5], '}III ∈ [6 ; 9], Divine ≤ 24`, () => {
       const s1 = protocolDamage('stone', 1, proto);
       const lines: string[] = [];
       const bad: string[] = [];
@@ -33,11 +34,21 @@ describe('équilibrage des hybrides et de la Divine (relatif à 5 pierres de ran
       }
       const d = protocolDamage('divine', 1, proto) / s1;
       lines.push(`divine ${d.toFixed(2)}`);
-      if (d > 18) bad.push(`divine ${d.toFixed(2)}`);
+      if (d > 24) bad.push(`divine ${d.toFixed(2)}`);
       console.log(`[balance hybrides ${proto}] ${lines.join(' | ')}`);
       expect(bad).toEqual([]);
     }, 300_000);
   }
+});
+
+describe('Divine sur plateau réel (protocole D, réplique de tests/e2e/forge.spec.ts (d))', () => {
+  it('Divine + 3 pierres contre 4 pierres, même plateau de vague 4, meilleur tir sur 3 : ≥ 6,5× sur chacune des 5 graines', () => {
+    const stones = (n: number): VolleyBall[] => Array.from({ length: n }, () => ({ element: 'stone' as BallElement, tier: 1 as const }));
+    const seeds = ['forge-divine', 'div-d-1', 'div-d-2', 'div-d-3', 'div-d-4'];
+    const ratios = seeds.map((s) => protocolD(s, [{ element: 'divine', tier: 1 }, ...stones(3)]) / Math.max(1, protocolD(s, stones(4))));
+    console.log(`[divine plateau réel] ${seeds.map((s, i) => `${s} ${ratios[i]!.toFixed(2)}`).join(' | ')}`);
+    expect(Math.min(...ratios)).toBeGreaterThanOrEqual(6.5);
+  }, 120_000);
 });
 
 // ------------------------------------------------------------------------------------------------------

@@ -2,7 +2,7 @@
   "element": "divine",
   "seed": "forge-divine",
   "signal": "block:explode element 'divine' (nova) + lightning:chain element 'divine' (Jugement)",
-  "measured": "22 novas, 16 éclairs du Jugement, dégâts/tir [232,87,311,294,170,252]",
+  "measured": "20 novas, 16 éclairs du Jugement, dégâts/tir [392,127,436,446,251,302]",
   "ok": true,
   "consoleErrors": [],
   "report": {
@@ -12,16 +12,16 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 12499.999999999613,
+    "simMs": 12366.666666666299,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 72,
-      "ball:bounce": 53,
+      "block:hit": 68,
+      "ball:bounce": 47,
       "combo:milestone": 12,
-      "block:explode": 24,
-      "block:destroyed": 22,
-      "drop:spawned": 21,
+      "block:explode": 22,
+      "block:destroyed": 24,
+      "drop:spawned": 22,
       "contract:progress": 4,
       "drop:collected": 21,
       "ball:grounded": 30,
@@ -35,7 +35,7 @@
       "contract:offered": 1
     },
     "explodeByEl": {
-      "divine": 22,
+      "divine": 20,
       "explosive": 2
     },
     "chainByEl": {
@@ -44,24 +44,24 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "divine": 20,
+      "divine": 22,
       "stone": 2
     },
     "hitsByEl": {
-      "divine": 61,
-      "stone": 11
+      "divine": 58,
+      "stone": 10
     },
     "damageByEl": {
-      "divine": 1236,
-      "stone": 110
+      "divine": 1854,
+      "stone": 100
     },
     "kinds": {
       "main": 30
     },
     "focus": {
       "critLowCombo": 0,
-      "critHits": 6,
-      "hits": 61,
+      "critHits": 5,
+      "hits": 58,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -101,28 +101,28 @@
       },
       "groundedBeforeMs": 0
     },
-    "devSamples": 51,
+    "devSamples": 47,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 209,
+    "maxParticles": 216,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      232,
-      87,
-      311,
-      294,
-      170,
-      252
+      392,
+      127,
+      436,
+      446,
+      251,
+      302
     ],
     "captured": true,
     "hyb": {
       "acidUnhit": 0,
-      "wraithBoost": 19,
-      "wraithSamples": 30,
-      "critCoinSteps": 2,
-      "critHits": 6,
+      "wraithBoost": 16,
+      "wraithSamples": 23,
+      "critCoinSteps": 1,
+      "critHits": 5,
       "rowShiftSteps": 0,
       "speedUpMax": 1,
       "groundBouncesMaxPerBall": 0
