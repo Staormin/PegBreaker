@@ -2499,23 +2499,17 @@ body {
   overflow-wrap: anywhere;
 }
 .si-desc {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.25;
   color: var(--text-dim);
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
-  min-height: 2.5em;
 }
 .shop-item[data-catalyst='true'] {
   border-color: color-mix(in srgb, var(--coin) 70%, var(--wall));
-}
-.shop-item[data-catalyst='true'] .si-desc {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  min-height: 1.25em;
 }
 .si-catalyst {
   font-size: 14px;
@@ -2816,8 +2810,8 @@ body {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
-  min-height: 52px;
-  padding: 4px 8px 4px 10px;
+  min-height: 48px;
+  padding: 2px 6px 2px 10px;
   text-align: left;
   border-radius: 12px;
   background: var(--bg1);
@@ -2909,7 +2903,7 @@ body {
 .fo-cta {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 38px;
   padding: 0 14px;
   border-radius: 10px;
   background: var(--good);
@@ -2976,6 +2970,9 @@ body {
     grid-template-rows: minmax(0, 1fr);
     gap: 24px;
   }
+  .shop-col-left {
+    gap: 8px;
+  }
   .shop-buy {
     flex: none;
   }
@@ -3031,7 +3028,7 @@ body {
   .shop-item {
     display: grid;
     grid-template-columns: 36px minmax(0, 1fr);
-    grid-template-areas: 'icon name' 'icon price' 'desc desc' 'cta cta';
+    grid-template-areas: 'icon name' 'icon price' 'desc desc' 'cat cat' 'cta cta';
     gap: 2px 8px;
     padding: 8px;
   }
@@ -3051,32 +3048,27 @@ body {
   .si-name {
     grid-area: name;
     font-size: 15px;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
   .si-price {
     grid-area: price;
     font-size: 15px;
   }
-  .si-desc,
-  .si-catalyst {
+  .si-desc {
     grid-area: desc;
     margin-top: 2px;
   }
-  .shop-item[data-catalyst='true'] .si-desc {
-    display: none;
+  .si-catalyst {
+    grid-area: cat;
   }
   .si-cta {
     grid-area: cta;
     margin-top: 4px;
   }
   .si-desc {
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    min-height: 1.25em;
-    white-space: nowrap;
-    display: block;
-    text-overflow: ellipsis;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
   .volley-grid {
     grid-template-columns: repeat(6, minmax(var(--tile), 56px));
