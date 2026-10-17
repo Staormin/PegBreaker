@@ -154,7 +154,7 @@
     "devSamples": 65,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 125,
+    "maxParticles": 128,
     "nan": [],
     "violations": [],
     "pageErrors": [],

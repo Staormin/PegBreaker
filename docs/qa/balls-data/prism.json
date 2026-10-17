@@ -73,7 +73,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 13399.999999999482,
+    "simMs": 13433.33333333281,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
@@ -150,16 +150,16 @@
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 2833.33333333352,
-        "2": 3116.666666666629,
-        "3": 1983.3333333334708
+        "1": 2833.3333333335236,
+        "2": 3116.666666666628,
+        "3": 1983.3333333334745
       },
       "groundedBeforeMs": 0
     },
     "devSamples": 85,
     "devOver2": 3,
     "maxLive": 5,
-    "maxParticles": 107,
+    "maxParticles": 111,
     "nan": [],
     "violations": [],
     "pageErrors": [],

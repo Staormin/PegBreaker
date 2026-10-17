@@ -136,6 +136,30 @@ Les propositions du premier passage ont été appliquées (catalyseur 60 → 35,
 2. `balls.json → cluster.params.rankMult` III : **0.982 → 0.5** (17,3× → ≈ 9×).
 3. `balls.json → divine.params.judgement` : **23 → 15**, et `novaDamage` **15 → 10** (24,7× → ≈ 17× sur blocs de 2 000 PV, sous le plafond de 18).
 
+## Paysage 1176×560 (DPR 1,6), commit 8908fa4
+
+`tests/e2e/landscape.spec.ts`. Suite complète verte : **108 passés, 1 ignoré, 0 échec en 9 min 37 s**, sous une charge machine de 14 (marge faible sur la limite de 10 min). Captures dans `docs/qa/landscape-shots/` (01 à 09).
+
+**Ce qui fonctionne**
+- **Partie** : plateau entièrement visible, ≥ 400 px de haut, la page ne défile pas. Un drag réel du lanceur vers le haut tire (`volley:start`).
+- **Récompense** : « Passer » est visible et la page ne défile pas.
+- **Boutique vague 3, 14 balles en 6 groupes** :
+  - deux colonnes ;
+  - aucun défilement, ni de la page ni de l'écran ou des colonnes (scrollHeight ≤ clientHeight) ;
+  - Reroll, Continuer et tous les groupes sont dans le viewport ;
+  - `.hud` est en `visibility:hidden` et n'apparaît pas au point testé.
+- **Vente** : « Vendre 1 » fait passer les pierres de 6 à 5 (+6) ; « Vendre tout » retire le groupe (+30) et laisse 8 balles.
+- **Revanche** : l'écran tient dans le viewport (Seconde chance et Abandonner visibles).
+- **Puits / codex** : la page ne défile pas, seul `.screen-meta` défile (3 237 px de contenu pour 560 px). La dernière entrée du codex est atteignable et « ← Retour » reste visible.
+- `forge.spec.ts` adapté aux groupes : on compte les `.volley-group` distincts et la somme des `data-count` vaut la taille de la volée.
+
+**Bugs paysage**
+
+| ID | Gravité | Seed / étapes | Observé | Fichier suspect |
+|---|---|---|---|---|
+| LS-01 | mineur | `?seed=land-play&qa=1`, 1176×560, vague 1 avec contrat | Le bandeau de contrat `.hud-band` recouvre le haut de la rangée 0 (≈ 2 600 px², blocs « 13 / 26 / 20 » rognés). Le sélecteur `.hud-spread` « rafale » recouvre la zone de lancement, en bas à droite du plateau (≈ 2 590 px²). Test `test.fail` « BUG LS-01 » | `src/ui/hud.ts`, `src/ui/styles.css` (placement paysage) |
+| LS-02 | majeur | `?seed=land-end&qa=1`, PV mis à 1, bot naïf jusqu'à la mort, abandon | Le panneau de fin de run fait 651 px dans un écran de 560 px centré (`display:flex; align-items/justify-content:center; overflow:auto`). Le titre « Fin de la descente » est à **y = −45 px** et reste inatteignable (débordement négatif non défilable). « Le Puits » et « Défi du jour » finissent à 605 px. « Rejouer » reste visible. Test `test.fail` « BUG LS-02 » | `src/ui/styles.css` (`.screen` : `justify-content: safe center` ou `margin: auto` sur `.panel`) |
+
 ## 5. Captures (`docs/qa/forge-shots/`)
 - `01-boutique-forge.png` : boutique avec la carte forge Feu II + Glace I → Vapeur.
 - `02-forge-toast.png` : après la forge (toasts, flash de la volée).

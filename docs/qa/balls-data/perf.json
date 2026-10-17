@@ -36,91 +36,71 @@
   ],
   "shots": 3,
   "fpsSamples": [
-    44,
-    30,
-    56,
+    39,
+    33,
+    57,
     60,
     60,
-    58,
+    57,
+    50,
     52,
-    44,
-    55,
-    53,
-    48,
-    46,
-    60
+    54,
+    57,
+    54,
+    51,
+    59
   ],
-  "fpsMin": 30,
-  "fpsMean": 51.23076923076923,
+  "fpsMin": 33,
+  "fpsMean": 52.53846153846154,
   "frameP50": 16.699999999999818,
-  "frameP95": 33.399999999999636,
-  "frameP99": 50,
-  "frameMax": 166.69999999999982,
-  "frames": 733,
+  "frameP95": 33.30000000000109,
+  "frameP99": 33.400000000001455,
+  "frameMax": 200,
+  "frames": 750,
   "slowFrames": [
     {
-      "sinceFireMs": 35,
+      "sinceFireMs": 45,
       "dt": 67,
       "live": 2
     },
     {
-      "sinceFireMs": 485,
-      "dt": 67,
+      "sinceFireMs": 512,
+      "dt": 83,
       "live": 10
     },
     {
-      "sinceFireMs": 535,
-      "dt": 50,
-      "live": 10
-    },
-    {
-      "sinceFireMs": 1018,
-      "dt": 167,
-      "live": 16
-    },
-    {
-      "sinceFireMs": 1068,
-      "dt": 50,
-      "live": 16
-    },
-    {
-      "sinceFireMs": 1235,
-      "dt": 67,
-      "live": 19
-    },
-    {
-      "sinceFireMs": 1385,
-      "dt": 50,
-      "live": 21
-    },
-    {
-      "sinceFireMs": 1435,
-      "dt": 50,
-      "live": 21
-    },
-    {
-      "sinceFireMs": 1585,
-      "dt": 50,
-      "live": 25
-    },
-    {
-      "sinceFireMs": 1801,
-      "dt": 50,
-      "live": 26
-    },
-    {
-      "sinceFireMs": 1821,
-      "dt": 50,
-      "live": 25
-    },
-    {
-      "sinceFireMs": 622,
+      "sinceFireMs": 562,
       "dt": 50,
       "live": 11
+    },
+    {
+      "sinceFireMs": 962,
+      "dt": 83,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1162,
+      "dt": 200,
+      "live": 17
+    },
+    {
+      "sinceFireMs": 1212,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1462,
+      "dt": 50,
+      "live": 21
+    },
+    {
+      "sinceFireMs": 1845,
+      "dt": 50,
+      "live": 26
     }
   ],
   "rendererDpr": [
-    1.25,
+    1,
     1,
     1,
     1,
@@ -134,7 +114,7 @@
     1,
     1
   ],
-  "maxParticles": 48,
+  "maxParticles": 52,
   "maxLive": 27,
   "explodeByEl": {
     "bomb": 6

@@ -103,7 +103,11 @@ async function reachShop(page: Page, seed: string, volley: VolleyBall[], coins: 
     { volley, coins },
   );
   await expect(page.locator('#ui[data-screen="shop"]')).toBeVisible();
-  await expect(page.locator('.screen-shop .volley-chip')).toHaveCount(volley.length);
+  // « Ta volée » : un chip par groupe (élément, rang) ; la somme des data-count = taille de la volée
+  const groups = new Set(volley.map((b) => `${b.element}:${b.tier}`)).size;
+  await expect(page.locator('.screen-shop .volley-group')).toHaveCount(groups);
+  const counts = await page.locator('.screen-shop .volley-group').evaluateAll((els) => els.map((e) => Number((e as HTMLElement).dataset.count ?? '0')));
+  expect(counts.reduce((a, b) => a + b, 0), 'somme des data-count = taille de la volée').toBe(volley.length);
 }
 
 /** Tire n fois (visée : bloc cassable le plus bas, ouverture 0) ; récompenses passées, boutiques quittées. */
@@ -141,7 +145,7 @@ async function shoot(page: Page, n: number): Promise<number> {
   );
 }
 
-const chip = (page: Page, el: BallElement, tier: BallTier) => page.locator(`.screen-shop .volley-chip[data-element="${el}"][data-tier="${tier}"]`).first();
+const chip = (page: Page, el: BallElement, tier: BallTier) => page.locator(`.screen-shop .volley-group[data-element="${el}"][data-tier="${tier}"]`).first();
 
 test.beforeAll(() => {
   mkdirSync(SHOTS, { recursive: true });
