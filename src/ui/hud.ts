@@ -5,7 +5,7 @@
 // (badges Quotidien / Défi + bandeau contrat, F2/F6), sélecteur d'ouverture à 3 positions à côté
 // du point de lancement, visible pendant toute la phase 'aiming' (F1-02).
 import type { EventBus } from '../core/events';
-import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, VolleyBall } from '../core/types';
+import type { BallElement, BallTier, GameConfig, Renderer, RunState, Sim, Vec2, VolleyBall } from '../core/types';
 import { createContractBanner } from './contract';
 import { modChip, type ModView } from './dailyInfo';
 import { coinIcon, el, fmt } from './dom';
@@ -343,9 +343,26 @@ export function createHud(deps: HudDeps): Hud {
     const bt = deps.renderer?.boardToScreen({ x: 0, y: 0 }).y;
     if (bt !== undefined && Number.isFinite(bt) && bt > 0) boardTop = bt;
     const bandH = boardTop - barBottom;
-    // bande : badges + contrat, hauteur ≤ 28 px, sans toucher le plateau
-    const h = Math.max(18, Math.min(28, bandH - 4));
-    band.style.top = `${barBottom + Math.max(1, (bandH - h) / 2)}px`;
+    // bande : badges + contrat, hauteur ≤ 28 px, sans toucher le plateau. Bande réelle < 24 px
+    // (paysage peu haut) : le bandeau passe dans la barre du haut, entre V<n> et les compteurs.
+    let h = Math.max(18, Math.min(28, bandH - 4));
+    const wb0 = waveBox.getBoundingClientRect();
+    const rb = right.getBoundingClientRect();
+    const fl = frame.getBoundingClientRect().left;
+    const slotL = wb0.right - fl + 10;
+    const slotR = rb.left - fl - 10;
+    const merge = bandH < 24 && slotR - slotL >= 140;
+    if (merge) {
+      h = Math.max(18, Math.min(28, tb.height - 6));
+      band.style.top = `${wb0.top - frameTop + wb0.height / 2 - h / 2}px`;
+      band.style.left = `${slotL}px`;
+      band.style.right = `${frameW - slotR}px`;
+    } else {
+      band.style.top = `${barBottom + Math.max(1, (bandH - h) / 2)}px`;
+      band.style.left = '';
+      band.style.right = '';
+    }
+    frame.classList.toggle('band-in-bar', merge);
     frame.style.setProperty('--band-h', `${h}px`);
     // le contrat occupe la bande : le compteur de dégâts passe dans la barre (à la place de V<n>)
     const inBar = bandH < cap + 4 || contract.busy;
@@ -495,18 +512,53 @@ export function createHud(deps: HudDeps): Hud {
       cLaunchY = lp.y;
       const p = deps.renderer?.boardToScreen(lp);
       if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-        // à droite du lanceur (à gauche s'il est trop près du bord droit), centré sur sa hauteur
         const w = spreadBox.offsetWidth || 96;
         const h = spreadBox.offsetHeight || 48;
         const gap = 22;
         const fw = frameW || w * 2;
-        let x = p.x + gap;
-        if (x + w > fw - 4) x = p.x - gap - w;
-        x = Math.max(4, Math.min(fw - w - 4, x));
-        spreadBox.style.left = `${x}px`;
-        spreadBox.style.top = `${p.y - h / 2}px`;
+        const pos = spreadOutsideBoard(p, w, h, fw);
+        if (pos) {
+          spreadBox.style.left = `${pos.x}px`;
+          spreadBox.style.top = `${pos.y}px`;
+        } else {
+          // pas de place hors du plateau (portrait étroit) : à droite du lanceur (à gauche s'il est
+          // trop près du bord droit), centré sur sa hauteur
+          let x = p.x + gap;
+          if (x + w > fw - 4) x = p.x - gap - w;
+          x = Math.max(4, Math.min(fw - w - 4, x));
+          spreadBox.style.left = `${x}px`;
+          spreadBox.style.top = `${p.y - h / 2}px`;
+        }
       }
     }
+  }
+
+  /** sélecteur hors du plateau (LS-01) : sur le côté le plus proche du lanceur si la marge latérale
+   *  suffit (paysage), sinon dans la bande sous le plateau si elle est assez haute ; null = pas de place.
+   *  Coordonnées relatives au cadre (= canvas), comme `boardToScreen`. */
+  function spreadOutsideBoard(launch: Vec2, w: number, h: number, fw: number): Vec2 | null {
+    const r = deps.renderer;
+    if (!r) return null;
+    const cfg = config.blocks.board;
+    const a = r.boardToScreen({ x: 0, y: 0 });
+    const z = r.boardToScreen({ x: cfg.cols, y: cfg.rows });
+    if (![a.x, a.y, z.x, z.y].every(Number.isFinite)) return null;
+    const fTop = frame.getBoundingClientRect().top;
+    const vb = volleyBox.getBoundingClientRect();
+    const floor = vb.height > 0 ? vb.top - fTop - 4 : (frame.clientHeight || z.y + h) - 4;
+    const margin = 12;
+    const y = Math.max(4, Math.min(launch.y - h / 2, floor - h));
+    const leftRoom = a.x - margin;
+    const rightRoom = fw - z.x - margin;
+    const preferRight = launch.x - a.x >= (z.x - a.x) / 2;
+    if (rightRoom >= w + 4 && (preferRight || leftRoom < w + 4)) return { x: z.x + margin, y };
+    if (leftRoom >= w + 4) return { x: a.x - margin - w, y };
+    // bande sous le plateau
+    if (floor - z.y >= h + 4) {
+      const x = Math.max(4, Math.min(fw - w - 4, launch.x - w / 2));
+      return { x, y: z.y + (floor - z.y - h) / 2 };
+    }
+    return null;
   }
 
   function showComboHint(combo: number): void {

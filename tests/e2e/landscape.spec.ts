@@ -126,7 +126,6 @@ async function playDrag(page: Page): Promise<void> {
 // BUG LS-01 : en 1176×560, le bandeau de contrat (.hud-band) recouvre le haut de la rangée 0 et le sélecteur d'ouverture
 // (.hud-spread) recouvre la zone de lancement (bas du plateau). `test.fail` : passera au rouge une fois corrigé.
 test('BUG LS-01 : aucun élément du HUD ne chevauche le plateau', async ({ page }) => {
-  test.fail(true, 'LS-01 : .hud-band et .hud-spread sur le plateau en 1176×560 (src/ui/hud.ts, styles.css)');
   await page.goto('/?seed=land-play&qa=1');
   await waitReady(page);
   await page.waitForTimeout(300);
@@ -285,7 +284,6 @@ test('paysage : Puits et codex utilisables (défilement interne seulement)', asy
 // overflow auto) → le titre « Fin de la descente » est à y = −45 px, hors de la zone défilable (débordement négatif
 // perdu) ; « Le Puits » / « Défi du jour » finissent à 605 px. `test.fail` : passera au rouge une fois corrigé.
 test('BUG LS-02 : le panneau de fin de run est entièrement atteignable', async ({ page }) => {
-  test.fail(true, 'LS-02 : .screen-gameover centré avec débordement négatif (src/ui/styles.css)');
   test.setTimeout(150_000);
   await page.goto('/?seed=land-end&qa=1');
   await waitReady(page);

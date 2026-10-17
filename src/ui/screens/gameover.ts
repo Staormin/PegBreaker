@@ -1,4 +1,5 @@
 // ui/screens/gameover.ts — fin de run : stats, fragments gagnés, Rejouer, Puits.
+// Structure : `.panel > .screen-heading + .end-body > (.end-main | .end-side > .actions)`.
 // Lot 1 : record de vague (F5), résultat du défi + « Rejouer le défi » (F6), « Partager » (F6).
 import type { EventBus } from '../../core/events';
 import type { GameConfig, RunSummary } from '../../core/types';
@@ -102,7 +103,14 @@ export function createGameoverScreen(d: GameoverDeps): GameoverScreen {
     row1.append(share, restart);
     actions.append(replay, row1, shareMsg, row2);
   } else actions.append(restart, share, shareMsg, row2);
-  s.panel.append(challenge, dailyLine, record, recordGap, grid, fragRow, volleyTitle, volleyRow, forgedLine, actions);
+  // paysage bas (< 700 px) : deux colonnes (bilan à gauche, boutons à droite), voir styles.css
+  const body = el('div', 'end-body');
+  const main = el('div', 'end-main');
+  main.append(challenge, dailyLine, record, recordGap, grid, fragRow, volleyTitle, volleyRow, forgedLine);
+  const side = el('div', 'end-side');
+  side.append(actions);
+  body.append(main, side);
+  s.panel.append(body);
 
   function renderVolley(sum: RunSummary): void {
     volleyRow.textContent = '';

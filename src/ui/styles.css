@@ -2783,3 +2783,72 @@ body {
     flex: 1 1 0;
   }
 }
+
+/* ---------------------------------------------------------------- LS-02 : écrans plus hauts que le viewport */
+/* centrage par les marges auto du panneau ; si le contenu déborde, il part du haut (rien d'inatteignable) */
+.screen {
+  justify-content: flex-start;
+}
+.panel {
+  flex-shrink: 0;
+}
+.end-body,
+.end-main,
+.end-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+/* paysage peu haut (portable à l'échelle 1,6 : 1176×560) : fin de run en deux colonnes,
+   revanche et coffre compacts ; tout tient sans défilement */
+@media (orientation: landscape) and (max-height: 700px) {
+  .screen {
+    padding-top: calc(10px + var(--safe-t));
+    padding-bottom: calc(10px + var(--safe-b));
+  }
+  .screen-heading {
+    font-size: 26px;
+  }
+  .screen-gameover .panel {
+    max-width: 980px;
+    gap: 10px;
+  }
+  .end-body {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    gap: 20px;
+  }
+  .end-main {
+    gap: 8px;
+  }
+  .end-main .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .end-main .stat {
+    padding: 8px 6px;
+  }
+  .end-main .stat-val {
+    font-size: 26px;
+  }
+  .end-main .frag-gain {
+    font-size: 30px;
+  }
+  .screen-revive .panel {
+    gap: 10px;
+  }
+  .screen-revive .stat {
+    padding: 8px 6px;
+  }
+  .screen-reward .panel {
+    gap: 10px;
+  }
+  .cards .card {
+    min-height: 0;
+  }
+  .chest-card {
+    min-height: 200px;
+  }
+}

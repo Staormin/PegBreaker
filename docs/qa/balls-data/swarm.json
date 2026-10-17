@@ -77,7 +77,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 15083.33333333257,
+    "simMs": 15016.666666665913,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
