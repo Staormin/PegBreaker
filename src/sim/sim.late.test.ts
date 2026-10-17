@@ -38,10 +38,13 @@ function spreadFor(sim: Sim): number {
   return n >= 3 ? 0.6 : 0;
 }
 
-function play(seed: string, good: boolean): { wave: number; minutes: number } {
+function play(seed: string, good: boolean): { wave: number; minutes: number; maxLateWaveShots: number } {
   const sim = newSim(seed, config(), FULL);
+  const late = sim.config.waves.lateWave ?? Infinity;
   let shots = 0;
+  let maxLateWaveShots = 0;
   for (; shots < MAX_SHOTS && sim.state.phase !== 'gameover'; shots++) {
+    if (sim.state.wave > late) maxLateWaveShots = Math.max(maxLateWaveShots, sim.state.shotInWave + 1);
     if (good) settleGood(sim);
     else settle(sim);
     if (sim.state.phase !== 'aiming') break;
@@ -49,7 +52,7 @@ function play(seed: string, good: boolean): { wave: number; minutes: number } {
     shoot(sim, lowestBlockDir(sim));
   }
   expect(sim.state.phase).toBe('gameover');
-  return { wave: sim.state.wave, minutes: (sim.state.stats.durationMs / 1000 + AIM_S * shots) / 60 };
+  return { wave: sim.state.wave, minutes: (sim.state.stats.durationMs / 1000 + AIM_S * shots) / 60, maxLateWaveShots };
 }
 
 const median = (a: number[]): number => {
@@ -59,9 +62,10 @@ const median = (a: number[]): number => {
 };
 
 describe('fin de partie : pas de run infinie', () => {
-  it('bot « bon », méta complète, 27 éléments, 20 seeds : aucune run au-delà de v35, médiane ≤ 20, médiane ≤ 12 min joueur', () => {
+  it('bot « bon », méta complète, 27 éléments, 20 seeds : aucune run au-delà de v35, médiane ≤ 20, médiane ≤ 12 min joueur, aucune vague > lateWave au-delà de 40 tirs', () => {
     const runs = Array.from({ length: 20 }, (_, i) => play(`late-good-${i}`, true));
     const waves = runs.map((r) => r.wave);
+    for (const r of runs) expect(r.maxLateWaveShots).toBeLessThanOrEqual(40);
     expect(Math.max(...waves)).toBeLessThanOrEqual(35);
     expect(median(waves)).toBeLessThanOrEqual(20);
     expect(median(runs.map((r) => r.minutes))).toBeLessThanOrEqual(12);

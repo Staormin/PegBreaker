@@ -476,6 +476,8 @@ export interface WavesConfig {
   /** à partir de cette vague : brèche +1 PV tous les 5 vagues et rangée supplémentaire tous les lateExtraRowEvery tirs (anti-infini) */
   lateWave?: number;
   lateExtraRowEvery?: number;
+  /** plafond de shotInWave dans la formule des PV (repli 20) */
+  growthPerShotCapShots?: number;
   /** PV de base rangée = baseHp × growthPerWave^(wave-1) × (1 + growthPerShot × shotInWave) */
   baseHp: number;
   /** si présent, remplace baseHp/growthPerWave : PV de base interpolés linéairement entre les points (extrapolés géométriquement au-delà du dernier) */

@@ -42,9 +42,14 @@ export function waveBaseHp(ctx: Ctx, wave: number): number {
   return last.baseHp * Math.pow(perWave, wave - last.wave);
 }
 
-/** PV de base d'une rangée = waveBaseHp(wave) × (1 + growthPerShot × shot). */
+/** Repli de waves.json → growthPerShotCapShots (clé non typée dans core/types.ts). */
+const DEFAULT_GROWTH_CAP_SHOTS = 20;
+
+/** PV de base d'une rangée = waveBaseHp(wave) × (1 + growthPerShot × min(shot, growthPerShotCapShots)). */
 export function rowBaseHp(ctx: Ctx, wave: number, shot: number): number {
-  return waveBaseHp(ctx, wave) * (1 + ctx.cfg.waves.growthPerShot * shot);
+  const capRaw = (ctx.cfg.waves as unknown as { growthPerShotCapShots?: number }).growthPerShotCapShots;
+  const cap = typeof capRaw === 'number' && capRaw >= 0 ? capRaw : DEFAULT_GROWTH_CAP_SHOTS;
+  return waveBaseHp(ctx, wave) * (1 + ctx.cfg.waves.growthPerShot * Math.min(shot, cap));
 }
 
 /** PV d'un bloc : base × variance × hpRatio × mods.blockHpMult (heavy), arrondi, ≥ 1. */
@@ -232,11 +237,14 @@ export function breachBudgetFor(ctx: Ctx, wave: number): number {
   return wave > late ? perShot + Math.floor((wave - late) / 5) : perShot;
 }
 
-/** Rangée supplémentaire de fin de partie : à partir de lateWave, tous les lateExtraRowEvery tirs de la vague. */
+/**
+ * Rangée supplémentaire de fin de partie : à partir de lateWave, tous les lateExtraRowEvery tirs de la vague,
+ * PRISE SUR LE QUOTA (rowsLeftInWave) : les rangées arrivent plus vite, la vague reste finie (B-01).
+ */
 export function lateExtraRow(ctx: Ctx): boolean {
   const s = ctx.s;
   const every = ctx.cfg.waves.lateExtraRowEvery;
-  if (!(typeof every === 'number' && every > 0) || s.wave < lateWave(ctx)) return false;
+  if (!(typeof every === 'number' && every > 0) || s.wave < lateWave(ctx) || s.rowsLeftInWave <= 0) return false;
   return s.shotInWave > 0 && s.shotInWave % Math.round(every) === 0;
 }
 
@@ -254,11 +262,9 @@ export function advanceRows(ctx: Ctx): void {
     newRow = true;
   }
   if (lateExtraRow(ctx)) {
-    // rangée hors quota de la vague : descente supplémentaire si la rangée 0 vient d'être remplie
+    // rangée prise sur le quota (generateRow décrémente rowsLeftInWave) ; descente en plus si la rangée 0 est prise
     if (newRow) shiftOnce(ctx);
-    const left = s.rowsLeftInWave;
     generateRow(ctx, 0);
-    s.rowsLeftInWave = left;
     newRow = true;
   }
   emit(ctx, { type: 'rows:advanced', wave: s.wave, newRow });

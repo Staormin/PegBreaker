@@ -7,21 +7,34 @@ import { emit } from './ctx';
 import { acquireDrop, releaseDrop } from './pools';
 import { heal, pickBallElement, pickDropKind } from './rewards';
 import { addVolleyBall } from './volley';
-import { DROP_RADIUS } from './constants';
+import { DROP_RADIUS, GOLD_DROP_OFFSET } from './constants';
 import { contractAdd } from './contracts';
 
 /**
  * Tirage d'un drop à la casse d'un bloc (appelé après l'incrément de blocksDestroyed).
- * `coinMult` > 0 (balle d'or) : pièce garantie de valeur × coinMult (sauf si la balle garantie tombe).
+ * `coinMult` > 0 (balle d'or) : pièce garantie de valeur × coinMult ; si la balle garantie tombe aussi,
+ * les deux drops sortent, décalés de ±GOLD_DROP_OFFSET en x (B-02).
  */
 export function maybeDrop(ctx: Ctx, x: number, y: number, coinMult = 0): void {
   const t = ctx.cfg.blocks.drops;
   const n = ctx.s.stats.blocksDestroyed;
   let kind: Drop['kind'];
-  if (t.guaranteedBallEvery > 0 && n % t.guaranteedBallEvery === 0) kind = 'ball';
-  else if (coinMult > 0) kind = 'coin';
+  if (t.guaranteedBallEvery > 0 && n % t.guaranteedBallEvery === 0) {
+    kind = 'ball';
+    if (coinMult > 0) {
+      spawnDrop(ctx, 'ball', x - GOLD_DROP_OFFSET, y, 0);
+      spawnDrop(ctx, 'coin', x + GOLD_DROP_OFFSET, y, coinMult);
+      return;
+    }
+  } else if (coinMult > 0) kind = 'coin';
   else if (ctx.rng.chance(Math.min(1, t.dropChance * ctx.mods.dropChanceMult))) kind = pickDropKind(ctx);
   else return;
+  spawnDrop(ctx, kind, x, y, coinMult);
+}
+
+/** Crée un drop (valeur tirée selon le type ; pièce × coinMult si > 0) et émet drop:spawned. */
+function spawnDrop(ctx: Ctx, kind: Drop['kind'], x: number, y: number, coinMult: number): void {
+  const t = ctx.cfg.blocks.drops;
   let value = 1;
   let element: Drop['element'] = null;
   if (kind === 'coin') {

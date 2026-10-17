@@ -79,7 +79,7 @@ export const boomerang: ElementHooks = {
   },
 };
 
-/** Traqueuse : après chaque rebond, la vitesse tourne d'au plus maxDeg vers le bloc cassable le plus proche. */
+/** Traqueuse : après chaque rebond, la vitesse tourne d'au plus maxDeg (angle minimal compris) vers le bloc cassable le plus proche. */
 export const homing: ElementHooks = {
   params: ['maxDeg'],
   onBounce(ctx, b, fx, _surface, nx, ny, bi) {
@@ -99,8 +99,16 @@ export const homing: ElementHooks = {
     const vx = b.vel.x * c - b.vel.y * sn;
     const vy = b.vel.x * sn + b.vel.y * c;
     if (vx * nx + vy * ny <= 0) return; // ne repart jamais dans la surface rebondie
+    const ox = b.vel.x;
+    const oy = b.vel.y;
     b.vel.x = vx;
     b.vel.y = vy;
     fixVelocity(ctx, b, fx);
+    // l'angle minimal peut ajouter jusqu'à minAimAngleDeg : borne totale respectée, sinon pas de déviation (QA 38° pour 30°)
+    const dot = (b.vel.x * ox + b.vel.y * oy) / (Math.hypot(b.vel.x, b.vel.y) * Math.hypot(ox, oy));
+    if (Math.acos(Math.min(1, Math.max(-1, dot))) > max + 1e-9) {
+      b.vel.x = ox;
+      b.vel.y = oy;
+    }
   },
 };

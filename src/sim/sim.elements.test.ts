@@ -1,8 +1,11 @@
 // Tests des 27 éléments (sim/elements) : une mécanique observable par nouvelle balle aux rangs I et III,
 // plafond de balles vivantes, mini-balles jamais dorées, déterminisme et robustesse avec les 27 éléments.
 import { describe, expect, it } from 'vitest';
-import type { BallElement, BallTier, Block, Drop, GameConfig, GameEvent, MetaModifiers, RunSnapshot, Sim, Vec2, VolleyBall } from '../core/types';
+import type { Ball, BallElement, BallTier, Block, Drop, GameConfig, GameEvent, MetaModifiers, RunSnapshot, Sim, Vec2, VolleyBall } from '../core/types';
 import { createSim } from './index';
+import { createCtx } from './ctx';
+import { createFx, type SimState } from './state';
+import { homing } from './elements/tricky';
 import {
   FRAME,
   block,
@@ -164,8 +167,8 @@ describe('éléments : traqueuse', () => {
     return (Math.abs(Math.atan2(h.y, h.x) - Math.atan2(s.y, s.x)) * 180) / Math.PI;
   }
   for (const tier of TIERS) {
-    it(`rang ${tier} : dévie de ${tier === 1 ? 12 : 30}° au plus vers le bloc le plus proche`, () => {
-      expect(deviation(tier)).toBeCloseTo(tier === 1 ? 12 : 30, 0);
+    it(`rang ${tier} : dévie de maxDeg (${P('homing', 'maxDeg', tier)}°) au plus vers le bloc le plus proche`, () => {
+      expect(deviation(tier)).toBeCloseTo(P('homing', 'maxDeg', tier), 0);
     });
   }
 });
@@ -464,7 +467,7 @@ describe('éléments : rouille', () => {
 
 describe('éléments : nova', () => {
   for (const tier of TIERS) {
-    it(`rang ${tier} : palier de combo → explosion (combo × ${tier === 1 ? 3 : 6})`, () => {
+    it(`rang ${tier} : palier de combo → explosion (combo × comboMult = ${P('nova', 'comboMult', tier)})`, () => {
       const { evs } = single(
         `nova-${tier}`,
         vb('nova', tier),
@@ -477,7 +480,7 @@ describe('éléments : nova', () => {
       );
       const ex = ofType(evs, 'block:explode').filter((e) => e.element === 'nova');
       expect(ex.length).toBeGreaterThan(0);
-      expect(ex[0]!.damage).toBe(3 * (tier === 1 ? 3 : 6));
+      expect(ex[0]!.damage).toBe(Math.min(3 * P('nova', 'comboMult', tier), P('nova', 'cap', tier)));
     });
   }
 });
@@ -753,5 +756,94 @@ describe('garde-fous de fin de partie', () => {
     expect(sim.state.rowsLeftInWave).toBe(before - 1); // la rangée en plus ne consomme pas le quota
     const top = sim.state.blocks.filter((b) => b.row <= 1).length;
     expect(top).toBeGreaterThan(1);
+  });
+});
+
+describe('correctifs QA (B-01, B-02, traqueuse)', () => {
+  for (const tier of [1, 2, 3] as BallTier[]) {
+    it(`traqueuse rang ${tier} : déviation totale ≤ maxDeg, angle minimal compris (20 000 rebonds tirés au hasard)`, () => {
+      const cfg = config();
+      const sim = newSim('homing-bound', cfg);
+      setup(sim, [block(sim, 'normal', 0, 8, 100), block(sim, 'normal', 6, 0, 100), block(sim, 'normal', 3, 4, 100)], vb('homing', tier));
+      const ctx = createCtx(cfg, metaOf(cfg), createRng(1), false, null);
+      ctx.s = structuredClone(sim.state) as SimState;
+      const rng = createRng(`homing-bound-${tier}`);
+      const sp = cfg.blocks.board.ballSpeed;
+      const minVy = sp * Math.sin((cfg.blocks.board.minAimAngleDeg * Math.PI) / 180);
+      const max = P('homing', 'maxDeg', tier);
+      let worst = 0;
+      for (let k = 0; k < 20000; k++) {
+        const a = rng.range(-Math.PI, Math.PI);
+        const vel = { x: sp * Math.cos(a), y: sp * Math.sin(a) };
+        if (Math.abs(vel.y) < minVy) continue; // vitesse de rebond valide
+        const ball: Ball = { id: 1, element: 'homing', tier, pos: { x: rng.range(0.2, 6.8), y: rng.range(0.2, 9.5) }, vel, radius: 0.12, combo: 0, alive: true, triggered: false, golden: false };
+        const before = Math.atan2(ball.vel.y, ball.vel.x);
+        homing.onBounce!(ctx, ball, createFx(), 'wall', Math.cos(a), Math.sin(a), -1);
+        let d = Math.abs(Math.atan2(ball.vel.y, ball.vel.x) - before);
+        if (d > Math.PI) d = 2 * Math.PI - d;
+        worst = Math.max(worst, (d * 180) / Math.PI);
+      }
+      expect(worst).toBeGreaterThan(max * 0.9); // la déviation existe
+      expect(worst).toBeLessThanOrEqual(max + 1e-6);
+    });
+  }
+
+  it('B-02 : or + balle garantie sur le même bloc → les deux drops, décalés de ±0,3', () => {
+    const { evs } = single('gold-guaranteed', vb('gold', 1), (s) => [block(s, 'normal', 3, 5, 1), block(s, 'normal', 0, 0, STURDY)], UP, 3.5, (s) => {
+      mut(s).stats.blocksDestroyed = CFG.blocks.drops.guaranteedBallEvery - 1;
+    });
+    const spawned = ofType(evs, 'drop:spawned');
+    expect(spawned.map((d) => d.kind).sort()).toEqual(['ball', 'coin']);
+    const ball = spawned.find((d) => d.kind === 'ball')!;
+    const coinD = spawned.find((d) => d.kind === 'coin')!;
+    expect(ball.pos.x).toBeCloseTo(3.5 - 0.3);
+    expect(coinD.pos.x).toBeCloseTo(3.5 + 0.3);
+  });
+
+  /** Vague `wave` jouée par un bot qui ne casse rien (dégâts 0) : nombre d'avancées jusqu'à wave:cleared. */
+  function advancesToClear(wave: number): { advances: number; cleared: boolean } {
+    const cfg = config();
+    for (const d of cfg.balls.defs) d.baseDamage = 0;
+    const sim = newSim(`nobreak-${wave}`, cfg);
+    const s = mut(sim);
+    s.hp = s.maxHp = 1_000_000;
+    s.wave = wave - 1;
+    s.phase = 'shop';
+    s.shop = { items: [], rerollCost: 0, rerollsUsed: 0 };
+    sim.leaveShop(); // vague suivante
+    sim.step(0);
+    let advances = 0;
+    for (let k = 0; k < 200; k++) {
+      const evs = shoot(sim, UP);
+      advances += ofType(evs, 'rows:advanced').length;
+      if (ofType(evs, 'wave:cleared').length > 0) return { advances, cleared: true };
+    }
+    return { advances, cleared: false };
+  }
+  for (const wave of [20, 21, 24, 31]) {
+    it(`B-01 : vague ${wave}, rien de cassé → la vague finit par brèche en ≤ rowsMax + rows avancées`, () => {
+      const r = advancesToClear(wave);
+      expect(r.cleared).toBe(true);
+      expect(r.advances).toBeLessThanOrEqual(CFG.waves.rowsMax + CFG.blocks.board.rows);
+    });
+  }
+
+  it('growthPerShot plafonné : PV de rangée identiques au-delà de growthPerShotCapShots tirs', () => {
+    const cap = (CFG.waves as unknown as { growthPerShotCapShots: number }).growthPerShotCapShots;
+    expect(cap).toBe(20);
+    const hpAt = (shot: number): number => {
+      const sim = newSim('growth-cap');
+      const s = mut(sim);
+      s.wave = 21;
+      s.shotInWave = shot;
+      s.rowsLeftInWave = 3;
+      s.blocks = [];
+      sim.aim(UP);
+      // une avancée génère une rangée au tir `shot` : on lit les PV max générés
+      sim.fire();
+      for (let f = 0; f < 3000 && sim.state.phase !== 'aiming' && sim.state.phase !== 'reward'; f++) sim.step(FRAME);
+      return Math.max(...sim.state.blocks.filter((b) => b.kind !== 'peg').map((b) => b.maxHp), 0);
+    };
+    expect(hpAt(40)).toBe(hpAt(60));
   });
 });

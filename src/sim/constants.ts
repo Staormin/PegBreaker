@@ -9,6 +9,8 @@ export const STEP_EPS = 1e-6;
 export const MICROSTEP_RADIUS_FRACTION = 0.9;
 /** Rayon d'une cheville (peg), en cellules. */
 export const PEG_RADIUS = 0.3;
+/** Or + balle garantie sur le même bloc : décalage horizontal des deux drops (cellules). */
+export const GOLD_DROP_OFFSET = 0.3;
 /** Rayon d'un drop, en cellules. */
 export const DROP_RADIUS = 0.25;
 /** Marge du point de lancement par rapport aux murs. */

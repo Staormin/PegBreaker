@@ -13,26 +13,26 @@ Rang : sauf mention, rang II = effet ×1,5 (ou +1 selon la nature), rang III = �
 
 | id | Nom | Effet (rang I) | Rang II / III | Famille | Déblocage |
 |---|---|---|---|---|---|
-| acid | Acide | Le bloc touché perd 6 % de ses PV max au début de chacun des 3 tirs suivants (cumul max 3 charges). | 9 % / 12 % | elemental | Puits 60 |
-| magnet | Aimant | Ramasse les drops à moins de 1,2 u de sa trajectoire. | 1,8 / 2,5 u | greed | Puits 50 |
-| pierce | Perforante | Traverse le premier bloc touché de chaque tir (dégâts ×1,5), puis rebondit normalement. | 2 / 3 blocs traversés | tricky | Puits 80 |
-| bomb | Bombe | Explose en touchant le sol : rayon 1,4 u, dégâts ×3 de sa base. | rayon 1,8 / 2,2 | heavy | Puits 90 |
-| homing | Traqueuse | Après chaque rebond, dévie de 12° au plus vers le bloc le plus proche. | 20° / 30° | tricky | Puits 110 |
-| giant | Géante | Rayon ×1,8, dégâts ×2, vitesse ×0,85, combo +0 par rebond de mur. | rayon ×2,1 / ×2,4 | heavy | Puits 120 |
-| swarm | Essaim | À chaque impact, 25 % de chance de libérer une mini-balle (dégâts ×0,3, rayon ×0,6, 6 max par tir). | 35 % / 50 % | swarm | Puits 100 |
-| vampire | Vampire | Chaque bloc qu'elle détruit rend 1 PV (1 fois par tir). | 2 / 3 fois par tir | greed | Puits 130 |
-| gold | Or | Les blocs qu'elle détruit lâchent toujours des pièces (valeur ×1,5) ; dégâts ×0,7. | ×2 / ×3 | greed | Puits 70 |
-| prism | Prisme | À chaque rebond de mur, un rayon horizontal inflige 30 % de ses dégâts à tous les blocs de sa rangée. | 45 % / 60 % | arcane | Puits 140 |
-| void | Vide | Ignore l'armure et ajoute 6 % des PV max du bloc à chaque impact. | 9 % / 12 % | arcane | Puits 150 |
-| echo | Écho | Quand elle touche le sol, une copie fantôme (50 % dégâts) repart vers le haut depuis ce point, une fois. | 70 % / 100 % | tricky | Puits 120 |
-| boomerang | Boomerang | Après 1,5 s de vol, fait demi-tour vers le point de lancement en frappant au passage ; se pose à l'arrivée. | 2 / 3 allers-retours | tricky | Puits 110 |
-| crystal | Cristal | +20 % de dégâts par rebond (en plus du combo) mais éclate après 8 rebonds (éclats : 4 mini-balles ×0,25). | 10 / 12 rebonds | arcane | Puits 90 |
-| shock | Choc | Le bloc touché recule d'une rangée vers le haut si la case est libre (1 fois par bloc par tir). | 2 / 3 fois | heavy | Puits 100 |
-| twin | Jumelle | Tirée en deux balles à angles miroirs (±8°), 70 % de dégâts chacune. | 3 / 4 balles | swarm | Puits 80 |
-| rust | Rouille | Le bloc touché perd 15 % de PV max définitivement et son armure. | 22 % / 30 % | arcane | Puits 70 |
-| nova | Nova | À chaque palier de combo (3/8/16), explose : rayon 1,2 u, dégâts = combo × 3. | ×4 / ×6 | arcane | Succès combo15 |
-| comet | Comète | Vitesse ×1,4 ; chaque rebond de plafond donne +3 combo. | +4 / +6 | elemental | Succès wave5 |
-| lucky | Chance | 20 % de critique ×3 par impact ; les drops qu'elle ramasse valent double. | 30 % / 40 % | greed | Succès shot5000 |
+| acid | Acide | Le bloc touché perd 6 % de ses PV max (60 PV au plus) au début de chacun des 3 tirs suivants (cumul max 3 charges). | 9 % (max 90) / 12 % (max 120) | elemental | Puits 45 ◆ (après Feu) |
+| magnet | Aimant | Ramasse les drops à moins de 1,2 u de sa trajectoire. | 1,8 / 2,5 u | greed | Puits 40 ◆ |
+| pierce | Perforante | Traverse le premier bloc touché de chaque tir (dégâts ×1,5), puis rebondit normalement. Dégâts de base 6 (au lieu de 10). | 2 / 3 blocs traversés | tricky | Puits 60 ◆ |
+| bomb | Bombe | Explose en touchant le sol : rayon 1,4 u, dégâts ×3 de sa base. | rayon 1,8 / 2,2 | heavy | Puits 90 ◆ |
+| homing | Traqueuse | Après chaque rebond, dévie de 8° au plus (angle minimal compris) vers le bloc le plus proche. | 14° / 20° | tricky | Puits 190 ◆ (après Perforante) |
+| giant | Géante | Rayon ×1,8, dégâts ×2, vitesse ×0,85, combo +0 par rebond de mur. | rayon ×2,1 / ×2,4 | heavy | Puits 240 ◆ (après Bombe) |
+| swarm | Essaim | À chaque impact, 25 % de chance de libérer une mini-balle (dégâts ×0,3, rayon ×0,6, 6 max par balle d'essaim et par tir). | 35 % / 50 % | swarm | Puits 150 ◆ (après Jumelle) |
+| vampire | Vampire | Chaque bloc qu'elle détruit rend 1 PV (1 fois par tir ; un soin à PV pleins n'est pas compté). | 2 / 3 fois par tir | greed | Puits 320 ◆ |
+| gold | Or | Les blocs qu'elle détruit lâchent toujours une pièce (valeur ×1,5), en plus de la balle garantie si elle tombe ; dégâts ×0,85. | ×2 / ×3 | greed | Puits 50 ◆ (après Aimant) |
+| prism | Prisme | À chaque rebond de mur latéral, un rayon horizontal inflige 40 % de ses dégâts (150 au plus) à chaque bloc de sa rangée. | 55 % (max 250) / 70 % (max 350) | arcane | Puits 350 ◆ (après Foudre) |
+| void | Vide | Ignore l'armure et ajoute 6 % des PV max du bloc (60 au plus) à chaque impact. | 9 % (max 90) / 12 % (max 120) | arcane | Puits 400 ◆ (après Rouille) |
+| echo | Écho | Quand elle touche le sol, une copie traversante (50 % dégâts) repart vers le haut depuis ce point, une fois. | 70 % / 100 % | tricky | Puits 240 ◆ (après Boomerang) |
+| boomerang | Boomerang | Après 0,9 s de vol, fait demi-tour vers le point de lancement en traversant les blocs (frappés au passage) ; se pose à l'arrivée. | 2 / 3 allers-retours | tricky | Puits 190 ◆ |
+| crystal | Cristal | +30 % de dégâts par rebond (en plus du combo) mais éclate après 8 rebonds (éclats : 4 mini-balles ×0,4 en éventail de ±40°). | 10 / 12 rebonds | arcane | Puits 100 ◆ |
+| shock | Choc | Le bloc touché recule d'une rangée vers le haut si la case est libre (1 fois par bloc par tir). | 2 / 3 fois | heavy | Puits 170 ◆ |
+| twin | Jumelle | Tirée en deux balles à angles miroirs (±8°), 70 % de dégâts chacune. | 3 / 4 balles | swarm | Puits 80 ◆ (après Scission) |
+| rust | Rouille | Au premier contact, le bloc perd 15 % de PV max (120 au plus) définitivement et son armure. | 22 % (max 180) / 30 % (max 240) | arcane | Puits 55 ◆ |
+| nova | Nova | À chaque palier de combo (3/8/16), explose : rayon 1,2 u, dégâts = combo × 8 (600 au plus). | ×10 (max 900) / ×14 (max 1 200) | arcane | Succès « Flipper » (combo 15) |
+| comet | Comète | Vitesse ×1,4 ; chaque rebond de plafond donne +3 combo. | +4 / +6 | elemental | Succès « Premier boss » (vaincre un boss) |
+| lucky | Chance | 20 % de critique ×3 par impact ; les drops qu'elle ramasse valent double. | 30 % / 40 % | greed | Succès « Cinq mille » (5 000 dégâts en un tir) |
 
 Déblocages par succès : le succès débloque l'élément sans fragment (`unlockElement:` via achievement `unlocks`).
 
