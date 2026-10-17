@@ -1,6 +1,14 @@
 // ui/screens/shop.ts — boutique : articles + prix, reroll, « Continuer », et (docs/HYBRIDS.md) :
-// - « Ta volée » : un chip par balle (`.volley-chip[data-volley-index]`), bouton
-//   `[data-action="sell"][data-volley-index]` « Vendre +N » (désactivé pour la dernière balle) ;
+// Mise en page : en-tête compact `.shop-head` (« Boutique · vague N · 🪙 X », `.wallet .num`),
+// zone centrale `.shop-cols` (≥ 900 px : deux colonnes `.shop-col-buy` / `.shop-col-side`
+// scrollables indépendamment ; sinon une colonne scrollable), pied collant `.screen-footer`
+// (Reroll / Continuer, ajouté par index.ts autour de `.actions`).
+// - Articles : `button.shop-item[data-shop-index]` (rangée compacte ≥ 900 px, CTA `.buy-cta`).
+// - « Ta volée » : un chip par groupe (élément, rang) `.volley-group[data-element][data-tier][data-count]`
+//   (alias de classe historique `.volley-chip`), avec
+//   `[data-action="sell"][data-volley-index]` « Vendre 1 (+N) » (index de la première balle du groupe),
+//   si N ≥ 2 `[data-action="sell-all"][data-element][data-tier]` « Vendre tout (+N×P) » (vend depuis le
+//   dernier index en laissant toujours ≥ 1 balle dans la volée) ; dernière balle invendable ;
 //   sur une hybride de rang < III : `[data-action="upgrade"][data-volley-index]` « Rang +1 (N) ».
 // - « Forge » : `sim.forgeOptions()` → `.forge-option[data-action="forge"][data-i][data-j]`
 //   (parents → hybride, nom, description, effet propre, coût ; `.forge-divine` pour la Divine),
@@ -32,12 +40,17 @@ const FLASH_MS = 160;
 export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, onCodex: (() => void) | null = null): ShopScreen {
   const s = createScreen('shop', 'Boutique');
   const elements = elementTable(config);
+  const head = el('header', 'shop-head');
+  const heading = s.panel.querySelector<HTMLElement>('.screen-heading');
+  const waveLabel = el('span', 'shop-wave', '');
   const wallet = el('div', 'wallet');
   const walletVal = el('span', 'num', '0');
   wallet.append(coinIcon(), walletVal);
   wallet.setAttribute('aria-label', 'Pièces');
   wallet.setAttribute('aria-live', 'polite');
   const items = el('div', 'shop-items');
+  const buySec = el('section', 'shop-section shop-buy');
+  buySec.append(el('h3', 'shop-section-title', 'Articles'), items);
 
   // --- Ta volée ---------------------------------------------------------------
   const volleySec = el('section', 'shop-section shop-volley');
@@ -67,7 +80,15 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
   const leave = button(bus, 'btn btn-primary', 'Continuer', () => sim.leaveShop());
   leave.dataset.action = 'leave-shop';
   actions.append(reroll, leave);
-  s.panel.append(wallet, items, volleySec, forgeSec, actions);
+  if (heading) head.append(heading);
+  head.append(waveLabel, wallet);
+  const cols = el('div', 'shop-cols');
+  const colBuy = el('div', 'shop-col shop-col-buy');
+  colBuy.append(buySec);
+  const colSide = el('div', 'shop-col shop-col-side');
+  colSide.append(volleySec, forgeSec);
+  cols.append(colBuy, colSide);
+  s.panel.append(head, cols, actions);
 
   let current: Readonly<ShopState> | null = null;
   let cost = 0;
@@ -132,63 +153,122 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
       }
       const price = el('div', 'price');
       if (it.sold) price.append(el('span', '', 'Vendu'));
-      else price.append(coinIcon(), el('span', 'num', fmt(it.price)));
+      else price.append(coinIcon(), el('span', 'num', fmt(it.price)), el('span', 'buy-cta', 'Acheter'));
+      b.title = v.desc;
       b.append(ico, body, price);
       items.append(b);
     });
   }
 
-  function volleyChip(b: Readonly<VolleyBall>, index: number, last: boolean): HTMLElement {
-    const info = elements.get(b.element);
-    const chip = el('div', 'volley-chip');
+  interface Group {
+    element: BallElement;
+    tier: VolleyBall['tier'];
+    /** index de la volée, croissants */
+    indices: number[];
+  }
+
+  /** groupes (élément, rang) : rang décroissant puis ordre des éléments */
+  function groupVolley(volley: readonly Readonly<VolleyBall>[]): Group[] {
+    const map = new Map<string, Group>();
+    volley.forEach((b, i) => {
+      const key = `${b.element}|${b.tier}`;
+      const g = map.get(key);
+      if (g) g.indices.push(i);
+      else map.set(key, { element: b.element, tier: b.tier, indices: [i] });
+    });
+    return [...map.values()].sort((x, y) => y.tier - x.tier || elements.index(x.element) - elements.index(y.element));
+  }
+
+  /** vend les balles du groupe depuis le dernier index, en laissant toujours ≥ 1 balle */
+  function sellAll(g: Readonly<Group>): boolean {
+    let sold = false;
+    for (let k = g.indices.length - 1; k >= 0; k--) {
+      const idx = g.indices[k];
+      if (idx === undefined) continue;
+      const v = sim.state.volley;
+      if (v.length <= 1) break;
+      const b = v[idx];
+      if (!b || b.element !== g.element || b.tier !== g.tier) continue;
+      if (sim.sell(idx) > 0) sold = true;
+    }
+    return sold;
+  }
+
+  /** deux lignes dans un mini-bouton : verbe + valeur entre parenthèses */
+  function miniLabel(btn: HTMLButtonElement, verb: string, amount: number): void {
+    const val = el('span', 'bm-val');
+    val.append(el('span', '', '('), el('span', 'num', `+${fmt(amount)}`), coinIcon(), el('span', '', ')'));
+    btn.append(el('span', 'bm-verb', verb), val);
+  }
+
+  function volleyGroup(g: Readonly<Group>, total: number): HTMLElement {
+    const info = elements.get(g.element);
+    const first = g.indices[0] ?? 0;
+    const n = g.indices.length;
+    const ball: VolleyBall = { element: g.element, tier: g.tier };
+    const chip = el('div', 'volley-group volley-chip');
     chip.setAttribute('role', 'listitem');
-    chip.dataset.volleyIndex = String(index);
-    chip.dataset.element = b.element;
+    chip.dataset.volleyIndex = String(first);
+    chip.dataset.element = g.element;
     chip.dataset.family = info.family;
-    chip.dataset.tier = String(b.tier);
+    chip.dataset.tier = String(g.tier);
+    chip.dataset.count = String(n);
     chip.style.setProperty('--c', info.color);
-    const head = el('div', 'vc-head');
-    const label = el('div', 'vc-label');
-    label.append(el('span', 'vc-name', info.name), el('span', 'vc-rank', `Rang ${RANK[b.tier]}`));
-    head.append(ballIcon(config, b.element, b.tier, 32), label);
     chip.title = info.desc;
-    const btns = el('div', 'vc-actions');
-    const gain = sellPrice(config, b);
+    const label = el('div', 'vg-label');
+    const line = el('div', 'vg-line');
+    line.append(el('span', 'vg-name', info.name), el('span', 'num vg-count', `×${n}`));
+    label.append(line, el('span', 'vg-rank', `Rang ${RANK[g.tier]}`));
+    const btns = el('div', 'vg-actions');
+    const gain = sellPrice(config, ball);
+    const last = total <= 1;
     const sell = button(bus, 'btn-mini btn-sell', '', () => {
-      act(() => sim.sell(index) > 0);
+      act(() => sim.sell(first) > 0);
     });
     sell.dataset.action = 'sell';
-    sell.dataset.volleyIndex = String(index);
-    sell.append(el('span', '', 'Vendre '), el('span', 'num', `+${fmt(gain)}`), coinIcon());
+    sell.dataset.volleyIndex = String(first);
+    miniLabel(sell, 'Vendre 1', gain);
     sell.disabled = last;
-    sell.setAttribute('aria-label', last ? `${info.name} rang ${b.tier} : dernière balle, invendable` : `Vendre ${info.name} rang ${b.tier}, +${gain} pièces`);
+    sell.setAttribute('aria-label', last ? `${info.name} rang ${g.tier} : dernière balle, invendable` : `Vendre 1 ${info.name} rang ${g.tier}, +${gain} pièces`);
     if (last) sell.title = 'Impossible de vendre la dernière balle';
     btns.append(sell);
-    const up = upgradeCost(config, b);
+    if (n >= 2) {
+      // si le groupe est toute la volée, une balle reste
+      const k = Math.min(n, total - 1);
+      const all = button(bus, 'btn-mini btn-sell btn-sell-all', '', () => {
+        act(() => sellAll(g));
+      });
+      all.dataset.action = 'sell-all';
+      all.dataset.element = g.element;
+      all.dataset.tier = String(g.tier);
+      all.dataset.count = String(k);
+      miniLabel(all, k < n ? `Vendre ${k}` : 'Vendre tout', k * gain);
+      all.setAttribute('aria-label', `Vendre ${k} ${info.name} rang ${g.tier}, +${k * gain} pièces${k < n ? ' (la dernière balle reste)' : ''}`);
+      btns.append(all);
+    }
+    const up = upgradeCost(config, ball);
     if (up !== null) {
       const ub = button(bus, 'btn-mini btn-upgrade', '', () => {
-        act(() => sim.upgrade(index));
+        act(() => sim.upgrade(first));
       });
       ub.dataset.action = 'upgrade';
-      ub.dataset.volleyIndex = String(index);
+      ub.dataset.volleyIndex = String(first);
       ub.dataset.cost = String(up);
-      const price = el('span', 'up-cost');
+      const price = el('span', 'up-cost bm-val');
       price.append(el('span', '', '('), el('span', 'num', fmt(up)), coinIcon(), el('span', '', ')'));
-      ub.append(el('span', '', 'Rang +1'), price);
-      ub.setAttribute('aria-label', `Monter ${info.name} au rang ${b.tier + 1}, ${up} pièces : ${ownEffect(config, b.element, (b.tier + 1) as 2 | 3)}`);
+      ub.append(el('span', 'bm-verb', 'Rang +1'), price);
+      ub.setAttribute('aria-label', `Monter 1 ${info.name} au rang ${g.tier + 1}, ${up} pièces : ${ownEffect(config, g.element, (g.tier + 1) as 2 | 3)}`);
       btns.append(ub);
+      chip.dataset.upgrade = 'true';
     }
-    chip.append(head, btns);
+    chip.append(ballIcon(config, g.element, g.tier, 28), label, btns);
     return chip;
   }
 
   function renderVolley(volley: readonly Readonly<VolleyBall>[]): void {
     volleyList.textContent = '';
     volleyHead.textContent = `Ta volée · ${volley.length} balle${volley.length > 1 ? 's' : ''}`;
-    // ordre : rang décroissant puis ordre du JSON (index d'origine conservés pour les actions)
-    const order = volley.map((b, i) => ({ b, i })).sort((x, y) => y.b.tier - x.b.tier || elements.index(x.b.element) - elements.index(y.b.element) || x.i - y.i);
-    const last = volley.length <= 1;
-    for (const { b, i } of order) volleyList.append(volleyChip(b, i, last));
+    for (const g of groupVolley(volley)) volleyList.append(volleyGroup(g, volley.length));
   }
 
   function forgeOptions(): ForgeOption[] {
@@ -246,6 +326,7 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
     const price = el('div', 'price');
     price.append(coinIcon(), el('span', 'num', fmt(o.cost)));
     card.append(recipe, body, price);
+    card.title = `${res.desc} ${effect}`;
     card.setAttribute('aria-label', `Forger ${an} + ${bn} en ${res.name}, ${o.cost} pièces : ${res.desc}. ${effect}`);
     return card;
   }
@@ -263,6 +344,7 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
     current = shop;
     cost = shop.rerollCost;
     rerollCost.textContent = fmt(cost);
+    waveLabel.textContent = `· vague ${sim.state.wave} ·`;
     reroll.setAttribute('aria-label', `Reroll, ${cost} pièces`);
     renderItems(shop);
     renderVolley(sim.state.volley);
@@ -271,7 +353,7 @@ export function createShopScreen(sim: Sim, bus: EventBus, config: GameConfig, on
   }
 
   function flashForged(result: BallElement): void {
-    const chips = volleyList.querySelectorAll<HTMLElement>(`.volley-chip[data-element="${result}"]`);
+    const chips = volleyList.querySelectorAll<HTMLElement>(`.volley-group[data-element="${result}"]`);
     // la plus récente : rang I de préférence (une hybride forgée arrive au rang I)
     let target: HTMLElement | null = null;
     chips.forEach((c) => {
