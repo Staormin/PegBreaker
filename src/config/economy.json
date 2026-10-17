@@ -52,12 +52,12 @@
     "divine": 400
   },
   "forge": {
-    "hybridCost": 40,
+    "hybridCost": 25,
     "upgradeCost": [
       60,
       120
     ],
     "divineCost": 150,
-    "catalystCost": 60
+    "catalystCost": 35
   }
 }

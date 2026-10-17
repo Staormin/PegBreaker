@@ -400,7 +400,7 @@ export interface BallDef {
   name: string;
   description: string;
   family: BallFamily;
-  /** hybride : les deux parents (rang III requis) ; l'hybride porte leurs effets + le sien */
+  /** hybride : les deux parents (un au rang ≥ II, l'autre ≥ I) ; l'hybride porte leurs effets + le sien */
   recipe?: [BallElement, BallElement];
   /** paramètres de la mécanique par rang (index 0 = rang I) ; clés libres lues par sim/elements/<id>.ts ; hybrides : `rankMult` = multiplicateur de dégâts par rang */
   params?: Record<string, [number, number, number]>;
