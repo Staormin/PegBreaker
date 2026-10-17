@@ -560,6 +560,392 @@
           2
         ]
       }
+    },
+    {
+      "id": "steam",
+      "name": "Vapeur",
+      "description": "Feu + glace : nuage qui brûle et gèle.",
+      "family": "hybrid",
+      "recipe": [
+        "fire",
+        "ice"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#b9e8ff",
+      "params": {
+        "cloudRadius": [
+          1.2,
+          1.2,
+          1.2
+        ],
+        "cloudRatio": [
+          0.25,
+          0.35,
+          0.45
+        ],
+        "cloudsPerShot": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "laser",
+      "name": "Laser",
+      "description": "Foudre + prisme : rayons en croix.",
+      "family": "hybrid",
+      "recipe": [
+        "lightning",
+        "prism"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#e0ffff",
+      "params": {
+        "colRatio": [
+          0.35,
+          0.5,
+          0.65
+        ]
+      }
+    },
+    {
+      "id": "cluster",
+      "name": "Grappe",
+      "description": "Bombe + scission : mini-bombes au sol.",
+      "family": "hybrid",
+      "recipe": [
+        "bomb",
+        "split"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#ff6f91",
+      "params": {
+        "count": [
+          3,
+          4,
+          5
+        ],
+        "miniRadius": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "miniMult": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      }
+    },
+    {
+      "id": "wraith",
+      "name": "Spectre",
+      "description": "Fantôme + perforante : traverse et s'enrage.",
+      "family": "hybrid",
+      "recipe": [
+        "ghost",
+        "pierce"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#d8ccff",
+      "params": {
+        "perBlockPct": [
+          15,
+          22,
+          30
+        ],
+        "capBlocks": [
+          10,
+          10,
+          10
+        ]
+      }
+    },
+    {
+      "id": "abyss",
+      "name": "Abysse",
+      "description": "Acide + vide : la rouille se propage.",
+      "family": "hybrid",
+      "recipe": [
+        "acid",
+        "void"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#4b1d6b",
+      "params": {
+        "spread": [
+          1,
+          2,
+          3
+        ],
+        "capPerTurn": [
+          150,
+          200,
+          250
+        ]
+      }
+    },
+    {
+      "id": "jackpot",
+      "name": "Jackpot",
+      "description": "Or + chance : critiques qui paient.",
+      "family": "hybrid",
+      "recipe": [
+        "gold",
+        "lucky"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#ffe680",
+      "params": {
+        "critMult": [
+          4,
+          4,
+          4
+        ],
+        "fragChance": [
+          0.05,
+          0.1,
+          0.15
+        ]
+      }
+    },
+    {
+      "id": "quake",
+      "name": "Séisme",
+      "description": "Géante + choc : toute la rangée recule.",
+      "family": "hybrid",
+      "recipe": [
+        "giant",
+        "shock"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#c9a86a",
+      "params": {
+        "rowsPerShot": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "missile",
+      "name": "Missile",
+      "description": "Comète + traqueuse : accélère et explose.",
+      "family": "hybrid",
+      "recipe": [
+        "comet",
+        "homing"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#ff5c33",
+      "params": {
+        "accelPct": [
+          10,
+          10,
+          10
+        ],
+        "maxSpeedMult": [
+          2,
+          2,
+          2
+        ],
+        "explodeAtBounce": [
+          5,
+          4,
+          3
+        ],
+        "explodeRadius": [
+          1,
+          1,
+          1
+        ],
+        "explodeMult": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "id": "supernova",
+      "name": "Supernova",
+      "description": "Cristal + nova : paliers dévastateurs.",
+      "family": "hybrid",
+      "recipe": [
+        "crystal",
+        "nova"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#ff9de2",
+      "params": {
+        "radius": [
+          2,
+          2,
+          2
+        ],
+        "comboMult": [
+          12,
+          16,
+          20
+        ],
+        "cap": [
+          2000,
+          3000,
+          4000
+        ]
+      }
+    },
+    {
+      "id": "plague",
+      "name": "Peste",
+      "description": "Vampire + acide : la rouille soigne.",
+      "family": "hybrid",
+      "recipe": [
+        "vampire",
+        "acid"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#8bc34a",
+      "params": {
+        "healPerShot": [
+          2,
+          3,
+          4
+        ],
+        "spread": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "choir",
+      "name": "Chœur",
+      "description": "Jumelle + écho : six trajectoires.",
+      "family": "hybrid",
+      "recipe": [
+        "twin",
+        "echo"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#c8ffe6",
+      "params": {
+        "count": [
+          3,
+          4,
+          5
+        ],
+        "echoRatio": [
+          0.5,
+          0.75,
+          1
+        ]
+      }
+    },
+    {
+      "id": "orbit",
+      "name": "Orbite",
+      "description": "Boomerang + aimant : aspire et revient.",
+      "family": "hybrid",
+      "recipe": [
+        "boomerang",
+        "magnet"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#ff9ad5",
+      "params": {
+        "returns": [
+          3,
+          3,
+          3
+        ],
+        "magnetRadius": [
+          3,
+          3,
+          3
+        ],
+        "returnBonusPct": [
+          50,
+          75,
+          100
+        ]
+      }
+    },
+    {
+      "id": "hammer",
+      "name": "Marteau",
+      "description": "Plomb + rouille : écrase et repousse.",
+      "family": "hybrid",
+      "recipe": [
+        "lead",
+        "rust"
+      ],
+      "baseDamage": 14,
+      "weight": 0,
+      "color": "#8d6e63",
+      "params": {
+        "damageMult": [
+          3,
+          3,
+          3
+        ],
+        "pctMaxHp": [
+          30,
+          38,
+          45
+        ]
+      }
+    },
+    {
+      "id": "divine",
+      "name": "Divine",
+      "description": "Traverse tout, nova à chaque rebond, Jugement.",
+      "family": "divine",
+      "baseDamage": 60,
+      "weight": 0,
+      "color": "#fff6c2",
+      "params": {
+        "radiusMult": [
+          1.3,
+          1.3,
+          1.3
+        ],
+        "novaRadius": [
+          1.5,
+          1.5,
+          1.5
+        ],
+        "novaDamage": [
+          250,
+          250,
+          250
+        ],
+        "comboPerBounce": [
+          3,
+          3,
+          3
+        ],
+        "judgement": [
+          1500,
+          1500,
+          1500
+        ]
+      }
     }
   ]
 }

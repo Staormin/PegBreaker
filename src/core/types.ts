@@ -17,11 +17,14 @@ export interface Vec2 {
 export type BallElement =
   | 'stone' | 'fire' | 'lightning' | 'ice' | 'ghost' | 'lead' | 'split'
   | 'acid' | 'magnet' | 'pierce' | 'bomb' | 'homing' | 'giant' | 'swarm' | 'vampire' | 'gold' | 'prism'
-  | 'void' | 'echo' | 'boomerang' | 'crystal' | 'shock' | 'twin' | 'rust' | 'nova' | 'comet' | 'lucky';
+  | 'void' | 'echo' | 'boomerang' | 'crystal' | 'shock' | 'twin' | 'rust' | 'nova' | 'comet' | 'lucky'
+  // hybrides (forge : deux balles de rang III) et Divine (deux hybrides de rang III)
+  | 'steam' | 'laser' | 'cluster' | 'wraith' | 'abyss' | 'jackpot' | 'quake' | 'missile' | 'supernova' | 'plague' | 'choir' | 'orbit' | 'hammer'
+  | 'divine';
 
 /** famille d'éléments (rendu et audio partagent les timbres/silhouettes par famille) */
-export type BallFamily = 'elemental' | 'heavy' | 'tricky' | 'swarm' | 'greed' | 'arcane';
-export const BALL_FAMILIES: readonly BallFamily[] = ['elemental', 'heavy', 'tricky', 'swarm', 'greed', 'arcane'];
+export type BallFamily = 'elemental' | 'heavy' | 'tricky' | 'swarm' | 'greed' | 'arcane' | 'hybrid' | 'divine';
+export const BALL_FAMILIES: readonly BallFamily[] = ['elemental', 'heavy', 'tricky', 'swarm', 'greed', 'arcane', 'hybrid', 'divine'];
 export type BallTier = 1 | 2 | 3;
 
 /** Une balle dans la volée (inventaire du joueur), pas encore en vol. */
@@ -271,6 +274,9 @@ export type GameEvent =
   | { type: 'shop:opened'; shop: ShopState }
   | { type: 'shop:bought'; item: ShopItem }
   | { type: 'shop:rerolled'; cost: number }
+  | { type: 'shop:sold'; element: BallElement; tier: BallTier; coins: number }
+  | { type: 'shop:forged'; result: BallElement; parents: [BallElement, BallElement]; cost: number; pos: Vec2 }
+  | { type: 'shop:upgraded'; element: BallElement; tier: BallTier; cost: number }
   | { type: 'shop:left' }
   | { type: 'player:damaged'; amount: number; hpLeft: number }
   | { type: 'player:healed'; amount: number; hpLeft: number; pos?: Vec2; source?: 'heart' | 'drop' | 'relic' | 'contract' | 'reward' | 'vampire' | 'shop' | 'revive' }
@@ -294,6 +300,8 @@ export interface RunSummary {
   score: number;
   revivesUsed: number;
   contractsCompleted: number;
+  /** hybrides et Divine forgées pendant la run */
+  forged: BallElement[];
 }
 
 // ----------------------------------------------------------------------
@@ -341,6 +349,14 @@ export interface Sim {
   buy(index: number): void;
   reroll(): void;
   leaveShop(): void;
+  /** Boutique : vend la balle d'index i de la volée (jamais la dernière). Renvoie les pièces gagnées, 0 si refusé. */
+  sell(index: number): number;
+  /** Boutique : forge les balles i et j (toutes deux rang III) en hybride (recette) ou en Divine (deux hybrides). false si impossible ou trop cher. */
+  forge(i: number, j: number): boolean;
+  /** Boutique : monte une hybride d'un rang contre des pièces. false si impossible. */
+  upgrade(index: number): boolean;
+  /** Liste des forges possibles dans la volée courante (paires d'index + résultat), sans effet de bord. */
+  forgeOptions(): { i: number; j: number; result: BallElement; cost: number }[];
   restart(seed?: string): void;
   /** Seconde chance : en phase 'gameover' après 'run:lost', si revivesUsed < economy.revive.maxPerRun. Renvoie false sinon. Le coût en fragments est débité par l'UI via MetaSystem.spendFragments AVANT l'appel. */
   revive(): boolean;
@@ -380,6 +396,8 @@ export interface BallDef {
   name: string;
   description: string;
   family: BallFamily;
+  /** hybride : les deux parents (rang III requis) ; l'hybride porte leurs effets + le sien */
+  recipe?: [BallElement, BallElement];
   /** paramètres de la mécanique par rang (index 0 = rang I) ; clés libres lues par sim/elements/<id>.ts */
   params?: Record<string, [number, number, number]>;
   baseDamage: number;
@@ -534,6 +552,10 @@ export interface EconomyConfig {
   reward: { skipCoins: number; optionCount: number; relicChance: number; fuseChance: number };
   score: { perDepth: number; perBlock: number; perDamage: number; perBoss: number };
   fragments: { perWave: number; perBoss: number; perDepth: number };
+  /** vente en boutique : pièces par balle selon rang */
+  sell: { byTier: [number, number, number]; hybridByTier: [number, number, number]; divine: number };
+  /** forge : coût d'une hybride, des upgrades I→II et II→III, de la Divine */
+  forge: { hybridCost: number; upgradeCost: [number, number]; divineCost: number };
   /** seconde chance : coût en fragments (0 = gratuit), max par run, PV rendus (ratio de maxHp), rangées du bas effacées */
   revive: { cost: number; freeOnFirstRun: boolean; maxPerRun: number; hpRatio: number; clearRows: number };
 }
@@ -640,6 +662,8 @@ export interface SaveData {
   settings: Settings;
   /** le joueur a déjà vu l'onboarding */
   onboarded: boolean;
+  /** hybrides (et Divine) déjà forgées au moins une fois */
+  codex: BallElement[];
 }
 
 export interface MetaSystem {
@@ -657,6 +681,8 @@ export interface MetaSystem {
   setCurrentRun(snapshot: RunSnapshot | null): void;
   updateSettings(patch: Partial<Settings>): void;
   setOnboarded(): void;
+  /** inscrit une hybride/Divine au codex (idempotent, sauvegarde) */
+  addToCodex(element: BallElement): void;
   dailySeed(date?: string): string;
   /** 2 mutateurs tirés déterministement depuis la date parmi runMods.dailyEligible */
   dailyMods(date?: string): string[];

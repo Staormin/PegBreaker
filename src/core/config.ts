@@ -38,6 +38,15 @@ export function validateConfig(c: GameConfig): GameConfig {
   req(c.contracts, ['defs'], 'contracts');
   req(c.economy, ['revive', 'cost'], 'economy');
   if (!c.balls.defs.some((d) => d.id === 'stone')) throw new Error('config/balls.json : "stone" obligatoire');
+  const ids = new Set(c.balls.defs.map((d) => d.id));
+  for (const d of c.balls.defs) {
+    if (d.recipe && (!ids.has(d.recipe[0]) || !ids.has(d.recipe[1]) || d.recipe[0] === d.recipe[1])) {
+      throw new Error(`config/balls.json : recette invalide pour "${d.id}"`);
+    }
+    if ((d.family === 'hybrid' || d.family === 'divine') && d.weight !== 0) throw new Error(`config/balls.json : "${d.id}" ne doit pas être tirable (weight 0)`);
+  }
+  req(c.economy, ['sell', 'byTier'], 'economy');
+  req(c.economy, ['forge', 'hybridCost'], 'economy');
   const maxSpeedMult = Math.max(1, ...Object.values(c.waves.runModEffects ?? {}).map((e) => e.ballSpeedMult ?? 1));
   if ((c.blocks.board.ballSpeed * maxSpeedMult) / 240 > c.blocks.board.ballRadius) {
     throw new Error('config/blocks.json : ballSpeed trop élevée pour le sous-pas de 240 Hz (tunneling)');

@@ -1,13 +1,62 @@
 {
   "shop": {
     "itemCount": 4,
-    "prices": { "ball": 15, "relicByRarity": { "common": 20, "rare": 35, "epic": 60 }, "heal": 12 },
+    "prices": {
+      "ball": 15,
+      "relicByRarity": {
+        "common": 20,
+        "rare": 35,
+        "epic": 60
+      },
+      "heal": 12
+    },
     "rerollBase": 8,
     "rerollGrowth": 4,
     "healAmount": 2
   },
-  "reward": { "skipCoins": 15, "optionCount": 3, "relicChance": 0.4, "fuseChance": 0.5 },
-  "score": { "perDepth": 100, "perBlock": 10, "perDamage": 0.1, "perBoss": 1000 },
-  "fragments": { "perWave": 3, "perBoss": 10, "perDepth": 0.5 },
-  "revive": { "cost": 35, "freeOnFirstRun": true, "maxPerRun": 1, "hpRatio": 0.5, "clearRows": 3 }
+  "reward": {
+    "skipCoins": 15,
+    "optionCount": 3,
+    "relicChance": 0.4,
+    "fuseChance": 0.5
+  },
+  "score": {
+    "perDepth": 100,
+    "perBlock": 10,
+    "perDamage": 0.1,
+    "perBoss": 1000
+  },
+  "fragments": {
+    "perWave": 3,
+    "perBoss": 10,
+    "perDepth": 0.5
+  },
+  "revive": {
+    "cost": 35,
+    "freeOnFirstRun": true,
+    "maxPerRun": 1,
+    "hpRatio": 0.5,
+    "clearRows": 3
+  },
+  "sell": {
+    "byTier": [
+      6,
+      14,
+      32
+    ],
+    "hybridByTier": [
+      45,
+      90,
+      180
+    ],
+    "divine": 400
+  },
+  "forge": {
+    "hybridCost": 40,
+    "upgradeCost": [
+      60,
+      120
+    ],
+    "divineCost": 150
+  }
 }
