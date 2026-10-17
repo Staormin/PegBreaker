@@ -304,12 +304,21 @@ const miniBomb: ElementHooks = {
 /** Balle miroir du chœur : repart du sol une fois (copie d'écho traversante, × choir.echoRatio). */
 const miniMirror: ElementHooks = {
   onGrounded(ctx, b, fx) {
-    const nb = spawnMini(ctx, b, 'echo', b.pos.x, b.pos.y, b.vel.x, -Math.abs(b.vel.y), fx.dmgMult * prm(ctx, 'choir', 'echoRatio', b.tier), 1);
+    const nb = spawnMini(ctx, b, 'echo', b.pos.x, b.pos.y, b.vel.x, -Math.abs(b.vel.y), fx.dmgMult * prm(ctx, 'choir', 'echoRatio', b.tier) * echoBaseRatio(ctx), 1);
     if (!nb) return;
     lastFx(ctx).pass = true;
     emit(ctx, { type: 'ball:launched', ballId: nb.id, element: nb.element, tier: nb.tier, pos: { x: nb.pos.x, y: nb.pos.y }, golden: false });
   },
 };
+
+/**
+ * Une copie d'écho est une mini-balle d'élément 'echo' : ses dégâts partent de la base de l'écho. Pour le chœur,
+ * on la ramène à la base du chœur (× base chœur / base écho) ; rankMult est déjà dans le dmgMult du miroir.
+ */
+function echoBaseRatio(ctx: Ctx): number {
+  const e = ballDef(ctx, 'echo').baseDamage;
+  return e > 0 ? ballDef(ctx, 'choir').baseDamage / e : 1;
+}
 
 /** Index = fx.miniFx. */
 export const MINI_HOOKS: readonly ElementHooks[] = [{}, miniBomb, miniMirror];
@@ -547,6 +556,9 @@ const plagueOwn: ElementHooks = {
 /** Chœur : `count` balles en éventail (angle et × dégâts de la jumelle) ; les miroirs repartent du sol une fois (echoRatio). */
 const choirOwn: ElementHooks = {
   params: ['count', 'echoRatio'],
+  onGrounded(ctx, b) {
+    choirEchoFix(ctx, b);
+  },
   onLaunch(ctx, b, fx) {
     const n = Math.max(1, Math.round(prm(ctx, 'choir', 'count', b.tier)));
     const mult = prm(ctx, 'twin', 'damageMult', b.tier);
@@ -575,6 +587,14 @@ const choirOwn: ElementHooks = {
     emit(ctx, { type: 'ball:split', pos: { x: b.pos.x, y: b.pos.y }, element: 'choir' });
   },
 };
+
+/** Chœur, au sol : la copie d'écho du parent (dernière balle créée) prend la base et le rankMult du chœur. */
+function choirEchoFix(ctx: Ctx, b: Ball): void {
+  const balls = ctx.s.balls;
+  const last = balls[balls.length - 1];
+  if (!last || last === b || last.kind !== 'echo' || last.id !== ctx.s.internal.nextId - 1) return;
+  lastFx(ctx).dmgMult *= echoBaseRatio(ctx) * rankOf(ctx, 'choir', b.tier);
+}
 
 /** Orbite : `returns` allers-retours, ramasse les drops à magnetRadius, +returnBonusPct % de dégâts au retour. */
 const orbitOwn: ElementHooks = {

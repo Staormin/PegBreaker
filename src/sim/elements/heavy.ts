@@ -59,10 +59,11 @@ function shockSlot(ctx: Ctx, id: number): number {
 
 /**
  * Le bloc remonte d'une rangée si la place est libre et row > 0, au plus `max` fois par bloc et par tir
- * (compteur partagé internal.shocked : choc, marteau). Vrai si le bloc a bougé.
+ * (compteur partagé internal.shocked : choc, marteau), jamais un boss. Vrai si le bloc a bougé.
  */
 export function pushBlockUp(ctx: Ctx, blk: Block, max: number): boolean {
-  if (!isBreakable(blk) || blk.row <= 0 || max <= 0) return false;
+  // un boss ne recule jamais : sinon choc/séisme/marteau le maintiennent loin de la ligne indéfiniment (run infinie)
+  if (!isBreakable(blk) || blk.kind === 'boss' || blk.row <= 0 || max <= 0) return false;
   const a = ctx.s.internal.shocked;
   let k = shockSlot(ctx, blk.id);
   if (k >= 0 && (a[k + 1] as number) >= max) return false;

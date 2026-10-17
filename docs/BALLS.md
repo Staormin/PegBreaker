@@ -27,7 +27,7 @@ Rang : sauf mention, rang II = effet ×1,5 (ou +1 selon la nature), rang III = �
 | echo | Écho | Quand elle touche le sol, une copie traversante (50 % dégâts) repart vers le haut depuis ce point, une fois. | 70 % / 100 % | tricky | Puits 240 ◆ (après Boomerang) |
 | boomerang | Boomerang | Après 0,9 s de vol, fait demi-tour vers le point de lancement en traversant les blocs (frappés au passage) ; se pose à l'arrivée. | 2 / 3 allers-retours | tricky | Puits 190 ◆ |
 | crystal | Cristal | +30 % de dégâts par rebond (en plus du combo) mais éclate après 8 rebonds (éclats : 4 mini-balles ×0,4 en éventail de ±40°). | 10 / 12 rebonds | arcane | Puits 100 ◆ |
-| shock | Choc | Le bloc touché recule d'une rangée vers le haut si la case est libre (1 fois par bloc par tir). | 2 / 3 fois | heavy | Puits 170 ◆ |
+| shock | Choc | Le bloc touché recule d'une rangée vers le haut si la case est libre (1 fois par bloc par tir ; jamais un boss). | 2 / 3 fois | heavy | Puits 170 ◆ |
 | twin | Jumelle | Tirée en deux balles à angles miroirs (±8°), 70 % de dégâts chacune. | 3 / 4 balles | swarm | Puits 80 ◆ (après Scission) |
 | rust | Rouille | Au premier contact, le bloc perd 15 % de PV max (120 au plus) définitivement et son armure. | 22 % (max 180) / 30 % (max 240) | arcane | Puits 55 ◆ |
 | nova | Nova | À chaque palier de combo (3/8/16), explose : rayon 1,2 u, dégâts = combo × 8 (600 au plus). | ×10 (max 900) / ×14 (max 1 200) | arcane | Succès « Flipper » (combo 15) |

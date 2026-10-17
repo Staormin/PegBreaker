@@ -281,7 +281,7 @@ describe('hybrides : effet propre + effet parent', () => {
     const col = chains.filter((e) => e.element === 'laser');
     expect(col.length).toBeGreaterThan(0);
     expect(col.every((e) => Math.abs(e.to.x - 3.5) < 1e-9)).toBe(true);
-    expect(col[0]!.damage).toBeCloseTo(baseDmg('laser', 1) * P('laser', 'colRatio', 1));
+    expect(Math.abs(col[0]!.damage - baseDmg('laser', 1) * P('laser', 'rankMult', 1) * P('laser', 'colRatio', 1))).toBeLessThanOrEqual(1);
     expect(chains.some((e) => e.element === 'lightning')).toBe(true);
   });
 
@@ -340,7 +340,7 @@ describe('hybrides : effet propre + effet parent', () => {
     const crit = ofType(evs, 'block:hit').filter((e) => e.crit && e.element === 'jackpot');
     expect(crit.length).toBeGreaterThan(0);
     const h = crit[0]!;
-    const want = baseDmg('jackpot', 1) * P('gold', 'damageMult', 1, cfg) * (1 + CFG.balls.comboDamagePerBounce * h.combo) * P('jackpot', 'critMult', 1, cfg);
+    const want = baseDmg('jackpot', 1) * P('gold', 'damageMult', 1, cfg) * (1 + CFG.balls.comboDamagePerBounce * h.combo) * P('jackpot', 'critMult', 1, cfg) * P('jackpot', 'rankMult', 1, cfg);
     expect(Math.abs(h.damage - want)).toBeLessThanOrEqual(1);
     const drops = ofType(evs, 'drop:spawned');
     expect(drops.filter((e) => e.kind === 'coin').length).toBeGreaterThanOrEqual(crit.length);
@@ -460,7 +460,7 @@ describe('hybrides : effet propre + effet parent', () => {
     const { evs, sim } = single(vb('hammer', 1), (s) => [block(s, 'armored', 3, 4, STURDY)]);
     const hit = ofType(evs, 'block:hit')[0]!;
     const loss = Math.min((P('hammer', 'pctMaxHp', 1) / 100) * STURDY, P('hammer', 'cap', 1));
-    expect(hit.damage).toBe(Math.round(baseDmg('hammer', 1) * P('hammer', 'damageMult', 1) + loss));
+    expect(hit.damage).toBe(Math.round((baseDmg('hammer', 1) * P('hammer', 'damageMult', 1) + loss) * P('hammer', 'rankMult', 1)));
     expect(hit.combo).toBe(0);
     const b = sim.state.blocks[0]!;
     expect(b.kind).toBe('normal');
@@ -468,6 +468,19 @@ describe('hybrides : effet propre + effet parent', () => {
     expect(b.row).toBe(3);
     expect(ofType(evs, 'ball:bounce').every((e) => e.combo === 0)).toBe(true);
   });
+});
+
+describe('anti-infini : un boss ne recule jamais', () => {
+  for (const el of ['shock', 'hammer', 'quake'] as BallElement[]) {
+    it(`${el} III : le boss frappé reste sur sa rangée (sinon boss régénérant tenu loin de la ligne = run infinie)`, () => {
+      const sim = newSim(`boss-${el}`);
+      const boss = block(sim, 'boss', 2, 4, STURDY, 3);
+      setup(sim, [boss], vb(el, 3), { launchX: 3.5, rowsLeft: 1 });
+      const evs = fly(sim, UP);
+      expect(ofType(evs, 'block:hit').some((e) => e.blockId === boss.id)).toBe(true);
+      expect(sim.state.blocks.find((b) => b.id === boss.id)!.row).toBe(4);
+    });
+  }
 });
 
 // ------------------------------------------------------------------------------------------------------
