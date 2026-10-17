@@ -2,7 +2,7 @@
   "element": "wraith",
   "seed": "forge-wraith",
   "signal": "impact au même combo > 1,1 × le premier impact de la balle (bonus par bloc traversé)",
-  "measured": "1/7 impacts bonifiés",
+  "measured": "12/20 impacts bonifiés",
   "ok": true,
   "consoleErrors": [],
   "report": {
@@ -16,16 +16,15 @@
     "counts": {
       "volley:start": 8,
       "ball:launched": 40,
-      "block:hit": 56,
-      "block:destroyed": 16,
-      "contract:progress": 8,
+      "block:hit": 60,
+      "block:destroyed": 15,
+      "contract:progress": 3,
       "drop:spawned": 5,
       "drop:collected": 5,
       "ball:bounce": 90,
       "ball:grounded": 40,
       "volley:end": 8,
       "rows:advanced": 7,
-      "combo:milestone": 18,
       "contract:completed": 1,
       "wave:cleared": 1,
       "reward:offered": 1,
@@ -37,21 +36,21 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "wraith": 16
+      "wraith": 15
     },
     "hitsByEl": {
-      "wraith": 56
+      "wraith": 60
     },
     "damageByEl": {
-      "wraith": 677
+      "wraith": 601
     },
     "kinds": {
       "main": 40
     },
     "focus": {
       "critLowCombo": 0,
-      "critHits": 14,
-      "hits": 56,
+      "critHits": 0,
+      "hits": 60,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -83,7 +82,7 @@
       "goldBall": 0,
       "goldDestroyed": 0,
       "ceilingBounces": 40,
-      "comboMax": 7,
+      "comboMax": 0,
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
@@ -96,27 +95,27 @@
     "devSamples": 85,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 151,
+    "maxParticles": 145,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      55,
-      208,
-      47,
+      52,
+      186,
+      45,
       21,
-      73,
-      85,
-      0,
-      188
+      71,
+      68,
+      14,
+      144
     ],
     "captured": true,
     "hyb": {
       "acidUnhit": 0,
-      "wraithBoost": 1,
-      "wraithSamples": 7,
+      "wraithBoost": 12,
+      "wraithSamples": 20,
       "critCoinSteps": 0,
-      "critHits": 14,
+      "critHits": 0,
       "rowShiftSteps": 0,
       "speedUpMax": 1,
       "groundBouncesMaxPerBall": 0

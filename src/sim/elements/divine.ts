@@ -10,6 +10,7 @@ import { centerX, centerY, prm, setAttrib } from './common';
 
 export const divine: ElementHooks = {
   passThrough: true,
+  traverseCombo: 0, // combo : +comboPerBounce par rebond de mur/plafond seulement
   alwaysGolden: true,
   params: ['radiusMult', 'novaRadius', 'novaDamage', 'comboPerBounce', 'judgement'],
   modifyBall(ctx, b) {

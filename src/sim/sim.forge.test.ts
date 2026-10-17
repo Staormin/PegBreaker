@@ -388,7 +388,10 @@ describe('hybrides : effet propre + effet parent', () => {
     const bounces = ofType(evs, 'ball:bounce').length;
     const every = P('missile', 'explodeAtBounce', 3);
     expect(bounces).toBeGreaterThanOrEqual(every);
-    expect(ofType(evs, 'block:explode').filter((e) => e.element === 'missile').length).toBe(Math.floor(bounces / every));
+    const booms = ofType(evs, 'block:explode').filter((e) => e.element === 'missile').length;
+    expect(booms).toBe(Math.min(Math.floor(bounces / every), P('missile', 'maxExplosions', 3)));
+    // dernière charge : le missile est consommé (pas de ball:grounded)
+    if (booms === P('missile', 'maxExplosions', 3)) expect(ofType(evs, 'ball:grounded')).toHaveLength(0);
   });
 
   it('supernova : paliers → explosions nova ET supernova, bonus du cristal, n éclate jamais', () => {

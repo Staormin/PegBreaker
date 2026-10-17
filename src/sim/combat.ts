@@ -275,7 +275,7 @@ export function onImpact(
     if (amount > 0) damageBlock(ctx, bi, amount, b.element, b.combo, crit);
   }
   if (H.onBlockHit) H.onBlockHit(ctx, b, fx, bi, blk, px, py, dmg, isPeg);
-  bumpCombo(ctx, b, !bounced ? (H.passThrough ? ctx.relic.ghostCombo : 1) : isPeg ? ctx.relic.pegCombo : 1, fx);
+  bumpCombo(ctx, b, !bounced ? (H.passThrough ? ctx.relic.ghostCombo * (H.traverseCombo ?? 1) : 1) : isPeg ? ctx.relic.pegCombo : 1, fx);
   if (bounced) {
     emit(ctx, {
       type: 'ball:bounce',

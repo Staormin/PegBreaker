@@ -145,3 +145,86 @@ export function playRun(sim: Sim, policy: (sim: Sim) => Vec2, maxShots = 400): B
 }
 
 export { createRng };
+
+// ---------------------------------------------------------------------------------------------------------
+// Protocoles d'équilibrage des hybrides (sim.forge.balance.test.ts) : dégâts totaux d'une volée de 5 balles
+// `el` de rang `tier`, à diviser par ceux de 5 pierres de rang I sur le même protocole.
+//  A : bot naïf, 10 graines × 15 tirs, plateau normal, PV des blocs × 16 × tierDamageMultiplier² (× 100), PV joueur 999 ;
+//  B : idem, PV non multipliés, chaque bloc cassable remis à 2 000 / 2 000 PV avant chaque tir ;
+//  C : réplique exacte de tests/e2e/balls.spec.ts « forge rangs » (QA) : graines balls-ref-1..3, 6 tirs, méta
+//      neutre, blocs cassables hors boss SOUS 2 000 PV max portés à 2 000 (les blocs entamés ne sont pas
+//      remis à neuf), visée bloc le plus bas puis le plus à gauche ± 0,3 selon le tir, récompense = première
+//      option non relique (sinon passer), boutique quittée.
+export type BalanceProtocol = 'A' | 'B' | 'C';
+
+export function protocolDamage(el: import('../core/types').BallElement, tier: import('../core/types').BallTier, proto: BalanceProtocol): number {
+  if (proto === 'C') return protocolC(el, tier);
+  const all = config().balls.defs.map((d) => d.id);
+  let tot = 0;
+  for (let s = 0; s < 10; s++) {
+    const c = config();
+    c.waves.start.hp = 999;
+    if (proto === 'A') {
+      const k = 16 * Math.pow(c.balls.tierDamageMultiplier, 2); // PV × 100 : rien ne plafonne, même au rang III
+      for (const p of c.waves.hpByWave!) p.baseHp *= k;
+    }
+    const sim = newSim(`bal-${s}`, c, { unlockedElements: all });
+    for (let shot = 0; shot < 15 && sim.state.phase !== 'gameover'; shot++) {
+      for (let g = 0; g < 10; g++) {
+        const p = sim.state.phase;
+        if (p === 'reward') sim.skipReward();
+        else if (p === 'shop') sim.leaveShop();
+        else break;
+      }
+      if (sim.state.phase !== 'aiming') break;
+      mut(sim).volley = Array.from({ length: 5 }, () => ({ element: el, tier }));
+      if (proto === 'B') {
+        for (const b of mut(sim).blocks) {
+          if (b.kind !== 'peg' && b.hp > 0) {
+            b.hp = 2000;
+            b.maxHp = 2000;
+          }
+        }
+      }
+      for (const e of shoot(sim, lowestBlockDir(sim))) if (e.type === 'volley:end') tot += e.shotDamage;
+    }
+  }
+  return tot;
+}
+
+export function protocolC(el: import('../core/types').BallElement, tier: import('../core/types').BallTier, onEvent?: (e: GameEvent, seed: string, shot: number) => void): number {
+  let total = 0;
+  for (const seed of ['balls-ref-1', 'balls-ref-2', 'balls-ref-3']) {
+    const sim = newSim(seed, config());
+    let shots = 0;
+    for (let guard = 0; guard < 200_000; guard++) {
+      const s = mut(sim);
+      if (s.phase === 'aiming') {
+        if (shots >= 6) break;
+        s.volley = Array.from({ length: 5 }, () => ({ element: el, tier }));
+        for (const b of s.blocks) if (b.kind !== 'peg' && b.kind !== 'boss' && b.maxHp < 2000) b.maxHp = b.hp = 2000;
+        let best: Block | null = null;
+        for (const b of s.blocks) if (b.kind !== 'peg' && (!best || b.row > best.row || (b.row === best.row && b.col < best.col))) best = b;
+        const tx = best ? best.col + best.width / 2 + 0.3 * ((shots % 3) - 1) : s.launchPos.x + 0.5;
+        const ty = best ? best.row + 0.5 : 1;
+        const dx = tx - s.launchPos.x;
+        let dy = ty - s.launchPos.y;
+        if (dy > -0.3) dy = -0.3;
+        const l = Math.hypot(dx, dy);
+        sim.aim({ x: dx / l, y: dy / l }, 0);
+        sim.fire();
+        shots++;
+      } else if (s.phase === 'reward') {
+        const i = (s.rewardOffer ?? []).findIndex((x) => x.kind !== 'relic');
+        if (i >= 0) sim.chooseReward(i);
+        else sim.skipReward();
+      } else if (s.phase === 'shop') sim.leaveShop();
+      else if (s.phase === 'gameover') break;
+      for (const e of sim.step(FRAME)) {
+        if (e.type === 'volley:end') total += e.shotDamage;
+        if (onEvent) onEvent(e, seed, shots);
+      }
+    }
+  }
+  return total;
+}

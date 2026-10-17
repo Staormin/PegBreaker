@@ -1,83 +1,39 @@
 // Équilibrage des hybrides et de la Divine, accessibilité de la forge : configuration RÉELLE (dorée, contrats,
 // pénalité d'éventail actifs), contrairement à sim.forge.test.ts (useNeutralFun).
 import { describe, expect, it } from 'vitest';
-import type { BallElement, BallTier, MetaModifiers, VolleyBall } from '../core/types';
-import { config, lowestBlockDir, mut, newSim, shoot } from './test-helpers';
+import type { BallElement, MetaModifiers } from '../core/types';
+import { config, lowestBlockDir, newSim, protocolDamage, shoot, type BalanceProtocol } from './test-helpers';
 
 const CFG = config();
 const ALL: BallElement[] = CFG.balls.defs.map((d) => d.id);
 const BASE27: BallElement[] = CFG.balls.defs.filter((d) => d.family !== 'hybrid' && d.family !== 'divine').map((d) => d.id);
 const FULL: Partial<MetaModifiers> = { bonusHp: 3, bonusStartBalls: 2, coinMultiplier: 1.3, unlockedElements: BASE27 };
 const HYBRIDS: BallElement[] = CFG.balls.defs.filter((d) => d.family === 'hybrid').map((d) => d.id);
-function vb(element: BallElement, tier: BallTier, n = 1): VolleyBall[] {
-  return Array.from({ length: n }, () => ({ element, tier }));
-}
 
 // ------------------------------------------------------------------------------------------------------
-// Équilibrage (docs/HYBRIDS.md, « une forge doit rapporter ») : bot naïf (vise le bloc le plus bas), volée de
-// 5 balles de l'élément mesuré, remise avant chaque tir ; 10 seeds × 15 tirs ; PV joueur 999 ; ratio = dégâts
-// moyens par tir / ceux de 5 pierres de rang I sur le même protocole. Deux protocoles doivent tenir :
-//  A : plateau normal, PV des blocs × 4 × tierDamageMultiplier² (des blocs meurent : l'excès compte peu) ;
-//  B : protocole QA (docs/qa/forge.md) : chaque bloc cassable remis à 2 000 / 2 000 PV avant chaque tir.
-// Bandes (A et B) : hybride I ∈ [3 ; 4,5], III ∈ [6 ; 9] ; Divine A ∈ [12 ; 18], B ≤ 18.
-
-type Protocol = 'A' | 'B';
-
-function meanShotDamage(el: BallElement, tier: BallTier, proto: Protocol): number {
-  let tot = 0;
-  let n = 0;
-  for (let s = 0; s < 10; s++) {
-    const c = config();
-    c.waves.start.hp = 999;
-    if (proto === 'A') {
-      const k = 4 * Math.pow(c.balls.tierDamageMultiplier, 2);
-      for (const p of c.waves.hpByWave!) p.baseHp *= k;
-    }
-    const sim = newSim(`bal-${s}`, c, { unlockedElements: ALL });
-    for (let shot = 0; shot < 15 && sim.state.phase !== 'gameover'; shot++) {
-      for (let g = 0; g < 10; g++) {
-        const p = sim.state.phase;
-        if (p === 'reward') sim.skipReward();
-        else if (p === 'shop') sim.leaveShop();
-        else break;
-      }
-      if (sim.state.phase !== 'aiming') break;
-      mut(sim).volley = vb(el, tier, 5);
-      if (proto === 'B') {
-        for (const b of mut(sim).blocks) {
-          if (b.kind !== 'peg' && b.hp > 0) {
-            b.hp = 2000;
-            b.maxHp = 2000;
-          }
-        }
-      }
-      for (const e of shoot(sim, lowestBlockDir(sim))) {
-        if (e.type === 'volley:end') {
-          tot += e.shotDamage;
-          n++;
-        }
-      }
-    }
-  }
-  return tot / n;
-}
+// Équilibrage (docs/HYBRIDS.md, « une forge doit rapporter ») : dégâts d'une volée de 5 balles relatifs à
+// 5 pierres de rang I, sur trois protocoles (test-helpers.ts → protocolDamage) :
+//  A : plateau normal, PV × 100 (rien ne plafonne) ; B : blocs remis à 2 000 / 2 000 PV avant chaque tir ;
+//  C : réplique exacte du protocole QA tests/e2e/balls.spec.ts « forge rangs » (docs/qa/forge.md, FG-05).
+// Bandes : A et B : hybride I ∈ [3 ; 4,5], III ∈ [6 ; 9] ; C : III ∈ [6 ; 9] (le rang I y est seulement
+// journalisé : la pierre ne touche qu'une fois par tir sur ce plateau clairsemé) ; Divine ≤ 18 partout.
 
 describe('équilibrage des hybrides et de la Divine (relatif à 5 pierres de rang I)', () => {
-  for (const proto of ['A', 'B'] as Protocol[]) {
-    it(`protocole ${proto} : hybride I ∈ [3 ; 4,5], III ∈ [6 ; 9], Divine ${proto === 'A' ? '∈ [12 ; 18]' : '≤ 18'}`, () => {
-      const s1 = meanShotDamage('stone', 1, proto);
+  for (const proto of ['A', 'B', 'C'] as BalanceProtocol[]) {
+    it(`protocole ${proto} : ${proto === 'C' ? '' : 'hybride I ∈ [3 ; 4,5], '}III ∈ [6 ; 9], Divine ≤ 18`, () => {
+      const s1 = protocolDamage('stone', 1, proto);
       const lines: string[] = [];
       const bad: string[] = [];
       for (const el of HYBRIDS) {
-        const r1 = meanShotDamage(el, 1, proto) / s1;
-        const r3 = meanShotDamage(el, 3, proto) / s1;
+        const r1 = protocolDamage(el, 1, proto) / s1;
+        const r3 = protocolDamage(el, 3, proto) / s1;
         lines.push(`${el} ${r1.toFixed(2)}/${r3.toFixed(2)}`);
-        if (r1 < 3 || r1 > 4.5) bad.push(`${el} I ${r1.toFixed(2)}`);
+        if (proto !== 'C' && (r1 < 3 || r1 > 4.5)) bad.push(`${el} I ${r1.toFixed(2)}`);
         if (r3 < 6 || r3 > 9) bad.push(`${el} III ${r3.toFixed(2)}`);
       }
-      const d = meanShotDamage('divine', 1, proto) / s1;
+      const d = protocolDamage('divine', 1, proto) / s1;
       lines.push(`divine ${d.toFixed(2)}`);
-      if (d > 18 || (proto === 'A' && d < 12)) bad.push(`divine ${d.toFixed(2)}`);
+      if (d > 18) bad.push(`divine ${d.toFixed(2)}`);
       console.log(`[balance hybrides ${proto}] ${lines.join(' | ')}`);
       expect(bad).toEqual([]);
     }, 300_000);

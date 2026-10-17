@@ -4,12 +4,12 @@
   "divine": {
     "shots": 3,
     "shotDamage": [
-      214,
-      292,
-      252
+      208,
+      238,
+      152
     ],
-    "maxShot": 292,
-    "maxHit": 47,
+    "maxShot": 238,
+    "maxHit": 35,
     "explodeDivine": 4,
     "chainDivine": 5,
     "hitsByEl": {
@@ -27,5 +27,5 @@
     "maxShot": 54,
     "maxHit": 24
   },
-  "ratioMaxShot": 5.41
+  "ratioMaxShot": 4.41
 }

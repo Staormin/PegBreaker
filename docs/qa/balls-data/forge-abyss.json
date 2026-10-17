@@ -12,11 +12,11 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 7316.666666666842,
+    "simMs": 7433.333333333517,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 52,
+      "block:hit": 54,
       "ball:bounce": 35,
       "ball:grounded": 30,
       "volley:end": 6,
@@ -29,15 +29,15 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "acid": 1
+      "abyss": 1
     },
     "hitsByEl": {
       "abyss": 30,
-      "acid": 22
+      "acid": 24
     },
     "damageByEl": {
-      "abyss": 1650,
-      "acid": 880
+      "abyss": 1488,
+      "acid": 960
     },
     "kinds": {
       "main": 30
@@ -50,14 +50,14 @@
       "acidBlocks": 8,
       "acidChargedAtFire": 14,
       "acidTickBlocks": 14,
-      "acidTickDamage": 880,
-      "acidQAtFire": 25,
+      "acidTickDamage": 960,
+      "acidQAtFire": 27,
       "acidAliveAtEnd": 21,
       "rowUp": 0,
       "maxHpDrop": 0,
       "radiusMin": 0.12,
       "radiusMax": 0.12,
-      "speedRatioMin": 1,
+      "speedRatioMin": 0.9999999999999998,
       "speedRatioMax": 1.0000000000000002,
       "homingSamples": 0,
       "homingDeviated": 0,
@@ -81,26 +81,26 @@
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1016.6666666666681,
-        "2": 1016.6666666666697,
-        "3": 1016.6666666666706
+        "1": 1016.6666666666679,
+        "2": 1016.6666666666695,
+        "3": 1016.6666666666704
       },
       "groundedBeforeMs": 0
     },
     "devSamples": 35,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 114,
+    "maxParticles": 121,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      275,
-      395,
-      435,
-      475,
-      435,
-      515
+      248,
+      368,
+      408,
+      448,
+      488,
+      488
     ],
     "captured": true,
     "hyb": {
@@ -110,7 +110,7 @@
       "critCoinSteps": 0,
       "critHits": 0,
       "rowShiftSteps": 0,
-      "speedUpMax": 1,
+      "speedUpMax": 1.0000000000000002,
       "groundBouncesMaxPerBall": 0
     }
   }

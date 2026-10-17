@@ -9,7 +9,7 @@
 //
 // Compteurs libres de BallFx utilisés par les effets propres :
 //   vapeur n0 = nuages ce tir ; spectre n0 = blocs traversés ; séisme n0 = rangées repoussées ;
-//   missile n0 = rebonds, n1 = multiplicateur de vitesse au lancement.
+//   missile n0 = rebonds, n1 = multiplicateur de vitesse au lancement, spawned = explosions du vol.
 import type { Ball, BallElement, Block } from '../../core/types';
 import type { Ctx } from '../ctx';
 import { ballDef, emit, isBreakable } from '../ctx';
@@ -83,6 +83,7 @@ export function composeHybrid(id: BallElement, a: ElementHooks, b: ElementHooks,
   if (a.noCombo || b.noCombo || own.noCombo) out.noCombo = true;
   if (a.noWallCombo || b.noWallCombo || own.noWallCombo) out.noWallCombo = true;
   if (own.alwaysGolden) out.alwaysGolden = true;
+  if (own.traverseCombo !== undefined) out.traverseCombo = own.traverseCombo;
   if (own.params) out.params = own.params;
   if (own.onShotStart) out.onShotStart = own.onShotStart;
   if (own.onAnyBlockDestroyed) out.onAnyBlockDestroyed = own.onAnyBlockDestroyed;
@@ -405,9 +406,11 @@ const clusterOwn: ElementHooks = {
   },
 };
 
-/** Spectre : +perBlockPct % de dégâts par bloc déjà traversé dans le vol (au plus capBlocks blocs). */
+/** Spectre : +perBlockPct % de dégâts par bloc déjà traversé dans le vol (au plus capBlocks blocs) ; traverser ne donne pas de combo. */
 const wraithOwn: ElementHooks = {
   params: ['perBlockPct', 'capBlocks'],
+  // la traversée ne donne pas de combo (sinon, sur des blocs qui ne meurent pas, chaque passage multiplie les dégâts)
+  traverseCombo: 0,
   modifyDamage(ctx, b, fx, dmg, target) {
     if (!target || fx.n0 <= 0) return dmg;
     const n = Math.min(fx.n0, prm(ctx, 'wraith', 'capBlocks', b.tier));
@@ -491,9 +494,9 @@ const quakeOwn: ElementHooks = {
   },
 };
 
-/** Missile : +accelPct % de vitesse par rebond (plafond maxSpeedMult × vitesse de lancement) ; explose tous les explodeAtBounce rebonds. */
+/** Missile : +accelPct % de vitesse par rebond (plafond maxSpeedMult × vitesse de lancement) ; explose tous les explodeAtBounce rebonds ; la maxExplosions-ième explosion le consume. */
 const missileOwn: ElementHooks = {
-  params: ['accelPct', 'maxSpeedMult', 'explodeAtBounce', 'explodeRadius', 'explodeMult'],
+  params: ['accelPct', 'maxSpeedMult', 'explodeAtBounce', 'explodeRadius', 'explodeMult', 'maxExplosions'],
   onLaunch(_ctx, _b, fx) {
     fx.n1 = fx.speedMult;
   },
@@ -506,11 +509,13 @@ const missileOwn: ElementHooks = {
       fixVelocity(ctx, b, fx);
     }
     const every = Math.round(prm(ctx, 'missile', 'explodeAtBounce', b.tier));
-    if (every <= 0 || fx.n0 % every !== 0) return;
+    if (every <= 0 || fx.n0 % every !== 0 || fx.spawned >= prm(ctx, 'missile', 'maxExplosions', b.tier)) return;
+    fx.spawned++; // explosions de ce vol (une balle piégée dans une poche n'explose pas sans fin)
     const radius = prm(ctx, 'missile', 'explodeRadius', b.tier) * ctx.relic.bigboom;
     const dmg = ballDamage(ctx, b, null, fx) * prm(ctx, 'missile', 'explodeMult', b.tier);
-    if (radius <= 0 || dmg <= 0) return;
-    explodeAs(ctx, b, fx, radius, dmg, 'missile');
+    if (radius > 0 && dmg > 0) explodeAs(ctx, b, fx, radius, dmg, 'missile');
+    // dernière charge : le missile est consommé (une traqueuse piégée dans une poche ne rebondit pas sans fin)
+    if (fx.spawned >= prm(ctx, 'missile', 'maxExplosions', b.tier)) b.alive = false;
   },
 };
 

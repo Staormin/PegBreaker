@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T16:55:09.653Z",
+  "generatedAt": "2026-10-17T17:15:52.438Z",
   "method": "tight = naïf rafale, conditional = sélecteur conditionnel ; seeds qa-1…qa-5 ; vitesse 8 ; seconde chance gratuite (qa=1, stats.runs = 0)",
   "baseline": {
     "source": "docs/qa/fun-final.json au commit 8294ebb (rapport docs/qa/fun-final.md, généré 2026-10-16T22:57:18.939Z, build 0.4.0-j4) : pool personnel d'un profil vierge (stone, fire, lightning)",
@@ -74,7 +74,7 @@
         "contractsOfferedPerRun": 7.6,
         "contractsCompletedPerRun": 3.2,
         "contractSuccessRate": 0.42,
-        "durationHumanMin": 4.59,
+        "durationHumanMin": 4.58,
         "bestShotDamage": 4495.8,
         "fusions": 1.8,
         "shots": 72.4,
@@ -90,7 +90,7 @@
           "contracts": 2,
           "fusions": 2,
           "volley": 12,
-          "min": 3.52,
+          "min": 3.45,
           "stop": "gameover"
         },
         {
@@ -123,7 +123,7 @@
           "contracts": 5,
           "fusions": 1,
           "volley": 22,
-          "min": 4.61,
+          "min": 4.6,
           "stop": "gameover"
         },
         {
@@ -134,7 +134,7 @@
           "contracts": 1,
           "fusions": 0,
           "volley": 16,
-          "min": 3.56,
+          "min": 3.59,
           "stop": "gameover"
         }
       ]
@@ -165,7 +165,7 @@
           "contracts": 5,
           "fusions": 2,
           "volley": 18,
-          "min": 5.29,
+          "min": 5.25,
           "stop": "gameover"
         },
         {
@@ -176,7 +176,7 @@
           "contracts": 13,
           "fusions": 73,
           "volley": 29,
-          "min": 18.81,
+          "min": 18.82,
           "stop": "gameover"
         },
         {
@@ -187,7 +187,7 @@
           "contracts": 7,
           "fusions": 14,
           "volley": 29,
-          "min": 9.18,
+          "min": 9.22,
           "stop": "gameover"
         },
         {
@@ -198,7 +198,7 @@
           "contracts": 5,
           "fusions": 4,
           "volley": 29,
-          "min": 8.53,
+          "min": 8.52,
           "stop": "gameover"
         },
         {
@@ -209,7 +209,7 @@
           "contracts": 3,
           "fusions": 1,
           "volley": 15,
-          "min": 3.95,
+          "min": 3.94,
           "stop": "gameover"
         }
       ]
@@ -226,7 +226,7 @@
         "contractsOfferedPerRun": 9,
         "contractsCompletedPerRun": 4.6,
         "contractSuccessRate": 0.51,
-        "durationHumanMin": 8.08,
+        "durationHumanMin": 8.15,
         "bestShotDamage": 6308.2,
         "fusions": 6.6,
         "shots": 101.8,
@@ -242,7 +242,7 @@
           "contracts": 5,
           "fusions": 3,
           "volley": 22,
-          "min": 8.18,
+          "min": 8.26,
           "stop": "gameover"
         },
         {
@@ -253,7 +253,7 @@
           "contracts": 5,
           "fusions": 10,
           "volley": 29,
-          "min": 8.96,
+          "min": 8.97,
           "stop": "gameover"
         },
         {
@@ -264,7 +264,7 @@
           "contracts": 5,
           "fusions": 2,
           "volley": 28,
-          "min": 8.45,
+          "min": 8.62,
           "stop": "gameover"
         },
         {
@@ -286,7 +286,7 @@
           "contracts": 2,
           "fusions": 1,
           "volley": 16,
-          "min": 4.32,
+          "min": 4.38,
           "stop": "gameover"
         }
       ]
@@ -301,7 +301,7 @@
         "contractsOfferedPerRun": 10,
         "contractsCompletedPerRun": 4.4,
         "contractSuccessRate": 0.44,
-        "durationHumanMin": 10.65,
+        "durationHumanMin": 10.72,
         "bestShotDamage": 24468.6,
         "fusions": 9.8,
         "shots": 118.6,
@@ -317,7 +317,7 @@
           "contracts": 3,
           "fusions": 1,
           "volley": 17,
-          "min": 6.42,
+          "min": 6.49,
           "stop": "gameover"
         },
         {
@@ -328,7 +328,7 @@
           "contracts": 3,
           "fusions": 2,
           "volley": 21,
-          "min": 4.59,
+          "min": 4.78,
           "stop": "gameover"
         },
         {
@@ -339,7 +339,7 @@
           "contracts": 7,
           "fusions": 24,
           "volley": 30,
-          "min": 18.36,
+          "min": 18.48,
           "stop": "gameover"
         },
         {
@@ -350,7 +350,7 @@
           "contracts": 7,
           "fusions": 22,
           "volley": 30,
-          "min": 20.61,
+          "min": 20.6,
           "stop": "gameover"
         },
         {
@@ -361,7 +361,7 @@
           "contracts": 2,
           "fusions": 0,
           "volley": 12,
-          "min": 3.26,
+          "min": 3.27,
           "stop": "gameover"
         }
       ]

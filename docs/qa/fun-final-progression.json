@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T16:53:00.391Z",
+  "generatedAt": "2026-10-17T17:13:42.945Z",
   "seed": "prog",
   "rows": [
     {
@@ -78,7 +78,7 @@
       "bestShotDamage": 6486,
       "bestCombo": 23,
       "finalVolley": 20,
-      "durationSimMs": 170829,
+      "durationSimMs": 171662,
       "bossesKilled": 1,
       "perfectWaves": 6,
       "deadMoments": 0,
@@ -144,7 +144,7 @@
       "bestShotDamage": 1506,
       "bestCombo": 13,
       "finalVolley": 16,
-      "durationSimMs": 116583,
+      "durationSimMs": 115400,
       "bossesKilled": 1,
       "perfectWaves": 4,
       "deadMoments": 0,
@@ -205,7 +205,7 @@
       "bestShotDamage": 13500,
       "bestCombo": 45,
       "finalVolley": 29,
-      "durationSimMs": 463029,
+      "durationSimMs": 463446,
       "bossesKilled": 2,
       "perfectWaves": 6,
       "deadMoments": 0,
@@ -287,7 +287,7 @@
       "bestShotDamage": 13409,
       "bestCombo": 96,
       "finalVolley": 29,
-      "durationSimMs": 462817,
+      "durationSimMs": 470867,
       "bossesKilled": 2,
       "perfectWaves": 7,
       "deadMoments": 0,

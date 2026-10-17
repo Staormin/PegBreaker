@@ -49,8 +49,8 @@
       "fire": 19
     },
     "damageByEl": {
-      "steam": 539,
-      "fire": 274
+      "steam": 535,
+      "fire": 271
     },
     "kinds": {
       "main": 30
@@ -103,7 +103,7 @@
     "devSamples": 64,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 242,
+    "maxParticles": 239,
     "nan": [],
     "violations": [],
     "pageErrors": [],
@@ -112,7 +112,7 @@
       52,
       100,
       149,
-      320,
+      313,
       83
     ],
     "captured": true,

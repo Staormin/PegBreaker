@@ -2,56 +2,60 @@
   "element": "supernova",
   "seed": "forge-supernova",
   "signal": "block:explode element 'supernova' (palier) et aucun éclatement du cristal",
-  "measured": "5 supernovas, 5 novas, 0 éclatements cristal (attendu 0)",
+  "measured": "6 supernovas, 6 novas, 0 éclatements cristal (attendu 0)",
   "ok": true,
   "consoleErrors": [],
   "report": {
     "done": "shots",
     "shots": 6,
-    "wave": 1,
+    "wave": 2,
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 10083.333333333298,
+    "simMs": 12999.99999999954,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 75,
-      "ball:bounce": 66,
+      "block:hit": 63,
+      "ball:bounce": 71,
       "ball:grounded": 30,
       "volley:end": 6,
-      "rows:advanced": 6,
-      "block:destroyed": 8,
-      "combo:milestone": 5,
-      "block:explode": 10,
-      "drop:spawned": 2,
-      "drop:collected": 1
+      "rows:advanced": 5,
+      "block:destroyed": 11,
+      "drop:spawned": 4,
+      "combo:milestone": 6,
+      "block:explode": 12,
+      "drop:collected": 4,
+      "wave:cleared": 1,
+      "reward:offered": 1,
+      "reward:chosen": 1,
+      "contract:offered": 1
     },
     "explodeByEl": {
-      "nova": 5,
-      "supernova": 5
+      "nova": 6,
+      "supernova": 6
     },
     "chainByEl": {},
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "supernova": 8
+      "supernova": 11
     },
     "hitsByEl": {
-      "supernova": 67,
-      "nova": 8
+      "supernova": 57,
+      "nova": 6
     },
     "damageByEl": {
-      "supernova": 4278,
-      "nova": 216
+      "supernova": 5474,
+      "nova": 198
     },
     "kinds": {
       "main": 30
     },
     "focus": {
       "critLowCombo": 0,
-      "critHits": 6,
-      "hits": 67,
+      "critHits": 1,
+      "hits": 57,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -64,7 +68,7 @@
       "radiusMin": 0.12,
       "radiusMax": 0.12,
       "speedRatioMin": 0.9999999999999999,
-      "speedRatioMax": 1,
+      "speedRatioMax": 1.0000000000000002,
       "homingSamples": 0,
       "homingDeviated": 0,
       "homingMaxDevDeg": 0,
@@ -73,7 +77,7 @@
       "groundedTotal": 30,
       "magnetRemote": 0,
       "magnetRemoteMaxDist": 0,
-      "dropsCollectedInFlight": 1,
+      "dropsCollectedInFlight": 4,
       "pierceHits": 0,
       "pierceBlockBounces": 0,
       "voidMatch": 0,
@@ -82,39 +86,39 @@
       "goldCoin": 0,
       "goldBall": 0,
       "goldDestroyed": 0,
-      "ceilingBounces": 1,
-      "comboMax": 5,
+      "ceilingBounces": 10,
+      "comboMax": 6,
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 2066.666666666817,
-        "2": 2066.666666666817,
-        "3": 2500.000000000182
+        "1": 2066.666666666366,
+        "2": 2066.666666666366,
+        "3": 3366.6666666669116
       },
       "groundedBeforeMs": 0
     },
-    "devSamples": 66,
+    "devSamples": 71,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 276,
+    "maxParticles": 299,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      252,
-      252,
-      252,
-      252,
-      2876,
-      610
+      291,
+      291,
+      291,
+      2634,
+      1874,
+      291
     ],
     "captured": true,
     "hyb": {
       "acidUnhit": 0,
-      "wraithBoost": 22,
-      "wraithSamples": 26,
+      "wraithBoost": 14,
+      "wraithSamples": 19,
       "critCoinSteps": 0,
-      "critHits": 6,
+      "critHits": 1,
       "rowShiftSteps": 0,
       "speedUpMax": 1.0000000000000002,
       "groundBouncesMaxPerBall": 0

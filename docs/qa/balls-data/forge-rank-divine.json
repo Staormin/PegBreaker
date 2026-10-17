@@ -9,8 +9,8 @@
   "shots": 6,
   "ranks": {
     "r1": {
-      "damage": 28901,
-      "perShotMean": 1606
+      "damage": 20790,
+      "perShotMean": 1155
     }
   },
   "errors": [],

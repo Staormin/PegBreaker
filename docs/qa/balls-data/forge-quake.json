@@ -42,7 +42,7 @@
       "quake": 22
     },
     "damageByEl": {
-      "quake": 1712
+      "quake": 1684
     },
     "kinds": {
       "main": 30
@@ -86,26 +86,26 @@
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1666.6666666666806,
-        "2": 1683.3333333333474,
-        "3": 4900.000000000206
+        "1": 1666.6666666666804,
+        "2": 1683.333333333348,
+        "3": 4900.000000000204
       },
       "groundedBeforeMs": 0
     },
     "devSamples": 57,
     "devOver2": 1,
     "maxLive": 5,
-    "maxParticles": 170,
+    "maxParticles": 167,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
       84,
-      406,
+      399,
       126,
       42,
-      406,
-      648
+      399,
+      634
     ],
     "captured": true,
     "hyb": {

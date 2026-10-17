@@ -16,7 +16,7 @@
     "counts": {
       "volley:start": 8,
       "ball:launched": 40,
-      "block:hit": 50,
+      "block:hit": 51,
       "ball:bounce": 84,
       "block:destroyed": 23,
       "player:healed": 23,
@@ -47,11 +47,11 @@
     },
     "hitsByEl": {
       "plague": 45,
-      "acid": 5
+      "acid": 6
     },
     "damageByEl": {
-      "plague": 1559,
-      "acid": 9
+      "plague": 1481,
+      "acid": 10
     },
     "kinds": {
       "main": 40
@@ -61,12 +61,12 @@
       "critHits": 0,
       "hits": 45,
       "acidMax": 3,
-      "acidBlocks": 18,
-      "acidChargedAtFire": 5,
-      "acidTickBlocks": 5,
-      "acidTickDamage": 9,
-      "acidQAtFire": 33,
-      "acidAliveAtEnd": 5,
+      "acidBlocks": 19,
+      "acidChargedAtFire": 6,
+      "acidTickBlocks": 6,
+      "acidTickDamage": 10,
+      "acidQAtFire": 34,
+      "acidAliveAtEnd": 6,
       "rowUp": 0,
       "maxHpDrop": 0,
       "radiusMin": 0.12,
@@ -104,19 +104,19 @@
     "devSamples": 82,
     "devOver2": 0,
     "maxLive": 5,
-    "maxParticles": 130,
+    "maxParticles": 121,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      103,
-      170,
-      191,
-      262,
-      190,
-      168,
-      427,
-      57
+      91,
+      161,
+      180,
+      253,
+      181,
+      159,
+      418,
+      48
     ],
     "captured": true,
     "hyb": {

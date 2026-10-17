@@ -11,6 +11,8 @@ export interface ElementHooks {
   readonly noCombo?: boolean;
   /** les rebonds de mur ne donnent pas de combo de relique (géante) */
   readonly noWallCombo?: boolean;
+  /** combo gagné par traversée (fantôme : × relique spectre) ; défaut 1, 0 = la traversée ne donne aucun combo */
+  readonly traverseCombo?: number;
   /** toujours dorée au lancement, en plus de la dorée normale (Divine) */
   readonly alwaysGolden?: boolean;
   /** clés de params obligatoires dans balls.json (validées à createSim) */

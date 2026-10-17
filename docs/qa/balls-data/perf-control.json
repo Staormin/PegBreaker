@@ -37,80 +37,80 @@
   "shots": 3,
   "fpsSamples": [
     43,
-    38,
+    41,
     56,
     58,
-    51,
-    54,
+    50,
+    52,
     57,
-    48,
-    59
+    49,
+    60
   ],
-  "fpsMin": 38,
-  "fpsMean": 51.55555555555556,
+  "fpsMin": 41,
+  "fpsMean": 51.77777777777778,
   "frameP50": 16.699999999999818,
-  "frameP95": 33.30000000000109,
+  "frameP95": 33.399999999999636,
   "frameP99": 50,
-  "frameMax": 199.9000000000001,
-  "frames": 520,
+  "frameMax": 183.30000000000018,
+  "frames": 522,
   "slowFrames": [
     {
-      "sinceFireMs": 30,
+      "sinceFireMs": 26,
       "dt": 50,
       "live": 2
     },
     {
-      "sinceFireMs": 514,
-      "dt": 67,
+      "sinceFireMs": 510,
+      "dt": 50,
       "live": 10
     },
     {
-      "sinceFireMs": 580,
-      "dt": 67,
+      "sinceFireMs": 593,
+      "dt": 83,
       "live": 11
     },
     {
-      "sinceFireMs": 630,
+      "sinceFireMs": 710,
+      "dt": 67,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 843,
+      "dt": 50,
+      "live": 15
+    },
+    {
+      "sinceFireMs": 1043,
+      "dt": 183,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1093,
+      "dt": 50,
+      "live": 16
+    },
+    {
+      "sinceFireMs": 1210,
+      "dt": 50,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1260,
+      "dt": 50,
+      "live": 19
+    },
+    {
+      "sinceFireMs": 586,
+      "dt": 50,
+      "live": 11
+    },
+    {
+      "sinceFireMs": 653,
       "dt": 50,
       "live": 12
     },
     {
-      "sinceFireMs": 747,
-      "dt": 83,
-      "live": 14
-    },
-    {
-      "sinceFireMs": 947,
-      "dt": 200,
-      "live": 15
-    },
-    {
-      "sinceFireMs": 997,
-      "dt": 50,
-      "live": 16
-    },
-    {
-      "sinceFireMs": 1080,
-      "dt": 50,
-      "live": 16
-    },
-    {
-      "sinceFireMs": 1197,
-      "dt": 50,
-      "live": 17
-    },
-    {
-      "sinceFireMs": 1264,
-      "dt": 67,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 1314,
-      "dt": 50,
-      "live": 18
-    },
-    {
-      "sinceFireMs": 931,
+      "sinceFireMs": 912,
       "dt": 50,
       "live": 16
     }

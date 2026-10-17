@@ -47,3 +47,4 @@ Une forge doit **rapporter** : l'hybride vaut au moins ses deux parents réunis 
 - Chaque hybride a un `rankMult` par rang qui porte l'équilibrage (voir `balls.json`).
 - Résultat décisif (20 graines) : bot qui forge 9,75 contre 8,15 sans forge (méta complète) ; 10,25 contre 6,25 (pool standard sans méta). 19 runs sur 20 forgent avec la méta, 7 sur 20 sans.
 - Règles ajoutées en route : un boss n'est jamais repoussé (Choc, Marteau, Séisme) ; une mini-balle naît toujours dans le plateau.
+- Passe FG-05 (trois protocoles de mesure, dont celui du QA) : Missile limité à `maxExplosions` 2 (la dernière le consume), Grappe : dégâts portés par la bombe et les mini-bombes, traverser un bloc ne donne plus de combo (Spectre, Divine), Divine base 5 / nova 18 / Jugement 35. Rang III ∈ [6 ; 9] sur les trois protocoles, Divine ≤ 18 ; forger rapporte +1,75 (méta) et +2,35 (sans méta).
