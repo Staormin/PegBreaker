@@ -4,10 +4,12 @@
 Chaque groupe de la volée a un bouton « Vendre » : `economy.sell.byTier` pièces par balle de base (rang I/II/III), `economy.sell.hybridByTier` pour une hybride, `economy.sell.divine` pour la Divine. On ne peut jamais vendre la dernière balle de la volée. Vendre est le moyen de convertir un build raté en pièces pour la forge.
 
 ## Forge (boutique)
-La boutique affiche une section **Forge** : les paires de balles de **rang III** de la volée qui forment une recette, avec l'aperçu de l'hybride produite (nom, description, effet propre) et son coût `economy.forge.hybridCost` pièces. Forger consomme les deux parents et donne l'hybride au rang I.
+La boutique affiche une section **Forge** : les paires de balles de **rang II ou plus** de la volée qui forment une recette, avec l'aperçu de l'hybride produite (nom, description, effet propre) et son coût `economy.forge.hybridCost` pièces. Forger consomme les deux parents et donne l'hybride au rang I.
 
 - **Upgrade** : deux hybrides identiques fusionnent comme les autres balles (carte Fusion), et la forge propose aussi l'upgrade payant d'une hybride seule : I → II (`forge.upgradeCost[0]`), II → III (`forge.upgradeCost[1]`).
 - **Divine** : deux hybrides de **rang III** (identiques ou non) → la **Divine** (`forge.divineCost`). Deux Divines ne fusionnent pas.
+- **Catalyseur** : quand la volée contient un parent d'une recette au rang II+ et pas l'autre, la boutique propose en article le partenaire manquant **au rang II** pour `forge.catalystCost` pièces (un seul catalyseur par boutique, tiré parmi les recettes ouvertes). C'est la voie principale vers une hybride dans une bonne run.
+- Accessibilité visée : une forge possible dans au moins 1 boutique sur 4 pour un bot qui achète le catalyseur (mesure QA).
 - Les hybrides et la Divine n'apparaissent jamais en drop, en offre ni en vente de boutique (`weight: 0`) : elles ne viennent que de la forge.
 - **Codex** : chaque hybride forgée est inscrite dans `save.codex` ; le Puits affiche la page Codex (recettes découvertes en clair, les autres en « ? + ? ») ; succès `hybrid1` (première hybride), `hybrid5`, `divine1`.
 
@@ -34,7 +36,7 @@ Rang : l'effet propre suit `params[rang−1]`. Les effets parents utilisent leur
 `divine`, famille `divine`, obtenue de deux hybrides de rang III. Dorée en permanence (× `lastBallMultiplier` + bonus), dégâts de base 60, rayon ×1,3, traverse tout, ignore l'armure, **nova à chaque rebond** (rayon 1,5 u, 250 dégâts plafonnés), **drop garanti** par bloc détruit, +3 combo par rebond, et à l'atterrissage **Jugement** : tous les blocs de la rangée cassable la plus basse prennent 1 500 (plafonné). Les plafonds anti-infini s'appliquent. Vente : `sell.divine`.
 
 ## Économie (economy.json)
-`sell.byTier` [6, 14, 32], `sell.hybridByTier` [45, 90, 180], `sell.divine` 400 ; `forge.hybridCost` 40, `forge.upgradeCost` [60, 120], `forge.divineCost` 150. Repères : à la vague 6 un joueur a 60-120 pièces ; une hybride demande 8 balles de base identiques deux à deux (2 × rang III) : c'est l'objectif d'une bonne run ; la Divine (16 balles) celui d'une run exceptionnelle ou d'un pool standard de défi.
+`sell.byTier` [6, 14, 32], `sell.hybridByTier` [45, 90, 180], `sell.divine` 400 ; `forge.hybridCost` 40, `forge.upgradeCost` [60, 120], `forge.divineCost` 150, `forge.catalystCost` 60. Repères : à la vague 6 un joueur a 60-120 pièces ; une hybride demande 8 balles de base identiques deux à deux (2 × rang III) : c'est l'objectif d'une bonne run ; la Divine (16 balles) celui d'une run exceptionnelle ou d'un pool standard de défi.
 
 ## Équilibrage visé (bot naïf, volée de départ)
 Hybride rang I ≈ 1,5-2× la pierre ; rang III ≈ 3× ; Divine ≈ 5-6×, toujours bornée par les plafonds et la brèche croissante (aucune run > vague 35).

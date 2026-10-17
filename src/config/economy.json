@@ -57,6 +57,7 @@
       60,
       120
     ],
-    "divineCost": 150
+    "divineCost": 150,
+    "catalystCost": 60
   }
 }

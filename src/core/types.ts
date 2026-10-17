@@ -351,7 +351,7 @@ export interface Sim {
   leaveShop(): void;
   /** Boutique : vend la balle d'index i de la volée (jamais la dernière). Renvoie les pièces gagnées, 0 si refusé. */
   sell(index: number): number;
-  /** Boutique : forge les balles i et j (toutes deux rang III) en hybride (recette) ou en Divine (deux hybrides). false si impossible ou trop cher. */
+  /** Boutique : forge les balles i et j (rang ≥ II, recette) en hybride, ou deux hybrides rang III en Divine. false si impossible ou trop cher. */
   forge(i: number, j: number): boolean;
   /** Boutique : monte une hybride d'un rang contre des pièces. false si impossible. */
   upgrade(index: number): boolean;
@@ -555,7 +555,7 @@ export interface EconomyConfig {
   /** vente en boutique : pièces par balle selon rang */
   sell: { byTier: [number, number, number]; hybridByTier: [number, number, number]; divine: number };
   /** forge : coût d'une hybride, des upgrades I→II et II→III, de la Divine */
-  forge: { hybridCost: number; upgradeCost: [number, number]; divineCost: number };
+  forge: { hybridCost: number; upgradeCost: [number, number]; divineCost: number; catalystCost: number };
   /** seconde chance : coût en fragments (0 = gratuit), max par run, PV rendus (ratio de maxHp), rangées du bas effacées */
   revive: { cost: number; freeOnFirstRun: boolean; maxPerRun: number; hpRatio: number; clearRows: number };
 }
