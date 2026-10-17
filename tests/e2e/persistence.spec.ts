@@ -214,3 +214,99 @@ test.describe('mobile 375×812', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// --- Bug « Revanche ? » au rechargement (correctif e33659b, src/main.ts) -------------------------------------
+// Avant : après « Abandonner », la sauvegarde périodique (5 s) réenregistrait la run terminée en phase 'gameover' ;
+// au rechargement l'écran Revanche revenait et « Abandonner » ne faisait plus rien (run:over déjà émis).
+
+/** run sans seed (sauvegardée) menée jusqu'à run:lost : PV forcés à 1 via l'API de debug, bot naïf, écran Revanche. */
+async function dieToRevive(page: Page): Promise<void> {
+  await page.goto('/');
+  await waitReady(page);
+  await page.evaluate(() => {
+    const s = (window as unknown as QaWindow).__pegbreaker.sim.state as { hp: number };
+    s.hp = 1;
+  });
+  await installBot(page, { bot: 'naive', seed: 'persist-revive', onLost: 'none' });
+  await setSpeed(page, 8);
+  const r = await play(page, { stopOnPhases: ['gameover'], maxRealMs: 60_000 });
+  expect(r.stopReason, 'mort atteinte').toBe('phase:gameover');
+  await setSpeed(page, 1);
+  await screenIs(page, 'revive');
+}
+
+async function savedRun(page: Page): Promise<{ phase: string } | null> {
+  return page.evaluate((k) => {
+    const raw = localStorage.getItem(k);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as { currentRun: { phase: string } | null };
+    return d.currentRun ? { phase: d.currentRun.phase } : null;
+  }, SAVE_KEY);
+}
+
+test('(f) mort → Revanche → Abandonner → 6 s : currentRun reste null', async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors = watchErrors(page);
+  await dieToRevive(page);
+  const atLost = await savedRun(page);
+  await page.locator('[data-action="give-up"]').click();
+  await page.waitForFunction(() => ((window as unknown as QaWindow).__pegbreaker.eventCounts['run:over'] ?? 0) === 1);
+  await page.waitForTimeout(6000); // > période de sauvegarde (5 s)
+  const after = await savedRun(page);
+  const info = await page.evaluate(() => {
+    const api = (window as unknown as QaWindow).__pegbreaker;
+    return { phase: api.sim.state.phase, runs: api.meta.data.stats.runs, screen: document.getElementById('ui')?.dataset.screen, over: api.eventCounts['run:over'] ?? 0 };
+  });
+  test.info().annotations.push({ type: 'abandon', description: JSON.stringify({ atLost, after, info }) });
+  expect(after, 'currentRun null 6 s après l\'abandon').toBeNull();
+  expect(info.over).toBe(1);
+  expect(info.runs).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('(g) sauvegarde en phase gameover → chargement : run clôturée puis relancée', async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors = watchErrors(page);
+  await dieToRevive(page);
+  // snapshot en phase 'gameover' (run:lost émis, run:over non émis) forcé dans la sauvegarde
+  const forced = await page.evaluate((k) => {
+    const api = (window as unknown as QaWindow).__pegbreaker;
+    const snap = api.sim.snapshot();
+    const d = JSON.parse(localStorage.getItem(k) as string) as { currentRun: unknown; stats: { runs: number } };
+    d.currentRun = snap;
+    localStorage.setItem(k, JSON.stringify(d));
+    return { phase: snap.phase, runs: d.stats.runs, seed: snap.seed };
+  }, SAVE_KEY);
+  expect(forced.phase).toBe('gameover');
+  expect(forced.runs, 'aucune run créditée avant le rechargement').toBe(0);
+  await page.goto('/');
+  await waitReady(page);
+  await phaseIs(page, 'aiming');
+  await screenIs(page, 'game');
+  await page.waitForTimeout(1500);
+  const s1 = await page.evaluate(() => {
+    const api = (window as unknown as QaWindow).__pegbreaker;
+    return { phase: api.sim.state.phase, shots: api.sim.state.stats.shots, seed: api.sim.state.seed, runs: api.meta.data.stats.runs, over: api.eventCounts['run:over'] ?? 0, errors: api.errors.slice() };
+  });
+  const saved1 = await savedRun(page);
+  // second rechargement : pas de double crédit
+  await page.goto('/');
+  await waitReady(page);
+  await page.waitForTimeout(1000);
+  const s2 = await page.evaluate(() => {
+    const api = (window as unknown as QaWindow).__pegbreaker;
+    return { phase: api.sim.state.phase, shots: api.sim.state.stats.shots, runs: api.meta.data.stats.runs, over: api.eventCounts['run:over'] ?? 0 };
+  });
+  test.info().annotations.push({ type: 'reprise gameover', description: JSON.stringify({ forced, s1, saved1, s2 }) });
+  expect(s1.phase).toBe('aiming');
+  expect(s1.shots).toBe(0);
+  expect(s1.seed, 'nouvelle run').not.toBe(forced.seed);
+  expect(s1.over, 'run:over émis une fois au chargement').toBe(1);
+  expect(s1.runs, 'stats.runs incrémenté une fois').toBe(1);
+  expect(s1.errors).toEqual([]);
+  expect(saved1?.phase ?? 'aiming', 'sauvegarde ≠ gameover').not.toBe('gameover');
+  expect(s2.phase).toBe('aiming');
+  expect(s2.over, 'pas de run:over au second chargement').toBe(0);
+  expect(s2.runs, 'stats.runs toujours 1 au total').toBe(1);
+  expect(errors).toEqual([]);
+});
