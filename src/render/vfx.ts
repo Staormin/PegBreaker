@@ -38,6 +38,16 @@ export interface BlockFx {
   /** libellé de PV pré-rendu (bitmap), re-dessiné seulement quand hp change */
   labelCanvas: HTMLCanvasElement | null;
   labelDirty: boolean;
+  /** libellé périmé (resize) : re-rendu étalé ; labelK = px physiques par unité au rendu */
+  labelStale: boolean;
+  labelK: number;
+  /** sprite de bloc retenu (recalculé quand l'usure, l'acide ou la génération de sprites change) */
+  vis: HTMLCanvasElement | null;
+  visKey: number;
+  visSp: object | null;
+  visScale: number;
+  /** minuterie des gouttes d'acide (s) */
+  acidT: number;
   labelLow: boolean;
   /** dernière géométrie dessinée (pour les effets de destruction) */
   x: number; y: number; w: number; kind: number;
@@ -97,7 +107,7 @@ export function createVfx(): Vfx {
   const fxMap = new Map<number, BlockFx>();
   let lastFrame = 0;
   function newFx(): BlockFx {
-    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, spawnT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0, lastRow: Number.NaN, slideT: 1, slideFrom: 0 };
+    return { inUse: false, id: -1, squashT: SQUASH_DUR, popT: 1, spawnT: 1, hp: Number.NaN, label: '', labelCanvas: null, labelDirty: true, labelLow: false, x: 0, y: 0, w: 1, kind: 0, seenFrame: 0, lastRow: Number.NaN, slideT: 1, slideFrom: 0, labelStale: false, labelK: 0, vis: null, visKey: -1, visSp: null, visScale: 1, acidT: 0 };
   }
   for (let i = 0; i < 128; i++) fxPool.push(newFx());
 
@@ -159,7 +169,7 @@ export function createVfx(): Vfx {
       for (let i = 0; i < fxPool.length; i++) { const f = fxPool[i]!; if (!f.inUse) { fx = f; break; } }
       if (!fx) { fx = newFx(); fxPool.push(fx); } // rare : plus de 128 blocs vivants
       fx.inUse = true; fx.id = id; fx.squashT = SQUASH_DUR; fx.popT = 1; fx.spawnT = 1; fx.hp = Number.NaN; fx.label = ''; fx.labelDirty = true; fx.seenFrame = lastFrame;
-      fx.lastRow = Number.NaN; fx.slideT = 1; fx.slideFrom = 0;
+      fx.lastRow = Number.NaN; fx.slideT = 1; fx.slideFrom = 0; fx.labelStale = false; fx.vis = null; fx.visKey = -1; fx.visSp = null; fx.visScale = 1; fx.acidT = 0;
       fxMap.set(id, fx);
       return fx;
     },
@@ -181,7 +191,7 @@ export function createVfx(): Vfx {
       }
     },
     invalidateLabels() {
-      for (let i = 0; i < fxPool.length; i++) fxPool[i]!.labelDirty = true;
+      for (let i = 0; i < fxPool.length; i++) fxPool[i]!.labelStale = true;
     },
     squashScale(fx) {
       const t = fx.squashT / SQUASH_DUR;

@@ -7,7 +7,7 @@
 import { createEventBus, type EventBus } from '../core/events';
 import { loadConfig } from '../core/config';
 import type { Ball, BallElement, Block, BlockKind, ContractDef, Drop, GameEvent, RunState } from '../core/types';
-import { createRenderer } from './index';
+import { createRenderer, type PegRenderer } from './index';
 import { ELEMENTS } from './palette';
 export { mountBallGallery } from './gallery';
 
@@ -20,7 +20,7 @@ export interface RenderDemoOptions {
   /** nombre de balles de la volée (défaut : une par élément, 27) ; au-delà, des mini-balles */
   balls?: number;
   /** accès de debug (captures QA) : bus et état factice */
-  debug?: (api: { bus: EventBus; state: RunState }) => void;
+  debug?: (api: { bus: EventBus; state: RunState; renderer: PegRenderer }) => void;
 }
 
 export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptions = {}): () => void {
@@ -40,7 +40,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
     mkBlock('heart', 5, 2, 6), mkBlock('normal', 6, 2, 1234),
     mkBlock('peg', 2, 3, 1), mkBlock('peg', 4, 3, 1),
     mkBlock('normal', 0, 4, 9, { frozen: true }), mkBlock('normal', 3, 4, 31), mkBlock('normal', 6, 4, 5),
-    mkBlock('explosive', 1, 5, 4), mkBlock('normal', 5, 5, 17),
+    mkBlock('explosive', 1, 5, 4), mkBlock('normal', 5, 5, 17, { acidCharges: 2 }),
   ];
   const drops: Drop[] = [
     { id: 1, kind: 'coin', pos: { x: 1.5, y: 6.5 }, value: 3, element: null },
@@ -58,7 +58,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
     const element = mini ? MINIS[(i - ELEMS.length) % MINIS.length] ?? 'swarm' : ELEMS[i] ?? 'stone';
     // rangs mélangés : on voit les anneaux II / III sur toutes les familles
     const tier = (mini ? 1 : (i % 3) + 1) as 1 | 2 | 3;
-    const b: Ball = { id: 100 + i, element, tier, pos: { x: 3.5, y: rows - R }, vel: { x: 0, y: 0 }, radius: R, combo: 0, alive: false, triggered: false, golden: false };
+    const b: Ball = { id: 100 + i, element, tier, pos: { x: 3.5, y: rows - R }, vel: { x: 0, y: 0 }, radius: R, combo: 0, alive: false, triggered: false, golden: false, kind: mini ? 'mini' : 'main' };
     b.radius = radiusOf(b, i);
     balls.push(b);
   }
@@ -117,6 +117,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       if (other && other !== b) emit({ type: 'lightning:chain', from: { x: ball.pos.x, y: ball.pos.y }, to: { x: other.col + other.width / 2, y: other.row + 0.5 }, damage: 1 });
     }
     if (ball.element === 'ice' && !b.frozen && b.kind !== 'boss') { b.frozen = true; emit({ type: 'block:frozen', blockId: b.id, pos: { x: b.col + 0.5, y: b.row + 0.5 } }); }
+    if (ball.element === 'acid') b.acidCharges = Math.min(3, (b.acidCharges ?? 0) + 1);
     if (ball.element === 'shock' && b.kind !== 'boss' && b.row > 1 && !blocks.some((o) => o !== b && o.row === b.row - 1 && o.col <= b.col && b.col < o.col + o.width)) {
       b.row--; // la sim le fait sans événement dédié : le rendu détecte la baisse de row
     }
@@ -163,8 +164,8 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
           emit({ type: 'ball:grounded', ballId: ball.id, pos: { x: ball.pos.x, y: rows } });
           if (ball.element === 'bomb') emit({ type: 'block:explode', pos: { x: ball.pos.x, y: rows - 0.3 }, radius: 1.4, damage: 30, element: 'bomb' });
           if (ball.element === 'echo' && !ball.triggered) {
-            // copie fantôme : repart vers le haut (Ball.triggered = copie, convention supposée)
-            ball.triggered = true; ball.vel.y = -Math.abs(ball.vel.y); ball.pos.y = rows - R - 0.01;
+            // copie fantôme : repart vers le haut (Ball.kind = 'echo')
+            ball.triggered = true; ball.kind = 'echo'; ball.vel.y = -Math.abs(ball.vel.y); ball.pos.y = rows - R - 0.01;
             continue;
           }
           ball.alive = false; ball.combo = 0;
@@ -224,7 +225,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
       while (launched < balls.length && launchT >= launched * 90 && dir) {
         const b = balls[launched]!;
         // combos de départ échelonnés : montre les paliers 8 / 16 / 32 du combo sur balle
-        b.alive = true; b.combo = launched % 4 === 0 ? 6 + launched : 0; b.triggered = false;
+        b.alive = true; b.combo = launched % 4 === 0 ? 6 + launched : 0; b.triggered = false; if (b.kind === 'echo') b.kind = 'main';
         b.golden = launched === balls.length - 1;
         b.pos.x = state.launchPos.x; b.pos.y = state.launchPos.y;
         const u = balls.length > 1 ? (launched / (balls.length - 1)) * 2 - 1 : 0;
@@ -253,6 +254,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
         state.aimDir = null;
         state.pendingLaunches = 0;
         state.stats.shots++;
+        for (const b of blocks) if (b.acidCharges) b.acidCharges--; // morsure de début de tir
         if (state.stats.shots % 3 === 1) {
           state.stats.contractsCompleted++;
           emit({ type: 'contract:completed', def: contractDef, reward: contractDef.reward });
@@ -306,7 +308,7 @@ export function mountRenderDemo(canvas: HTMLCanvasElement, opts: RenderDemoOptio
     }
   }
 
-  opts.debug?.({ bus, state });
+  opts.debug?.({ bus, state, renderer });
   const onResize = (): void => renderer.resize();
   window.addEventListener('resize', onResize);
   renderer.resize();

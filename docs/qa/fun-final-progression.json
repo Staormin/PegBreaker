@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T23:47:10.138Z",
+  "generatedAt": "2026-10-17T00:14:29.162Z",
   "seed": "prog",
   "rows": [
     {
@@ -25,7 +25,7 @@
       "bestShotDamage": 956,
       "bestCombo": 16,
       "finalVolley": 13,
-      "durationSimMs": 62729,
+      "durationSimMs": 62712,
       "bossesKilled": 0,
       "perfectWaves": 3,
       "deadMoments": 0,
@@ -78,7 +78,7 @@
       "bestShotDamage": 6486,
       "bestCombo": 23,
       "finalVolley": 20,
-      "durationSimMs": 168412,
+      "durationSimMs": 168446,
       "bossesKilled": 1,
       "perfectWaves": 6,
       "deadMoments": 0,
@@ -139,18 +139,18 @@
         "volley": 6
       },
       "stopReason": "gameover",
-      "depth": 57,
-      "wave": 7,
-      "bestShotDamage": 1422,
+      "depth": 47,
+      "wave": 6,
+      "bestShotDamage": 1506,
       "bestCombo": 13,
-      "finalVolley": 17,
-      "durationSimMs": 139796,
+      "finalVolley": 16,
+      "durationSimMs": 115383,
       "bossesKilled": 1,
       "perfectWaves": 4,
       "deadMoments": 0,
       "softlocks": [],
-      "fragmentsAfterRun": 69,
-      "fragmentsLeft": 19,
+      "fragmentsAfterRun": 61,
+      "fragmentsLeft": 11,
       "bought": [
         "el_split:50"
       ],
@@ -200,25 +200,24 @@
         "volley": 6
       },
       "stopReason": "gameover",
-      "depth": 185,
-      "wave": 18,
-      "bestShotDamage": 129454,
-      "bestCombo": 76,
+      "depth": 139,
+      "wave": 14,
+      "bestShotDamage": 13500,
+      "bestCombo": 45,
       "finalVolley": 29,
-      "durationSimMs": 639954,
+      "durationSimMs": 463413,
       "bossesKilled": 2,
-      "perfectWaves": 10,
+      "perfectWaves": 6,
       "deadMoments": 0,
       "softlocks": [],
-      "fragmentsAfterRun": 461,
-      "fragmentsLeft": 76,
+      "fragmentsAfterRun": 318,
+      "fragmentsLeft": 13,
       "bought": [
         "el_gold:50",
         "el_rust:55",
         "el_pierce:60",
         "hp:70",
-        "coins:70",
-        "el_twin:80"
+        "coins:70"
       ],
       "runs": 4,
       "achievements": [
@@ -229,9 +228,7 @@
         "fusion3",
         "wave5",
         "shot5000",
-        "combo50",
         "wave10",
-        "wave15",
         "depth80",
         "relic6",
         "volley24",
@@ -248,13 +245,10 @@
         "el_split": 1,
         "el_gold": 1,
         "el_rust": 1,
-        "el_pierce": 1,
-        "el_twin": 1
+        "el_pierce": 1
       },
       "newAchievements": [
-        "combo50",
         "wave10",
-        "wave15",
         "depth80",
         "relic6",
         "volley24",
@@ -277,7 +271,6 @@
           "magnet",
           "pierce",
           "gold",
-          "twin",
           "rust",
           "nova",
           "comet",
@@ -288,20 +281,21 @@
         "maxHp": 7,
         "volley": 6
       },
-      "stopReason": "gameover",
-      "depth": 185,
-      "wave": 20,
-      "bestShotDamage": 142472,
-      "bestCombo": 559,
+      "stopReason": "timeout",
+      "depth": 221,
+      "wave": 21,
+      "bestShotDamage": 245602,
+      "bestCombo": 584,
       "finalVolley": 30,
-      "durationSimMs": 851829,
+      "durationSimMs": 1038033,
       "bossesKilled": 3,
-      "perfectWaves": 15,
+      "perfectWaves": 12,
       "deadMoments": 0,
       "softlocks": [],
-      "fragmentsAfterRun": 288,
-      "fragmentsLeft": 18,
+      "fragmentsAfterRun": 363,
+      "fragmentsLeft": 13,
       "bought": [
+        "el_twin:80",
         "el_bomb:90",
         "rel_alchimie:90",
         "mod_glass:90"
@@ -315,13 +309,13 @@
         "fusion3",
         "wave5",
         "shot5000",
-        "combo50",
         "wave10",
-        "wave15",
         "depth80",
         "relic6",
         "volley24",
-        "score20k"
+        "score20k",
+        "combo50",
+        "wave15"
       ],
       "nodes": {
         "el_fire": 1,
@@ -340,7 +334,11 @@
         "rel_alchimie": 1,
         "mod_glass": 1
       },
-      "newAchievements": []
+      "newAchievements": [
+        "combo50",
+        "wave15"
+      ],
+      "note": "run interrompue après 45 s réelles à vitesse 24"
     }
   ],
   "trend": {
@@ -348,20 +346,20 @@
       "values": [
         23,
         62,
-        57,
-        185,
-        185
+        47,
+        139,
+        221
       ],
       "nonDecreasing": false,
-      "run5MinusRun1": 162
+      "run5MinusRun1": 198
     },
     "bestShotDamage": {
       "values": [
         956,
         6486,
-        1422,
-        129454,
-        142472
+        1506,
+        13500,
+        245602
       ],
       "nonDecreasing": false
     },
@@ -369,7 +367,7 @@
       "values": [
         13,
         20,
-        17,
+        16,
         29,
         30
       ],

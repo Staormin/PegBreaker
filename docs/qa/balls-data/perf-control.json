@@ -36,37 +36,67 @@
   ],
   "shots": 3,
   "fpsSamples": [
+    43,
+    45,
+    60,
+    60,
     57,
-    55,
-    60,
-    60,
     59,
-    46,
-    59,
-    59,
-    60
+    57,
+    52,
+    59
   ],
-  "fpsMin": 46,
-  "fpsMean": 57.22222222222222,
+  "fpsMin": 43,
+  "fpsMean": 54.666666666666664,
   "frameP50": 16.699999999999818,
-  "frameP95": 16.800000000000182,
-  "frameP99": 33.399999999999864,
-  "frameMax": 100,
-  "frames": 572,
+  "frameP95": 33.299999999999955,
+  "frameP99": 49.899999999999864,
+  "frameMax": 166.69999999999982,
+  "frames": 551,
   "slowFrames": [
     {
-      "sinceFireMs": 961,
-      "dt": 100,
+      "sinceFireMs": 30,
+      "dt": 50,
+      "live": 2
+    },
+    {
+      "sinceFireMs": 513,
+      "dt": 67,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 563,
+      "dt": 50,
+      "live": 10
+    },
+    {
+      "sinceFireMs": 713,
+      "dt": 50,
+      "live": 13
+    },
+    {
+      "sinceFireMs": 1063,
+      "dt": 167,
       "live": 16
+    },
+    {
+      "sinceFireMs": 1230,
+      "dt": 67,
+      "live": 18
+    },
+    {
+      "sinceFireMs": 1280,
+      "dt": 50,
+      "live": 18
     }
   ],
   "rendererDpr": [
     1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
+    1,
+    1,
+    1,
+    1,
+    1,
     1,
     1,
     1

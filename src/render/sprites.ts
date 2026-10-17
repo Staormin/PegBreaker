@@ -23,15 +23,22 @@ export const DROP_EXTENT = 0.26;
 /** Demi-étendue du halo (unités plateau). */
 export const HALO_EXTENT = 0.5;
 
+/** budget de créations de sprites par frame, partagé entre générations de Sprites (remis à zéro par le dessin) */
+export interface SpriteBudget { n: number; }
+/** sprites (tous types confondus) créés au plus par frame quand une génération précédente peut servir de repli */
+export const SPRITE_BUILD_BUDGET = 2;
+
 export interface Sprites {
-  /** blocs : [kindIndex][largeur] */
-  block: (HTMLCanvasElement | undefined)[][];
+  /** taille d'une cellule (px physiques) de cette génération */
+  readonly cell: number;
   /**
-   * Accesseurs paresseux (créés au premier usage, puis en cache jusqu'au prochain resize) :
-   * une bascule de qualité en pleine volée ne régénère que le strict nécessaire.
+   * Échelle à appliquer au dernier sprite renvoyé : 1 pour un sprite de cette génération, sinon
+   * rapport de cellules quand le sprite vient de la génération précédente (repli pendant la
+   * régénération étalée après un resize / changement de qualité). Lu juste après l'accesseur.
    */
-  /** bloc endommagé pré-composé (teinte assombrie, fissures au dernier niveau) : un seul blit */
-  damagedAt(kind: number, width: number, level: number): HTMLCanvasElement | undefined;
+  scale: number;
+  /** bloc pré-composé : base + assombrissement (niveau) + fissures (dernier niveau) + acide (0/1) : un seul blit */
+  blockAt(kind: number, width: number, level: number, acid: number): HTMLCanvasElement | undefined;
   /** silhouette blanche (flash d'impact, respiration) */
   whiteAt(kind: number, width: number): HTMLCanvasElement | undefined;
   /** surcouche gelée */
@@ -39,13 +46,10 @@ export interface Sprites {
   /**
    * balle : index = elementIndex * 3 + (tier − 1) ; rq = rayon quantifié (RQ_ONE = rayon de config,
    * cf. quantizeRadius) ; rot = cran d'orientation 0..ROT_STEPS-1 (ignoré pour les éléments fixes).
-   * Créé à la première demande puis en cache jusqu'au prochain resize.
    */
   ball(index: number, rq: number, rot: number): HTMLCanvasElement | undefined;
   /** pré-chauffe les sprites (tous les crans) d'une balle dans la limite du budget ; true = complet */
   warm(index: number, rq: number): boolean;
-  /** remet à zéro le budget de créations de sprites de balle (une fois par frame) */
-  resetBudget(): void;
   /** balle de taille standard, orientée vers le haut (lancement, galerie, drops, fusion) */
   ballAt(index: number): HTMLCanvasElement | undefined;
   /** demi-étendue de chaque sprite de balle à rq = RQ_ONE (unités plateau), même index que ballAt ; × rq / RQ_ONE sinon */
@@ -54,6 +58,10 @@ export interface Sprites {
   goldenAt(index: number): HTMLCanvasElement | undefined;
   /** demi-étendue des sprites dorés (unités plateau) */
   goldenExt: number[];
+  /** lecture seule du cache (repli d'une génération suivante) */
+  peek(key: number): HTMLCanvasElement | undefined;
+  /** une frame sans repli de plus : libère la génération précédente quand elle ne sert plus */
+  endFrame(): void;
   coin: HTMLCanvasElement;
   fragment: HTMLCanvasElement;
   heart: HTMLCanvasElement;
@@ -296,8 +304,6 @@ for (let i = 0; i < ELEMENTS.length; i++) ELEMENT_ORIENT[i] = ORIENT_BY_ID[ELEME
 
 /** Rayon quantifié : RQ_ONE = rayon de config ; mini-balles et géante ont leur propre sprite. */
 export const RQ_ONE = 20;
-/** sprites de balle créés au plus par frame (hors premier affichage d'un élément fixe) */
-export const BALL_BUILD_BUDGET = 2;
 export const RQ_MAX = 63;
 export function quantizeRadius(radius: number, base: number): number {
   const q = Math.round((radius / base) * RQ_ONE);
@@ -628,7 +634,7 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
     }
     case 'homing': {
       // œil rose : sclère claire cerclée de rose, iris et pupille tournés vers l'avant (+x)
-      g.fillStyle = '#fff0fb';
+      g.fillStyle = shade(color, 0.85);
       disc(g, cx, cy, r);
       g.shadowBlur = 0;
       g.strokeStyle = color; g.lineWidth = Math.max(1.5, r * 0.2);
@@ -796,7 +802,7 @@ function makeBall(element: number, color: string, tier: number, radius: number, 
       const p1x = cx + r * 1.1, p1y = cy + r * 0.65;
       const p2x = cx - r * 1.1, p2y = cy + r * 0.65;
       const iri = g.createLinearGradient(p2x, p2y, p1x, p0y);
-      iri.addColorStop(0, '#ff9cf5');
+      iri.addColorStop(0, PALETTE.heart);
       iri.addColorStop(0.35, color);
       iri.addColorStop(0.65, '#ffe95c');
       iri.addColorStop(1, '#5cff9d');
@@ -1023,56 +1029,123 @@ function makeHalo(cell: number): HTMLCanvasElement {
   return c;
 }
 
-export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Sprites {
+/** surcouche acide : voile vert + coulures et bulles (forme du bloc) */
+function makeAcid(kind: number, width: number, cell: number, color: string): HTMLCanvasElement {
+  const [c, g] = makeCanvas(width * cell, cell);
+  g.save();
+  blockShapePath(g, kind, width, cell);
+  g.clip();
+  g.globalAlpha = 0.32;
+  g.fillStyle = color;
+  g.fillRect(0, 0, c.width, c.height);
+  g.globalAlpha = 0.9;
+  // coulures depuis le haut (rideau irrégulier) et bulles
+  let seed = 31 + kind * 7 + width;
+  const rnd = (): number => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const ins = BLOCK_INSET * cell;
+  g.fillRect(0, 0, c.width, ins + cell * 0.07);
+  const n = 3 + width * 2;
+  for (let i = 0; i < n; i++) {
+    const x = ins + ((i + 0.3 + rnd() * 0.4) / n) * (c.width - 2 * ins);
+    const len = cell * (0.12 + rnd() * 0.22), w = cell * (0.04 + rnd() * 0.03);
+    g.fillRect(x - w / 2, ins, w, len);
+    g.beginPath(); g.arc(x, ins + len, w * 0.9, 0, TAU); g.fill();
+  }
+  g.globalAlpha = 0.55;
+  g.fillStyle = shade(color, 0.5);
+  for (let i = 0; i < 2 + width; i++) {
+    g.beginPath(); g.arc(ins + rnd() * (c.width - 2 * ins), cell * (0.55 + rnd() * 0.3), cell * (0.025 + rnd() * 0.03), 0, TAU); g.fill();
+  }
+  g.restore();
+  return c;
+}
+
+// espaces de clés du cache unique (Map<number>) : type × K_SPAN + sous-clé
+const K_SPAN = 1e7;
+const K_BLOCK = 0, K_WHITE = 1, K_FROZEN = 2, K_BALL = 3, K_GOLDEN = 4, K_PART = 5;
+/** frames consécutives sans repli avant de libérer la génération précédente */
+const PREV_RELEASE_FRAMES = 90;
+
+/**
+ * Sprites d'une résolution donnée. Tout est paresseux et mis en cache par clé numérique.
+ * `prev` (génération précédente, résolution différente) sert de repli : quand le budget de la
+ * frame est épuisé, un sprite manquant est remplacé par celui de `prev`, blitté à l'échelle
+ * (`scale`). Sans `prev` (premier affichage), on construit toujours.
+ */
+export function buildSprites(l: Layout, colors: Colors, config: GameConfig, prev: Sprites | null = null, budget: SpriteBudget = { n: Infinity }): Sprites {
   const cell = l.cellPx;
+  let fallback: Sprites | null = prev;
+  const ratio = prev ? cell / prev.cell : 1;
+  let fallbackUsed = false;
+  let quiet = 0;
+  const cache = new Map<number, HTMLCanvasElement>();
+  const acidColor = colors.element[ELEMENT_INDEX.acid] ?? PALETTE.good;
 
   // largeurs nécessaires : 1 + largeurs des boss de la config
-  const widths: number[] = [1];
-  for (const b of config.waves.bosses) if (!widths.includes(b.width)) widths.push(b.width);
-
-  const block: (HTMLCanvasElement | undefined)[][] = [];
-  for (let k = 0; k < KINDS.length; k++) {
-    const row: (HTMLCanvasElement | undefined)[] = [];
-    for (const w of widths) row[w] = makeBlock(k, w, cell, colors);
-    block.push(row);
-  }
-  const damaged: (HTMLCanvasElement | undefined)[] = [];
-  const white: (HTMLCanvasElement | undefined)[] = [];
-  const darkMasks: (HTMLCanvasElement | undefined)[] = [];
-  const crackMasks: (HTMLCanvasElement | undefined)[] = [];
-  const frozen: (HTMLCanvasElement | undefined)[] = [];
-  const maxW = widths.reduce((a, b) => (b > a ? b : a), 1) + 1;
+  let maxW = 2;
+  for (const b of config.waves.bosses) if (b.width + 1 > maxW) maxW = b.width + 1;
   const keyKW = (k: number, w: number): number => k * maxW + w;
 
-  function damagedAt(kind: number, width: number, lv: number): HTMLCanvasElement | undefined {
-    if (kind === KIND_INDEX.peg || width >= maxW) return undefined;
-    const key = keyKW(kind, width) * DMG_LEVELS + lv;
-    const hit = damaged[key];
-    if (hit) return hit;
-    const base = block[kind]?.[width];
-    if (!base) return undefined;
-    const dk = keyKW(kind, width);
-    const dark = darkMasks[dk] ?? (darkMasks[dk] = makeMask(kind, width, cell, '#000000'));
-    const [c, g] = makeCanvas(base.width, base.height);
-    g.drawImage(base, 0, 0);
-    g.globalAlpha = DMG_DARK[lv] ?? 0;
-    g.drawImage(dark, 0, 0);
-    g.globalAlpha = 1;
-    if (lv === DMG_LEVELS - 1) {
-      const cr = crackMasks[dk] ?? (crackMasks[dk] = makeCracks(kind, width, cell));
-      g.drawImage(cr, 0, 0);
-    }
-    damaged[key] = c;
+  /** repli : sprite de la génération précédente (sans construire), ou undefined */
+  function fromPrev(key: number): HTMLCanvasElement | undefined {
+    if (!fallback || budget.n > 0) return undefined;
+    const f = fallback.peek(key);
+    if (f) { api.scale = ratio; fallbackUsed = true; }
+    return f;
+  }
+  function store(key: number, c: HTMLCanvasElement): HTMLCanvasElement {
+    cache.set(key, c);
+    budget.n--;
+    api.scale = 1;
     return c;
   }
+  /** pièces intermédiaires (base, masques) : pas comptées dans le budget, toujours reconstruites */
+  function part(key: number, make: (k: number, w: number) => HTMLCanvasElement, k: number, w: number): HTMLCanvasElement {
+    const full = K_PART * K_SPAN + key;
+    let c = cache.get(full);
+    if (!c) { c = make(k, w); cache.set(full, c); }
+    return c;
+  }
+  const mkBase = (k: number, w: number): HTMLCanvasElement => makeBlock(k, w, cell, colors);
+  const mkDark = (k: number, w: number): HTMLCanvasElement => makeMask(k, w, cell, '#000000');
+  const mkCracks = (k: number, w: number): HTMLCanvasElement => makeCracks(k, w, cell);
+  const mkAcid = (k: number, w: number): HTMLCanvasElement => makeAcid(k, w, cell, acidColor);
+
+  function blockAt(kind: number, width: number, lv: number, acid: number): HTMLCanvasElement | undefined {
+    if (width >= maxW || width < 1) return undefined;
+    if (kind === KIND_INDEX.peg) lv = 0;
+    const kw = keyKW(kind, width);
+    const key = K_BLOCK * K_SPAN + (kw * DMG_LEVELS + lv) * 2 + (acid ? 1 : 0);
+    const hit = cache.get(key);
+    if (hit) { api.scale = 1; return hit; }
+    const f = fromPrev(key);
+    if (f) return f;
+    const base = part(kw * 4, mkBase, kind, width);
+    if (lv === 0 && !acid) return store(key, base);
+    const [c, g] = makeCanvas(base.width, base.height);
+    g.drawImage(base, 0, 0);
+    if (lv > 0) {
+      g.globalAlpha = DMG_DARK[lv] ?? 0;
+      g.drawImage(part(kw * 4 + 1, mkDark, kind, width), 0, 0);
+      g.globalAlpha = 1;
+      if (lv === DMG_LEVELS - 1) g.drawImage(part(kw * 4 + 2, mkCracks, kind, width), 0, 0);
+    }
+    if (acid) g.drawImage(part(kw * 4 + 3, mkAcid, kind, width), 0, 0);
+    return store(key, c);
+  }
   function whiteAt(kind: number, width: number): HTMLCanvasElement | undefined {
-    if (width >= maxW) return undefined;
-    const key = keyKW(kind, width);
-    return white[key] ?? (white[key] = makeMask(kind, width, cell, '#ffffff'));
+    if (width >= maxW || width < 1) return undefined;
+    const key = K_WHITE * K_SPAN + keyKW(kind, width);
+    const hit = cache.get(key);
+    if (hit) { api.scale = 1; return hit; }
+    return fromPrev(key) ?? store(key, makeMask(kind, width, cell, '#ffffff'));
   }
   function frozenAt(width: number): HTMLCanvasElement | undefined {
-    if (width >= maxW) return undefined;
-    return frozen[width] ?? (frozen[width] = makeFrozen(width, cell));
+    if (width >= maxW || width < 1) return undefined;
+    const key = K_FROZEN * K_SPAN + width;
+    const hit = cache.get(key);
+    if (hit) { api.scale = 1; return hit; }
+    return fromPrev(key) ?? store(key, makeFrozen(width, cell));
   }
 
   const radius = config.blocks.board.ballRadius;
@@ -1081,72 +1154,72 @@ export function buildSprites(l: Layout, colors: Colors, config: GameConfig): Spr
   for (let e = 0; e < ELEMENTS.length; e++) {
     for (let t = 1; t <= 3; t++) ballExt.push(ballVisualRadius(radius, e, t) * ballExtent(e, t));
   }
-  // cache paresseux : clé = ((idx × (RQ_MAX + 1)) + rq) × ROT_STEPS + rot ; vidé au resize
-  // (nouvel objet Sprites). Map<number> : get/set sans allocation une fois le sprite créé.
-  const ballCache = new Map<number, HTMLCanvasElement>();
-  /**
-   * Budget de créations par frame (shadowBlur en raster logiciel = plusieurs ms par sprite) :
-   * au-delà, un cran d'orientation manquant est remplacé par le cran en cache le plus proche ;
-   * les crans restants sont pré-chauffés pendant la visée (warm).
-   */
-  let budget = BALL_BUILD_BUDGET;
-  function build(i: number, rq: number, rr: number, key: number): HTMLCanvasElement {
+  const ballKey = (i: number, rq: number, rr: number): number => K_BALL * K_SPAN + (i * (RQ_MAX + 1) + rq) * ROT_STEPS + rr;
+  function buildBall(i: number, rq: number, rr: number, key: number): HTMLCanvasElement {
     const e = (i / 3) | 0, t = (i % 3) + 1;
-    const c = makeBall(e, colors.element[e] ?? PALETTE.stone, t, (radius * rq) / RQ_ONE, cell, (rr / ROT_STEPS) * TAU);
-    ballCache.set(key, c);
-    budget--;
-    return c;
+    return store(key, makeBall(e, colors.element[e] ?? PALETTE.stone, t, (radius * rq) / RQ_ONE, cell, (rr / ROT_STEPS) * TAU));
   }
   function ball(i: number, rq: number, rot: number): HTMLCanvasElement | undefined {
     if (i < 0 || i >= nIdx) return undefined;
     const e = (i / 3) | 0;
     const oriented = (ELEMENT_ORIENT[e] ?? 0) !== ORIENT_NONE;
     const rr = oriented ? ((rot % ROT_STEPS) + ROT_STEPS) % ROT_STEPS : 0;
-    const base = (i * (RQ_MAX + 1) + rq) * ROT_STEPS;
-    const hit = ballCache.get(base + rr);
-    if (hit) return hit;
-    if (oriented && budget <= 0) {
-      for (let d = 1; d <= ROT_STEPS / 2; d++) {
-        const a = ballCache.get(base + ((rr + d) % ROT_STEPS)) ?? ballCache.get(base + ((rr - d + ROT_STEPS) % ROT_STEPS));
-        if (a) return a;
+    const key = ballKey(i, rq, rr);
+    const hit = cache.get(key);
+    if (hit) { api.scale = 1; return hit; }
+    if (budget.n <= 0) {
+      const f = fromPrev(key);
+      if (f) return f;
+      if (oriented) {
+        // cran voisin déjà en cache (ici, puis dans la génération précédente)
+        const base = key - rr;
+        for (let d = 1; d <= ROT_STEPS / 2; d++) {
+          const a = cache.get(base + ((rr + d) % ROT_STEPS)) ?? cache.get(base + ((rr - d + ROT_STEPS) % ROT_STEPS));
+          if (a) { api.scale = 1; return a; }
+        }
       }
     }
-    return build(i, rq, rr, base + rr);
+    return buildBall(i, rq, rr, key);
   }
   function warm(i: number, rq: number): boolean {
-    if (i < 0 || i >= nIdx || budget <= 0) return false;
+    if (i < 0 || i >= nIdx || budget.n <= 0) return false;
     const e = (i / 3) | 0;
     const steps = (ELEMENT_ORIENT[e] ?? 0) === ORIENT_NONE ? 1 : ROT_STEPS;
-    const base = (i * (RQ_MAX + 1) + rq) * ROT_STEPS;
     for (let r = 0; r < steps; r++) {
-      if (ballCache.has(base + r)) continue;
-      build(i, rq, r, base + r);
-      if (budget <= 0) return false;
+      const key = ballKey(i, rq, r);
+      if (cache.has(key)) continue;
+      buildBall(i, rq, r, key);
+      if (budget.n <= 0) return false;
     }
     return true;
   }
   function ballAt(i: number): HTMLCanvasElement | undefined {
     return ball(i, RQ_ONE, ROT_UP);
   }
-  const golden: (HTMLCanvasElement | undefined)[] = [];
   const goldenExt: number[] = [];
   for (let e = 0; e < ELEMENTS.length; e++) {
     for (let t = 1; t <= 3; t++) goldenExt.push(ballVisualRadius(radius, e, t) * GOLDEN_EXTENT);
   }
   function goldenAt(i: number): HTMLCanvasElement | undefined {
-    const hit = golden[i];
-    if (hit) return hit;
     if (i < 0 || i >= nIdx) return undefined;
-    const e = Math.floor(i / 3), t = (i % 3) + 1;
-    const c = makeGoldenBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell);
-    golden[i] = c;
-    return c;
+    const key = K_GOLDEN * K_SPAN + i;
+    const hit = cache.get(key);
+    if (hit) { api.scale = 1; return hit; }
+    const e = (i / 3) | 0, t = (i % 3) + 1;
+    return fromPrev(key) ?? store(key, makeGoldenBall(e, colors.element[e] ?? PALETTE.stone, t, radius, cell));
   }
 
-  return {
-    block, damagedAt, whiteAt, frozenAt, ball, ballAt, ballExt, warm,
-    resetBudget() { budget = BALL_BUILD_BUDGET; }, goldenAt, goldenExt,
+  const api: Sprites = {
+    cell, scale: 1,
+    blockAt, whiteAt, frozenAt, ball, ballAt, ballExt, warm, goldenAt, goldenExt,
+    peek(key) { return cache.get(key); },
+    endFrame() {
+      if (!fallback) return;
+      if (fallbackUsed) { quiet = 0; fallbackUsed = false; return; }
+      if (++quiet > PREV_RELEASE_FRAMES) fallback = null; // la génération précédente peut être collectée
+    },
     coin: makeDrop('coin', cell), fragment: makeDrop('fragment', cell), heart: makeDrop('heart', cell),
     halo: makeHalo(cell),
   };
+  return api;
 }

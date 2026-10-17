@@ -10,7 +10,7 @@
       {
         "seed": "balls-ref-1",
         "shots": 6,
-        "damage": 742,
+        "damage": 757,
         "destroyed": 10,
         "wave": 2,
         "coins": 5,
@@ -44,12 +44,12 @@
       {
         "seed": "balls-ref-3",
         "shots": 6,
-        "damage": 1157,
+        "damage": 1142,
         "destroyed": 11,
         "wave": 2,
         "coins": 11,
         "explode": {
-          "nova": 5
+          "nova": 3
         },
         "chain": {},
         "split": {},
@@ -73,7 +73,7 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 14599.999999999307,
+    "simMs": 14616.666666665971,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
@@ -152,15 +152,15 @@
       "homingOverMax": [],
       "flightMsMaxByTier": {
         "1": 1199.9999999999563,
-        "2": 5316.666666666783,
-        "3": 1466.6666666666783
+        "2": 5316.66666666678,
+        "3": 1466.6666666666786
       },
       "groundedBeforeMs": 0
     },
     "devSamples": 68,
     "devOver2": 1,
     "maxLive": 5,
-    "maxParticles": 82,
+    "maxParticles": 85,
     "nan": [],
     "violations": [],
     "pageErrors": [],

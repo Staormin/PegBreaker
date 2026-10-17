@@ -4,10 +4,10 @@
 import type { Ball, Block, RunState } from '../core/types';
 import { easeOutBack, easeOutCubic } from '../core/math';
 import type { Layout } from './layout';
-import type { Sprites } from './sprites';
+import type { SpriteBudget, Sprites } from './sprites';
 import {
   BALL_EXTENT, ballVisualRadius, damageLevel, DROP_EXTENT, ELEMENT_ORIENT, GOLDEN_EXTENT, HALO_EXTENT, ORIENT_SPIN,
-  ORIENT_VELOCITY, PEG_RADIUS, quantizeRadius, ROT_STEPS, RQ_ONE,
+  ORIENT_VELOCITY, PEG_RADIUS, quantizeRadius, ROT_STEPS, RQ_ONE, SPRITE_BUILD_BUDGET,
 } from './sprites';
 import type { Particles } from './particles';
 import { P_CRYSTAL, P_SHARD, P_SPARK, PRIO_LOW, PRIO_NORMAL } from './particles';
@@ -60,6 +60,8 @@ const DASH_TRAIL: number[] = [0.07, 0.07];
 const SPIN_RATE = 28;
 /** glissement d'un bloc repoussé vers le haut (choc), s */
 const SLIDE_DUR = 0.15;
+/** libellés de PV re-rendus au plus par frame après un resize */
+const LABEL_BUDGET = 3;
 /** traînée de la balle dorée (plus longue que toutes les autres) */
 const GOLD_TRAIL = 12;
 const GOLD_TRAIL_MANY = 9;
@@ -143,6 +145,8 @@ export interface DrawDeps {
   ballRadius: number;
   /** demi-angle max de l'éventail (degrés) quand aimSpread = 1 */
   maxSpreadDeg: number;
+  /** budget de créations de sprites, remis à SPRITE_BUILD_BUDGET à chaque frame */
+  budget: SpriteBudget;
   /** appelé quand le niveau de « lumière » (0..POWER_LEVELS-1) change */
   onPowerLevel(level: number): void;
 }
@@ -214,6 +218,10 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
   let warmedFor: Sprites | null = null;
   let warmLen = -1;
   let warmDone = false;
+  /** libellés de PV périmés (resize) re-rendus au plus par frame */
+  let labelBudget = 0;
+  let dtFrame = 0;
+  const acidColor = d.colors.element[ELEMENT_INDEX.acid] ?? PALETTE.good;
   /** transform plateau → pixels physiques de la frame courante */
   let K = 1, OX = 0, OY = 0;
 
@@ -418,7 +426,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       }
       const lowNow = b.maxHp > 0 && b.hp < b.maxHp * 0.3;
       if (lowNow !== fx.labelLow) { fx.labelLow = lowNow; fx.labelDirty = true; }
-      if (fx.labelDirty && b.kind !== 'peg') renderLabel(fx, b.kind === 'boss', b.width);
+      // PV changés : tout de suite ; libellés seulement périmés (resize) : quelques-uns par frame
+      if (b.kind !== 'peg' && (fx.labelDirty || (fx.labelStale && labelBudget-- > 0))) renderLabel(fx, b.kind === 'boss', b.width);
       const kind = KIND_INDEX[b.kind];
       // choc : la rangée diminue hors 'advancing' → glissement vers le haut + poussière
       if (!advancing && b.row < fx.lastRow) {
@@ -432,23 +441,40 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const y = b.row + (b.frozen ? 0 : shift) + slide;
       fx.x = b.col; fx.y = y; fx.w = b.width; fx.kind = kind;
 
-      const row = sp.block[kind];
-      const img = row ? (row[b.width] ?? row[1]) : undefined;
-      if (!img) continue;
       const isPeg = b.kind === 'peg';
       const ratio = !isPeg && b.maxHp > 0 ? (b.hp > b.maxHp ? 1 : b.hp / b.maxHp) : 1;
       const lv = isPeg ? 0 : damageLevel(ratio);
+      const acid = b.acidCharges !== undefined && b.acidCharges > 0 ? 1 : 0;
+      // état visuel (niveau d'usure × acide) recalculé seulement quand il change, ou quand le
+      // sprite vient encore de la génération précédente (repli pendant une régénération)
+      const vkey = lv * 2 + acid;
+      if (fx.visKey !== vkey || fx.visSp !== sp || fx.visScale !== 1) {
+        fx.vis = sp.blockAt(kind, b.width, lv, acid) ?? null;
+        fx.visScale = sp.scale;
+        fx.visKey = vkey;
+        fx.visSp = sp;
+      }
+      const img = fx.vis;
+      if (!img) continue;
+      if (acid === 1) {
+        // gouttes qui tombent du bloc rongé (≈ 2 par seconde)
+        fx.acidT -= dtFrame;
+        if (fx.acidT <= 0) {
+          fx.acidT = 0.35 + Math.random() * 0.35;
+          particles.burst(b.col + 0.1 + Math.random() * (b.width - 0.2), y + 0.95, 2, acidColor, P_SHARD, 0, 0.3, Math.PI / 2, 0.2, 0.35, 0.55, 0.04, 0.06, 6, PRIO_LOW);
+        }
+      }
       const sp0 = fx.spawnT < SPAWN_DUR ? easeOutBack(fx.spawnT / SPAWN_DUR) : 1;
       const s = vfx.squashScale(fx) * (sp0 < 0.05 ? 0.05 : sp0);
       const x0 = b.col + b.width * (1 - s) * 0.5, y0 = y + (1 - s) * 0.5;
       // sprite pré-composé (assombri / fissuré) : un seul blit
-      blit((lv > 0 ? sp.damagedAt(kind, b.width, lv) : undefined) ?? img, x0, y0, s);
+      blit(img, x0, y0, s * fx.visScale);
       const flash = fx.squashT < 0.08 ? 0.7 * (1 - fx.squashT / 0.08) : 0;
       if (flash > 0) {
         const wimg = sp.whiteAt(kind, b.width);
         if (wimg) {
           ctx.globalAlpha = flash;
-          blit(wimg, x0, y0, s);
+          blit(wimg, x0, y0, s * sp.scale);
           ctx.globalAlpha = 1;
         }
       }
@@ -456,7 +482,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         const fz = sp.frozenAt(b.width);
         if (fz) {
           ctx.globalAlpha = 0.9;
-          blit(fz, x0, y0, s);
+          blit(fz, x0, y0, s * sp.scale);
           ctx.globalAlpha = 1;
         }
       }
@@ -498,7 +524,9 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
    */
   function renderLabel(fx: BlockFx, boss: boolean, width: number): void {
     fx.labelDirty = false;
+    fx.labelStale = false;
     const k = l.scale * l.dpr;
+    fx.labelK = k;
     const w = Math.ceil(width * k + 8 * l.dpr), h = Math.ceil(k * 0.8);
     let c = fx.labelCanvas;
     if (!c) { c = document.createElement('canvas'); fx.labelCanvas = c; }
@@ -528,7 +556,8 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const c = fx ? fx.labelCanvas : null;
       if (!fx || !c) continue;
       const boss = b.kind === 'boss';
-      let pop = fx.popT < 0.16 ? 1 + 0.38 * (1 - fx.popT / 0.16) : 1;
+      // libellé encore à l'ancienne résolution (régénération étalée) : remis à l'échelle
+      let pop = (fx.popT < 0.16 ? 1 + 0.38 * (1 - fx.popT / 0.16) : 1) * (fx.labelK > 0 ? k / fx.labelK : 1);
       if (fx.spawnT < SPAWN_DUR) { const g = easeOutBack(fx.spawnT / SPAWN_DUR); pop *= g < 0.05 ? 0.05 : g; }
       const w = c.width * pop, h = c.height * pop;
       const cx = ox + (fx.x + fx.w * 0.5) * k, cy = oy + (fx.y + (boss ? 0.66 : 0.53)) * k;
@@ -669,7 +698,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       } else {
         const additive = f === F_ELEMENTAL;
         const dashed = f === F_ARCANE && e !== EL_STONE;
-        const echoCopy = e === EL_ECHO && b.triggered;
+        const echoCopy = e === EL_ECHO && (b.kind === 'echo' || (b.kind === undefined && b.triggered));
         const am = (f === F_GREED ? twinkle : 1) * (echoCopy ? 0.6 : 1);
         ctx.strokeStyle = color;
         if (additive) ctx.globalCompositeOperation = 'lighter';
@@ -755,7 +784,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
         if (gimg) {
           const gs = rq / RQ_ONE;
           const gext = (sp.goldenExt[idx] ?? R * GOLDEN_EXTENT) * gs;
-          blit(gimg, b.pos.x - gext, b.pos.y - gext, gs);
+          blit(gimg, b.pos.x - gext, b.pos.y - gext, gs * sp.scale);
           continue;
         }
       }
@@ -766,10 +795,10 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
       const img = sp.ball(idx, rq, rot);
       if (!img) continue;
       const ext = ((sp.ballExt[idx] ?? R * BALL_EXTENT) * rq) / RQ_ONE;
-      // fantôme translucide ; copie d'écho (Ball.triggered, cf. rapport) encore plus
+      // fantôme translucide ; copie d'écho (Ball.kind 'echo') encore plus
       if (e === EL_GHOST) ctx.globalAlpha = 0.6;
-      else if (e === EL_ECHO && b.triggered) ctx.globalAlpha = 0.45;
-      blit(img, b.pos.x - ext, b.pos.y - ext, 1);
+      else if (b.kind === 'echo' || (e === EL_ECHO && b.kind === undefined && b.triggered)) ctx.globalAlpha = 0.45;
+      blit(img, b.pos.x - ext, b.pos.y - ext, sp.scale);
       ctx.globalAlpha = 1;
     }
     boardTransform();
@@ -1024,7 +1053,9 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     prevPhase = curPhase;
     curPhase = state.phase;
     const sp = d.getSprites();
-    sp.resetBudget();
+    d.budget.n = SPRITE_BUILD_BUDGET;
+    labelBudget = LABEL_BUDGET;
+    dtFrame = dt;
     if (sp !== warmedFor || state.volley.length !== warmLen) { warmedFor = sp; warmLen = state.volley.length; warmDone = false; }
     warmVolley(state);
     const dpr = l.dpr;
@@ -1095,6 +1126,7 @@ export function createFrameDrawer(d: DrawDeps): FrameDrawer {
     drawOverlays(dt);
     numbers.draw(ctx, l);
 
+    sp.endFrame();
     vfx.sweepBlockFx(frame, onVanish);
     suppressVanish = false;
   }

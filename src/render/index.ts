@@ -5,14 +5,14 @@
 import type { EventBus, Unsubscribe } from '../core/events';
 import type { BallElement, GameConfig, Renderer, RunState, Vec2 } from '../core/types';
 import { boardToScreen, computeLayout, createLayout, MAX_DPR, screenToBoard } from './layout';
-import { buildSprites, type Sprites } from './sprites';
+import { buildSprites, type SpriteBudget, type Sprites } from './sprites';
 import { createParticles, P_CRYSTAL, P_SHARD, P_SPARK, PRIO_HIGH, PRIO_LOW, PRIO_NORMAL } from './particles';
 import { createDamageNumbers, formatNumber, FONT_BUCKETS } from './damageNumbers';
 import { createVfx } from './vfx';
 import { createFrameDrawer } from './draw';
 import { createFusions } from './fusion';
 import { buildBackdrops } from './backdrop';
-import { buildColors, ELEMENT_INDEX, ELEMENTS, KIND_INDEX, PALETTE } from './palette';
+import { buildColors, ELEMENT_INDEX, ELEMENTS, KIND_INDEX, PALETTE, shade } from './palette';
 
 export { PALETTE } from './palette';
 
@@ -29,6 +29,8 @@ export interface PegRenderer extends Renderer {
   readonly dpr: number;
   /** durée de la dernière bascule de qualité adaptative (ms) */
   readonly qualitySwitchMs: number;
+  /** QA : force une baisse de qualité (même chemin que la bascule adaptative) ; false si déjà au minimum */
+  debugLowerQuality(step: number): boolean;
 }
 
 export function createRenderer(
@@ -47,6 +49,8 @@ export function createRenderer(
   const numbers = createDamageNumbers();
   const vfx = createVfx();
   let sprites: Sprites | null = null;
+  /** budget de créations de sprites par frame (remis à zéro par le dessin) */
+  const spriteBudget: SpriteBudget = { n: 0 };
   let frame = 0;
   let lastState: Readonly<RunState> | null = null;
   let backdrops: string[] = [];
@@ -64,7 +68,7 @@ export function createRenderer(
   function rebuildBackdrops(wave: number): void {
     backdropWave = wave;
     backdrops = buildBackdrops(layout, wave);
-    appliedBackdrop = '';
+    // même géométrie CSS (changement de qualité = DPR seul) : chaîne identique, pas de re-style
     applyBackdrop();
   }
 
@@ -154,7 +158,9 @@ export function createRenderer(
 
   function doResize(): Sprites {
     computeLayout(layout, canvas, effectiveCap());
-    const s = buildSprites(layout, colors, config);
+    // régénération paresseuse : la génération courante sert de repli (blit à l'échelle) pendant
+    // que les sprites de la nouvelle résolution sont construits au plus SPRITE_BUILD_BUDGET par frame
+    const s = buildSprites(layout, colors, config, sprites, spriteBudget);
     sprites = s;
     numbers.rebuildFonts(layout);
     drawer.rebuildFonts();
@@ -172,6 +178,7 @@ export function createRenderer(
     ballRadius: board.ballRadius,
     maxSpreadDeg: board.maxSpreadDeg,
     getSprites: ensureSprites,
+    budget: spriteBudget,
   });
 
   // ------------------------------------------------------------------
@@ -185,6 +192,8 @@ export function createRenderer(
   /** dernière destruction par le vampire / l'or (position + frame) : relie healed / drop:spawned à un point */
   let vampX = 0, vampY = 0, vampFrame = -100;
   let goldX = 0, goldY = 0, goldFrame = -100;
+  /** cœur de l'explosion nova : couleur de config éclaircie (calculée une fois) */
+  const novaCore = shade(colors.element[EL_NOVA] ?? PALETTE.heart, 0.7);
   /** flash rouge local de la rangée du joueur (brèche, dégâts) */
   const flashPlayerRow = (ms: number): void => {
     vfx.flashRect(0, board.rows - 1, board.cols, 1, ms, PALETTE.danger);
@@ -235,8 +244,7 @@ export function createRenderer(
     // signatures d'impact des nouvelles balles (locales, ≤ 300 ms)
     switch (e.element) {
       case 'acid': {
-        // teinte verte sur le bloc + gouttes qui coulent par le bas (les charges restantes ne sont
-        // pas dans l'état public : pas de teinte persistante, cf. rapport)
+        // éclat vert à l'impact + gouttes ; la teinte persistante suit Block.acidCharges (draw.ts)
         const bx = Number.isNaN(fx.hp) ? Math.floor(e.pos.x) : fx.x, by = Number.isNaN(fx.hp) ? Math.floor(e.pos.y) : fx.y;
         vfx.flashRect(bx + 0.05, by + 0.05, fx.w - 0.1, 0.9, 260, c);
         particles.burst(bx + fx.w * 0.5, by + 0.95, 6, c, P_SHARD, 0.2, 1.2, Math.PI / 2, 0.5, 0.35, 0.55, 0.04, 0.07, 7, PRIO_NORMAL);
@@ -284,7 +292,7 @@ export function createRenderer(
     else if (e.element !== undefined) src = ELEMENT_INDEX[e.element];
     else src = drawer.nearestElement(e.pos.x, e.pos.y, 0.8);
     const c = src === -2 ? kindColor(KIND_INDEX.explosive) : src === EL_BOMB || src === EL_NOVA ? colors.element[src] ?? PALETTE.danger : elemColor('fire');
-    const core = src === EL_NOVA ? '#ffe0f6' : src === EL_BOMB ? '#ffffff' : '#ffe0b0';
+    const core = src === EL_NOVA ? novaCore : src === EL_BOMB ? '#ffffff' : '#ffe0b0';
     vfx.ring(e.pos.x, e.pos.y, 0.15, Math.max(0.5, e.radius), 250, c, 0.16);
     vfx.ring(e.pos.x, e.pos.y, 0.05, Math.max(0.4, e.radius * 0.75), 200, '#ffffff', 0.06);
     vfx.flashCircle(e.pos.x, e.pos.y, Math.max(0.4, e.radius * 0.6), 120, core);
@@ -369,7 +377,7 @@ export function createRenderer(
     const prism = e.element === 'prism';
     const c = prism ? elemColor('prism') : elemColor('lightning');
     vfx.bolt(e.from.x, e.from.y, e.to.x, e.to.y, prism ? 160 : 120, c);
-    particles.burst(e.to.x, e.to.y, 4, prism ? '#ff9cf5' : c, P_SPARK, 2, 5, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0);
+    particles.burst(e.to.x, e.to.y, 4, prism ? PALETTE.heart : c, P_SPARK, 2, 5, 0, Math.PI, 0.1, 0.2, 0.03, 0.05, 0);
   }));
 
   subs.push(bus.on('block:frozen', (e) => {
@@ -525,6 +533,9 @@ export function createRenderer(
     /** durée de la dernière bascule de qualité (ms), pour QA */
     get qualitySwitchMs() {
       return lastQualitySwitchMs;
+    },
+    debugLowerQuality(step: number) {
+      return lowerQuality(step);
     },
     get particleCount() {
       return particles.count;

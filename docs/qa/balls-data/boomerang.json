@@ -2,7 +2,7 @@
   "element": "boomerang",
   "seed": "balls-boomerang",
   "signal": "ball:bounce normale (0,−1) au sol (rangs II/III) + retour au lanceur (rang I)",
-  "measured": "6 rebonds sol, 4/30 posées au lanceur, 25 au sol avant 1,5 s",
+  "measured": "17 rebonds sol, 23/30 posées au lanceur, 19 au sol avant 1,5 s",
   "ok": true,
   "consoleErrors": [],
   "ref": {
@@ -10,10 +10,10 @@
       {
         "seed": "balls-ref-1",
         "shots": 6,
-        "damage": 709,
-        "destroyed": 8,
+        "damage": 478,
+        "destroyed": 7,
         "wave": 1,
-        "coins": 5,
+        "coins": 2,
         "explode": {},
         "chain": {},
         "split": {},
@@ -25,10 +25,10 @@
       {
         "seed": "balls-ref-2",
         "shots": 6,
-        "damage": 929,
-        "destroyed": 11,
-        "wave": 2,
-        "coins": 11,
+        "damage": 470,
+        "destroyed": 8,
+        "wave": 1,
+        "coins": 9,
         "explode": {},
         "chain": {},
         "split": {},
@@ -40,8 +40,8 @@
       {
         "seed": "balls-ref-3",
         "shots": 6,
-        "damage": 1108,
-        "destroyed": 11,
+        "damage": 261,
+        "destroyed": 9,
         "wave": 2,
         "coins": 11,
         "explode": {},
@@ -53,9 +53,9 @@
         "maxHpDrop": 0
       }
     ],
-    "damage": 2746,
-    "destroyed": 30,
-    "coins": 27,
+    "damage": 1209,
+    "destroyed": 24,
+    "coins": 22,
     "errors": [],
     "nan": []
   },
@@ -67,18 +67,18 @@
     "depth": 6,
     "hp": 5,
     "maxHp": 5,
-    "simMs": 20600.000000000273,
+    "simMs": 28883.333333336017,
     "counts": {
       "volley:start": 6,
       "ball:launched": 30,
-      "block:hit": 32,
-      "ball:bounce": 84,
-      "block:destroyed": 18,
-      "contract:progress": 3,
-      "drop:spawned": 7,
+      "block:hit": 33,
+      "ball:bounce": 101,
+      "block:destroyed": 16,
+      "contract:progress": 5,
+      "drop:spawned": 6,
       "combo:milestone": 4,
-      "drop:collected": 7,
-      "contract:completed": 1,
+      "drop:collected": 5,
+      "contract:completed": 2,
       "ball:grounded": 30,
       "volley:end": 6,
       "rows:advanced": 5,
@@ -92,21 +92,21 @@
     "splitByEl": {},
     "healBySource": {},
     "destroyedByEl": {
-      "boomerang": 18
+      "boomerang": 16
     },
     "hitsByEl": {
-      "boomerang": 32
+      "boomerang": 33
     },
     "damageByEl": {
-      "boomerang": 1961
+      "boomerang": 1377
     },
     "kinds": {
       "main": 30
     },
     "focus": {
       "critLowCombo": 0,
-      "critHits": 3,
-      "hits": 32,
+      "critHits": 2,
+      "hits": 33,
       "acidMax": 0,
       "acidBlocks": 0,
       "acidChargedAtFire": 0,
@@ -118,17 +118,17 @@
       "maxHpDrop": 0,
       "radiusMin": 0.12,
       "radiusMax": 0.12,
-      "speedRatioMin": 0.9999999999999999,
-      "speedRatioMax": 1,
+      "speedRatioMin": 1,
+      "speedRatioMax": 1.0000000000000002,
       "homingSamples": 0,
       "homingDeviated": 0,
       "homingMaxDevDeg": 0,
-      "groundBounces": 6,
-      "groundedAtOrigin": 4,
+      "groundBounces": 17,
+      "groundedAtOrigin": 23,
       "groundedTotal": 30,
       "magnetRemote": 0,
       "magnetRemoteMaxDist": 0,
-      "dropsCollectedInFlight": 7,
+      "dropsCollectedInFlight": 5,
       "pierceHits": 0,
       "pierceBlockBounces": 0,
       "voidMatch": 0,
@@ -137,31 +137,31 @@
       "goldCoin": 0,
       "goldBall": 0,
       "goldDestroyed": 0,
-      "ceilingBounces": 13,
-      "comboMax": 7,
+      "ceilingBounces": 20,
+      "comboMax": 4,
       "homingMaxDevByTier": {},
       "homingOverMax": [],
       "flightMsMaxByTier": {
-        "1": 1616.6666666666792,
-        "2": 3666.66666666661,
-        "3": 5366.66666666673
+        "1": 1483.333333333344,
+        "2": 3116.666666666997,
+        "3": 4583.33333333412
       },
-      "groundedBeforeMs": 25
+      "groundedBeforeMs": 19
     },
-    "devSamples": 81,
-    "devOver2": 11,
+    "devSamples": 97,
+    "devOver2": 25,
     "maxLive": 5,
-    "maxParticles": 120,
+    "maxParticles": 98,
     "nan": [],
     "violations": [],
     "pageErrors": [],
     "shotDamage": [
-      877,
-      55,
-      30,
+      299,
+      238,
       20,
-      769,
-      210
+      30,
+      409,
+      381
     ],
     "captured": true
   }

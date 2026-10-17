@@ -36,55 +36,80 @@
   ],
   "shots": 3,
   "fpsSamples": [
+    47,
+    30,
     58,
-    49,
     60,
     60,
+    59,
+    57,
+    57,
     60,
-    60,
-    60,
-    60,
-    60,
-    60,
-    60,
-    60,
+    59,
+    55,
+    56,
     60
   ],
-  "fpsMin": 49,
-  "fpsMean": 59,
+  "fpsMin": 30,
+  "fpsMean": 55.23076923076923,
   "frameP50": 16.699999999999818,
-  "frameP95": 16.799999999999272,
-  "frameP99": 16.80000000000109,
-  "frameMax": 100.10000000000036,
-  "frames": 833,
+  "frameP95": 33.29999999999927,
+  "frameP99": 33.40000000000009,
+  "frameMax": 133.29999999999973,
+  "frames": 783,
   "slowFrames": [
     {
-      "sinceFireMs": 959,
-      "dt": 100,
-      "live": 16
+      "sinceFireMs": 37,
+      "dt": 50,
+      "live": 2
     },
     {
-      "sinceFireMs": 1393,
+      "sinceFireMs": 504,
+      "dt": 50,
+      "live": 9
+    },
+    {
+      "sinceFireMs": 1087,
+      "dt": 133,
+      "live": 17
+    },
+    {
+      "sinceFireMs": 1387,
       "dt": 50,
       "live": 21
+    },
+    {
+      "sinceFireMs": 1454,
+      "dt": 67,
+      "live": 22
+    },
+    {
+      "sinceFireMs": 1554,
+      "dt": 100,
+      "live": 24
+    },
+    {
+      "sinceFireMs": 1654,
+      "dt": 100,
+      "live": 25
     }
   ],
   "rendererDpr": [
     1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25,
-    1.25
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
   ],
-  "maxParticles": 50,
+  "maxParticles": 46,
   "maxLive": 27,
   "explodeByEl": {
     "bomb": 6
